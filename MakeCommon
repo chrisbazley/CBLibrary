@@ -1,0 +1,25 @@
+# Project:   CBLib
+LibName = CB
+
+# OS-specific utilities (to make life bearable)
+OSUtilsList = MsgTrans Canonical ScreenSize MakePath DateStamp ReadClock \
+              SetFType GetFType DirIter PathTail FileSize
+
+# Toolbox library utilities
+ToolboxList = StackViews ViewsMenu DeIconise GadgetHide GadgetFade \
+              DelOnEvent ReEventHan ReEventDel InputFocus
+
+# Desktop application file access with hourglass
+DesktopIOList = FilePerc AbortFOp FedCompMT LoadSaveMT FOpenCount
+
+# Generic desktop application functionality
+DesktopList = NoBudge Timer TimerSet NullPoll Scheduler Err Drag \
+              Entity Loader2 Saver \
+              Entity2 Loader3 Saver2 \
+              Pal256 UserData
+
+ObjectList = $(OSUtilsList) $(ToolboxList) $(DesktopIOList) $(DesktopList)
+
+XObjectList = ErrNotRec FPCompOnly
+DebugList = $(ObjectList)
+ObsoleteList = $(ObjectList) FednetComp RoundRobin Loader

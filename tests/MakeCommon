@@ -1,0 +1,3 @@
+# Project:   CBLibTests
+ObjectList = Main DirIterTest DecLExTest MacrosTest PTailTest \
+             MakePTest UserDTest TimerTest
