@@ -45,6 +45,7 @@
                   prints function pointers (no matching format specifier).
                   Used size_t for loop counters to match type of ARRAY_SIZE.
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
+  CJB: 03-May-25: Fix #include filename case.
  */
 
 #ifdef CBLIB_OBSOLETE /* Use c.Scheduler instead */
@@ -66,7 +67,7 @@
 #include "NullPoll.h"
 #include "Timer.h"
 #include "RoundRobin.h"
-#include "MsgTrans.h"
+#include "msgtrans.h"
 
 typedef struct
 {

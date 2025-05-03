@@ -67,6 +67,7 @@
                   _scheduler_client_has_callback(). This allows use of
                   scheduler_deregister() followed by scheduler_register()
                   (for the same client) in a SchedulerIdleFunction.
+  CJB: 03-May-25: Fix #include filename case.
  */
 
 /* ISO library headers */
@@ -89,10 +90,10 @@
 
 /* Local headers */
 #include "Internal/CBMisc.h"
-#include "Scheduler.h"
-#include "timer.h"
+#include "scheduler.h"
+#include "Timer.h"
 #ifdef CBLIB_OBSOLETE
-#include "MsgTrans.h"
+#include "msgtrans.h"
 #include "Err.h"
 #endif /* CBLIB_OBSOLETE */
 

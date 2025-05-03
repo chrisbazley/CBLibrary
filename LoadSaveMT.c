@@ -57,6 +57,7 @@
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
   CJB: 06-Nov-19: Fixed failure to check the return value of fclose_dec().
   CJB: 10-Nov-19: Modified load_fileM2() to use get_file_size().
+  CJB: 03-May-25: Fix #include filename case.
  */
 
 /* ISO library headers */
@@ -83,7 +84,7 @@
 #include "FopenCount.h"
 #include "FileUtils.h"
 #ifdef CBLIB_OBSOLETE
-#include "MsgTrans.h"
+#include "msgtrans.h"
 #endif /* CBLIB_OBSOLETE */
 #include "Internal/FOpPrivate.h"
 

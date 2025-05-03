@@ -29,6 +29,7 @@
   CJB: 18-Apr-15: Assertions are now provided by debug.h.
   CJB: 17-Jul-22: Deleted a bad assertion in notify_closed (failed for
                   unknown UI object classes, including Menu).
+  CJB: 03-May-25: Fix #include filename case.
  */
 
 
@@ -54,7 +55,7 @@
 /* Local headers */
 #include "Internal/CBMisc.h"
 #include "Err.h"
-#include "MsgTrans.h"
+#include "msgtrans.h"
 #include "DeIconise.h"
 
 /* ----------------------------------------------------------------------- */

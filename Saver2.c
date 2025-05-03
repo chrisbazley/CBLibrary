@@ -23,6 +23,7 @@
   CJB: 06-Nov-19: Fixed failure to check the return value of fclose_dec()
                   in save_file().
   CJB: 01-Nov-20: Assign a compound literal to initialise a save operation.
+  CJB: 03-May-25: Fix #include filename case.
 */
 
 /* ISO library headers */
@@ -55,7 +56,7 @@
 #include "Saver2.h"
 #include "NoBudge.h"
 #ifdef SLOW_TEST
-#include "Scheduler.h"
+#include "scheduler.h"
 #endif
 #include "FOpenCount.h"
 

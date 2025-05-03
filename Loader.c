@@ -160,6 +160,7 @@
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
                   Get rid of nested #ifdef CBLIB_OBSOLETE blocks.
   CJB: 29-Aug-20: Deleted a redundant static function pre-declaration.
+  CJB: 03-May-25: Fix #include filename case.
 */
 
 #ifdef CBLIB_OBSOLETE /* Use c.Loader2 instead */
@@ -191,7 +192,7 @@
 /* Local headers */
 #include "Internal/CBMisc.h"
 #include "Err.h"
-#include "MsgTrans.h"
+#include "msgtrans.h"
 #include "Loader.h"
 #include "Canonical.h"
 #ifdef USE_FILEPERC

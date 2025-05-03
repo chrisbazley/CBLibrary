@@ -71,6 +71,7 @@
   CJB: 18-Apr-15: Assertions are now provided by debug.h.
   CJB: 18-Apr-16: Cast pointer parameters to void * to match %p.
   CJB: 29-Aug-20: Deleted a redundant static function pre-declaration.
+  CJB: 03-May-25: Fix #include filename case.
  */
 
 /* ISO library headers */
@@ -97,7 +98,7 @@
 #include "ViewsMenu.h"
 #include "DeIconise.h"
 #ifdef CBLIB_OBSOLETE
-#include "MsgTrans.h"
+#include "msgtrans.h"
 #include "Err.h"
 #endif /* CBLIB_OBSOLETE */
 

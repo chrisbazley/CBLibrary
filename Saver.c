@@ -66,6 +66,7 @@
   CJB: 06-Nov-19: Fixed failure to check the return value of fclose_dec()
                   and called _kernel_last_oserror() to reset the error
                   trap before writing to file in _svr_save_as_file().
+  CJB: 03-May-25: Fix #include filename case.
 */
 
 /* ISO library headers */
@@ -100,7 +101,7 @@
 #include "FilePerc.h"
 #endif
 #ifdef SLOW_TEST
-#include "Scheduler.h"
+#include "scheduler.h"
 #endif
 #include "FOpenCount.h"
 

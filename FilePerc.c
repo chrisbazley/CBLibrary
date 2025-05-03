@@ -47,6 +47,7 @@
   CJB: 18-Apr-15: Assertions are now provided by debug.h.
   CJB: 18-Apr-16: Cast pointer parameters to void * to match %p.
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
+  CJB: 03-May-25: Fix #include filename case.
  */
 
 /* ISO library headers */
@@ -75,7 +76,7 @@
 #include "FilePerc.h"
 #include "FileUtils.h"
 #ifdef CBLIB_OBSOLETE
-#include "MsgTrans.h"
+#include "msgtrans.h"
 #endif /* CBLIB_OBSOLETE */
 
 /* Constant numeric values */

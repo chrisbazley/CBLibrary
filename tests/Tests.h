@@ -21,7 +21,7 @@
 #define Tests_h
 
 #ifdef FORTIFY
-#include "fortify.h"
+#include "Fortify.h"
 #endif
 
 #ifdef USE_CBDEBUG

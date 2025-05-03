@@ -30,6 +30,7 @@
   CJB: 01-Nov-20: Assign a compound literal to initialise a load operation.
   CJB: 07-Nov-20: Added the loader3_load_file function to allow DataOpen and
                   DataLoad handlers to reuse existing code.
+  CJB: 03-May-25: Fix #include filename case.
 */
 
 /* ISO library headers */
@@ -60,7 +61,7 @@
 #include "Internal/CBMisc.h"
 #include "Loader3.h"
 #include "NoBudge.h"
-#include "Scheduler.h"
+#include "scheduler.h"
 #include "FOpenCount.h"
 #include "FileUtils.h"
 

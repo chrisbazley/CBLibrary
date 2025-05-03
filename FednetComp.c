@@ -44,6 +44,7 @@
   CJB: 06-Apr-16: The return value of sprintf is now explicitly ignored to
                   avoid GNU C compiler warnings.
   CJB: 04-Nov-18: Got rid of OLD_SCL_STUBS usage (assumed to be always true).
+  CJB: 03-May-25: Fix #include filename case.
  */
 
 #ifdef CBLIB_OBSOLETE /* Use c.FedCompMT instead */
@@ -62,7 +63,7 @@
 
 /* Local headers */
 #include "Internal/CBMisc.h"
-#include "MsgTrans.h"
+#include "msgtrans.h"
 #include "NoBudge.h"
 #include "FednetComp.h"
 #include "FileUtils.h"

@@ -74,6 +74,7 @@
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
   CJB: 29-Aug-20: Deleted redundant static function pre-declarations.
   CJB: 28-May-22: Allow initialisation with a 'const' palette array.
+  CJB: 03-May-25: Fix #include filename case.
  */
 
 /* ISO library headers */
@@ -101,9 +102,9 @@
 /* Local headers */
 #include "Internal/CBMisc.h"
 #include "Pal256.h"
-#include "Scheduler.h"
+#include "scheduler.h"
 #ifdef CBLIB_OBSOLETE
-#include "MsgTrans.h"
+#include "msgtrans.h"
 #include "Err.h"
 #endif /* CBLIB_OBSOLETE */
 

@@ -81,6 +81,7 @@
                   Used size_t for loop counters to match type of ARRAY_SIZE.
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
   CJB: 25-Aug-20: Deleted a redundant static function pre-declaration.
+  CJB: 03-May-25: Fix #include filename case.
 */
 
 /* ISO library headers */
@@ -112,7 +113,7 @@
 #include "Entity.h"
 #include "NoBudge.h"
 #ifdef CBLIB_OBSOLETE
-#include "MsgTrans.h"
+#include "msgtrans.h"
 #include "Err.h"
 #endif /* CBLIB_OBSOLETE */
 

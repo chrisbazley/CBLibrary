@@ -62,6 +62,7 @@
   CJB: 10-Nov-19: Allocate RAM transfer buffers one byte longer than requested
                   to try to avoid having to send a second RAMFetch message.
                   Modified loader2_buffer_file() to use get_file_size().
+  CJB: 03-May-25: Fix #include filename case.
 */
 
 /* ISO library headers */
@@ -89,7 +90,7 @@
 #include "Internal/CBMisc.h"
 #include "Loader2.h"
 #include "NoBudge.h"
-#include "Scheduler.h"
+#include "scheduler.h"
 #ifdef USE_FILEPERC
 #include "FilePerc.h"
 #else
@@ -97,7 +98,7 @@
 #endif
 #include "FOpenCount.h"
 #ifdef CBLIB_OBSOLETE
-#include "MsgTrans.h"
+#include "msgtrans.h"
 #endif /* CBLIB_OBSOLETE */
 
 typedef struct

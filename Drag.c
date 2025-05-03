@@ -71,6 +71,7 @@
                   count_file_types().
   CJB: 31-Oct-21: Fixed debug output of uninitialized bounding box in
                   _drag_send_dragging_msg() when client passed a bounding box.
+  CJB: 03-May-25: Fix #include filename case.
 */
 
 /* ISO library headers */
@@ -94,10 +95,10 @@
 
 /* Local headers */
 #include "Internal/CBMisc.h"
-#include "Scheduler.h"
+#include "scheduler.h"
 #include "Drag.h"
 #ifdef CBLIB_OBSOLETE
-#include "MsgTrans.h"
+#include "msgtrans.h"
 #include "Err.h"
 #endif /* CBLIB_OBSOLETE */
 

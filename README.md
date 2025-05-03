@@ -1,7 +1,7 @@
 # CBLibrary
 (C) 2003 Christopher Bazley
 
-Release 63 (17 Jun 2023)
+Release 64 (05 May 2025)
 
 Preamble
 --------
@@ -564,6 +564,9 @@ Release 62 (30 Jul 2022)
 Release 63 (17 Jun 2023)
 - Use size_t rather than unsigned int for the number of substitution
   parameters passed to msg functions.
+
+Release 64 (05 May 2025)
+- Fix #include filename case.
 
 Contact details
 ---------------

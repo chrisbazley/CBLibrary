@@ -60,6 +60,7 @@
   CJB: 06-Nov-19: Fixed failure to check the return value of fclose_dec().
   CJB: 29-Sep-20: Fixed missing/misplaced casts in assertions.
                   Made debugging output less verbose by default.
+  CJB: 03-May-25: Fix #include filename case.
 */
 
 /* ISO library headers */
@@ -91,7 +92,7 @@
 #include "FedCompMT.h"
 #include "FileUtils.h"
 #ifdef CBLIB_OBSOLETE
-#include "MsgTrans.h"
+#include "msgtrans.h"
 #endif /* CBLIB_OBSOLETE */
 #include "NoBudge.h"
 #include "Internal/FOpPrivate.h"

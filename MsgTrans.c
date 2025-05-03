@@ -48,6 +48,7 @@
   CJB: 18-Apr-15: Assertions are now provided by debug.h.
   CJB: 18-Apr-16: Cast pointer parameters to void * to match %p.
   CJB: 29-Aug-22: Use size_t rather than unsigned int for nparam.
+  CJB: 03-May-25: Fix #include filename case.
 */
 
 /* ISO library headers */
@@ -64,7 +65,7 @@
 /* Local headers */
 #include "Internal/CBMisc.h"
 #include "Err.h"
-#include "MsgTrans.h"
+#include "msgtrans.h"
 
 /* Miscellaneous numeric constants */
 enum
