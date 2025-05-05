@@ -24,15 +24,16 @@
   CJB: 26-Oct-18: Modified to use strtail() from CBUtilLib.
   CJB: 01-Nov-18: Reimplemented using the strtail() function from CBUtilLib.
   CJB: 05-May-25: Changed the depth count type from int to size_t.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* CBUtilLib headers */
 #include "StrExtra.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Platform.h"
 #include "PathTail.h"
+#include "Internal/CBMisc.h"
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */

@@ -25,6 +25,7 @@ Message tokens: None.
 History:
   CJB: 18-Dec-10: Created this header file.
   CJB: 03-Nov-19: Modified to use my streams library.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef FOpPrivate_h
@@ -41,11 +42,11 @@ typedef void fileop_destructor(void *fop);
 
 typedef struct fileop_common
 {
-  FILE              *f; /* Must be the first member */
-  fileop_destructor *destructor;
-  Reader             reader;
-  Writer             writer;
-  long int           len;
+  _Optional FILE              *f; /* Must be the first member */
+  _Optional fileop_destructor *destructor;
+  Reader                       reader;
+  Writer                       writer;
+  long int                     len;
 }
 fileop_common;
 

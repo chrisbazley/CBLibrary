@@ -48,6 +48,7 @@
   CJB: 18-Apr-16: Cast pointer parameters to void * to match %p.
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -66,7 +67,6 @@
 #include "SprFormats.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Timer.h"
 #include "FedCompMT.h"
 #ifndef COMP_OPS_ONLY
@@ -78,6 +78,7 @@
 #ifdef CBLIB_OBSOLETE
 #include "msgtrans.h"
 #endif /* CBLIB_OBSOLETE */
+#include "Internal/CBMisc.h"
 
 /* Constant numeric values */
 enum
@@ -90,22 +91,22 @@ enum
 
 static volatile bool time_up = true;
 static bool at_exit = false;
-static MessagesFD *desc;
+static _Optional MessagesFD *desc;
 
 /* ----------------------------------------------------------------------- */
 /*                       Function prototypes                               */
 
 static void _fp_deregister_timer(void);
-static CONST _kernel_oserror *_fp_enable_esc(void);
-static CONST _kernel_oserror *_fp_disable_esc(void);
+static _Optional CONST _kernel_oserror *_fp_enable_esc(void);
+static _Optional CONST _kernel_oserror *_fp_disable_esc(void);
 static CONST _kernel_oserror *lookup_error(const char *token);
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *file_perc_initialise(MessagesFD *mfd)
+_Optional CONST _kernel_oserror *file_perc_initialise(_Optional MessagesFD *mfd)
 {
-  CONST _kernel_oserror *e;
+  _Optional CONST _kernel_oserror *e;
 
   /* Store pointer to messages file descriptor */
   desc = mfd;
@@ -121,10 +122,10 @@ CONST _kernel_oserror *file_perc_initialise(MessagesFD *mfd)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *file_perc_load(FilePercOp type, const char *file_path, flex_ptr buffer_anchor)
+_Optional CONST _kernel_oserror *file_perc_load(FilePercOp type, const char *file_path, flex_ptr buffer_anchor)
 {
-  FILE **handle = NULL;
-  CONST _kernel_oserror *err;
+  FILE *_Optional *handle = NULL;
+  _Optional CONST _kernel_oserror *err;
 
   DEBUGF("FilePerc: Starting a load operation of type %d with path '%s' and "
         "flex pointer %p\n", type, file_path, (void *)buffer_anchor);
@@ -195,10 +196,10 @@ CONST _kernel_oserror *file_perc_load(FilePercOp type, const char *file_path, fl
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *file_perc_save(FilePercOp type, const char *file_path, unsigned int file_type, flex_ptr buffer_anchor, unsigned int start_offset, unsigned int end_offset)
+_Optional CONST _kernel_oserror *file_perc_save(FilePercOp type, const char *file_path, unsigned int file_type, flex_ptr buffer_anchor, unsigned int start_offset, unsigned int end_offset)
 {
-  FILE **handle = NULL;
-  CONST _kernel_oserror *err;
+  FILE *_Optional *handle = NULL;
+  _Optional CONST _kernel_oserror *err;
 
   DEBUGF("FilePerc: Starting a save operation of type %d with path '%s', "
         "flex pointer %p, data %u - %u\n", type, file_path, (void *)buffer_anchor,
@@ -290,7 +291,7 @@ CONST _kernel_oserror *file_perc_save(FilePercOp type, const char *file_path, un
 
 #ifdef CBLIB_OBSOLETE
 /* The following function is deprecated; use file_perc_save or file_perc_load */
-CONST _kernel_oserror *perc_operation(FilePercOp type, const char *file_path, unsigned int file_type, flex_ptr buffer_anchor)
+_Optional CONST _kernel_oserror *perc_operation(FilePercOp type, const char *file_path, unsigned int file_type, flex_ptr buffer_anchor)
 {
   if (type == FilePercOp_Save || type == FilePercOp_Comp)
   {
@@ -364,7 +365,7 @@ static void _fp_deregister_timer(void)
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *_fp_enable_esc(void)
+static _Optional CONST _kernel_oserror *_fp_enable_esc(void)
 {
   /* Enable escape key & reset escape detection */
   if (_kernel_osbyte(OSByte_RWEscapeKeyStatus, 0, 0) == _kernel_ERROR)
@@ -387,7 +388,7 @@ static CONST _kernel_oserror *_fp_enable_esc(void)
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *_fp_disable_esc(void)
+static _Optional CONST _kernel_oserror *_fp_disable_esc(void)
 {
   hourglass_off();
 

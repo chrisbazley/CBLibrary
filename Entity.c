@@ -82,6 +82,7 @@
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
   CJB: 25-Aug-20: Deleted a redundant static function pre-declaration.
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 /* ISO library headers */
@@ -107,7 +108,6 @@
 #include "WimpExtra.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Saver.h"
 #include "Loader2.h"
 #include "Entity.h"
@@ -116,11 +116,12 @@
 #include "msgtrans.h"
 #include "Err.h"
 #endif /* CBLIB_OBSOLETE */
+#include "Internal/CBMisc.h"
 
 typedef struct
 {
-  Loader2FinishedHandler *funct; /* may be NULL */
-  void                   *arg;
+  _Optional Loader2FinishedHandler *funct; /* may be NULL */
+  void                             *arg;
 }
 RequestOpCallback;
 
@@ -153,11 +154,11 @@ static WimpMessageHandler _ent_claimentity_msg_handler, _ent_datarequest_msg_han
 static WimpEventHandler _ent_msg_bounce_handler;
 static SaverFinishedHandler _ent_data_sent;
 static Loader2FinishedHandler _ent_load_finished;
-static RequestOpData *_ent_find_data_req(int msg_ref);
+static _Optional RequestOpData *_ent_find_data_req(int msg_ref);
 static CONST _kernel_oserror *_ent_no_data(unsigned int entity);
-static CONST _kernel_oserror *_ent_probe_or_request(unsigned int flags, int window, int icon, int x, int y, const int *file_types, const RequestOpCallback *callback, bool probe);
+static _Optional CONST _kernel_oserror *_ent_probe_or_request(unsigned int flags, int window, int icon, int x, int y, const int *file_types, const RequestOpCallback *callback, bool probe);
 static CONST _kernel_oserror *lookup_error(const char *token);
-static bool check_error(CONST _kernel_oserror *e);
+static bool check_error(_Optional CONST _kernel_oserror *e);
 static LinkedListCallbackFn _ent_cancel_matching_request, _ent_request_has_ref;
 
 /* -----------------------------------------------------------------------
@@ -167,9 +168,9 @@ static LinkedListCallbackFn _ent_cancel_matching_request, _ent_request_has_ref;
 /* This array stores information about the claimant of each entity */
 static struct
 {
-  EntityDataMethod *data_method; /* call this to get the associated data */
-  EntityLostMethod *lost_method; /* call this when the claimant is usurped */
-  void             *client_handle; /* this is passed to the above functions */
+  _Optional EntityDataMethod *data_method; /* call this to get the associated data */
+  _Optional EntityLostMethod *lost_method; /* call this when the claimant is usurped */
+  void                       *client_handle; /* this is passed to the above functions */
 }
 entities_info[NEntities];
 
@@ -207,21 +208,26 @@ msg_handlers[] =
 };
 
 static LinkedList request_op_data_list;
-static MessagesFD *desc;
+static _Optional MessagesFD *desc;
 #ifndef CBLIB_OBSOLETE
 static void (*report)(CONST _kernel_oserror *);
 #endif
+
+typedef struct {
+  bool have_new_anchor;
+  void *new_anchor; /* flex pointer */
+} EntityDataSaveCtx;
 
 /* -----------------------------------------------------------------------
                          Public library functions
 */
 
-CONST _kernel_oserror *entity_initialise(
+_Optional CONST _kernel_oserror *entity_initialise(
 #ifdef CBLIB_OBSOLETE
                          void
 #else
-                         MessagesFD  *mfd,
-                         void       (*report_error)(CONST _kernel_oserror *)
+                         _Optional MessagesFD *mfd,
+                         void (*report_error)(CONST _kernel_oserror *)
 #endif
 )
 {
@@ -245,14 +251,14 @@ CONST _kernel_oserror *entity_initialise(
   {
     ON_ERR_RTN_E(event_register_message_handler(msg_handlers[i].msg_no,
                                                 msg_handlers[i].handler,
-                                                NULL));
+                                                (void *)NULL));
   }
 
   /* Register handler for messages that return to us as wimp event 19 */
   ON_ERR_RTN_E(event_register_wimp_handler(-1,
                                            Wimp_EUserMessageAcknowledge,
                                            _ent_msg_bounce_handler,
-                                           NULL));
+                                           (void *)NULL));
 
   /* Zero initialisation (only required for re-init) */
   memset(claimentity_msg_ref, 0, sizeof(claimentity_msg_ref));
@@ -271,7 +277,9 @@ CONST _kernel_oserror *entity_initialise(
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *entity_claim(unsigned int flags, EntityLostMethod * lost_method, EntityDataMethod * data_method, void *client_handle)
+_Optional CONST _kernel_oserror *entity_claim(unsigned int flags,
+    _Optional EntityLostMethod * lost_method, _Optional EntityDataMethod * data_method,
+    void *client_handle)
 {
   DEBUGF("Entity: Request to claim flags %u (handle:%p)\n", flags, client_handle);
 
@@ -314,7 +322,7 @@ CONST _kernel_oserror *entity_claim(unsigned int flags, EntityLostMethod * lost_
       continue; /* not replacing owner of this entity */
 
     /* Tell the previous claimant that it has been usurped */
-    if (entities_info[entity].lost_method != NULL) {
+    if (entities_info[entity].lost_method) {
       DEBUGF("Entity: Calling EntityLostMethod with handle %p for entity %zu\n",
             entities_info[entity].client_handle, entity);
       assert(TEST_BITS(owned_entities, 1u<<entity));
@@ -333,7 +341,9 @@ CONST _kernel_oserror *entity_claim(unsigned int flags, EntityLostMethod * lost_
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *entity_probe_data(unsigned int flags, int window, const int *file_types, Loader2FinishedHandler *inform_entity_data, void *client_handle)
+_Optional CONST _kernel_oserror *entity_probe_data(unsigned int flags, int window,
+    const int *file_types, _Optional Loader2FinishedHandler *inform_entity_data,
+    void *client_handle)
 {
   /* When merely probing for data, the destination icon handle and
      coordinates shouldn't be significant. */
@@ -354,7 +364,9 @@ CONST _kernel_oserror *entity_probe_data(unsigned int flags, int window, const i
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *entity_request_data(unsigned int flags, int window, int icon, int x, int y, const int *file_types, Loader2FinishedHandler *deliver_entity_data, void *client_handle)
+_Optional CONST _kernel_oserror *entity_request_data(unsigned int flags, int window,
+    int icon, int x, int y, const int *file_types,
+    _Optional Loader2FinishedHandler *deliver_entity_data, void *client_handle)
 {
   RequestOpCallback callback;
 
@@ -410,7 +422,7 @@ void entity_release(unsigned int flags)
       continue; /* we don't own this entity, or not released */
 
     /* Tell the owner of this entity that it has been usurped */
-    if (entities_info[entity].lost_method != NULL) {
+    if (entities_info[entity].lost_method) {
       DEBUGF("Entity: Calling release function with handle %p for entity %zu\n",
             entities_info[entity].client_handle, entity);
       entities_info[entity].lost_method(entities_info[entity].client_handle);
@@ -418,10 +430,9 @@ void entity_release(unsigned int flags)
       DEBUGF("Entity: No release function for entity %zu\n", entity);
     }
 
-    /* Wipe the client handle and function pointers */
-    entities_info[entity].lost_method = NULL;
-    entities_info[entity].data_method = NULL;
-    entities_info[entity].client_handle = NULL;
+    /* Wipe the function pointers */
+    entities_info[entity].lost_method = (EntityLostMethod *)NULL;
+    entities_info[entity].data_method = (EntityDataMethod *)NULL;
 
   } /* next entity */
 
@@ -432,9 +443,9 @@ void entity_release(unsigned int flags)
 /* ----------------------------------------------------------------------- */
 
 #ifdef INCLUDE_FINALISATION_CODE
-CONST _kernel_oserror *entity_finalise(void)
+_Optional CONST _kernel_oserror *entity_finalise(void)
 {
-  CONST _kernel_oserror *return_error = NULL;
+  _Optional CONST _kernel_oserror *return_error = NULL;
 
   assert(initialised);
   initialised = false;
@@ -448,7 +459,7 @@ CONST _kernel_oserror *entity_finalise(void)
     MERGE_ERR(return_error,
               event_deregister_message_handler(msg_handlers[i].msg_no,
                                                msg_handlers[i].handler,
-                                               NULL));
+                                               (void *)NULL));
   }
 
   /* Deregister handler for messages that return to us as wimp event 19 */
@@ -456,7 +467,7 @@ CONST _kernel_oserror *entity_finalise(void)
             event_deregister_wimp_handler(-1,
                                           Wimp_EUserMessageAcknowledge,
                                           _ent_msg_bounce_handler,
-                                          NULL));
+                                          (void *)NULL));
 
   return return_error;
 }
@@ -464,7 +475,7 @@ CONST _kernel_oserror *entity_finalise(void)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *entity_dispose_all(EntityExitMethod * exit_method)
+_Optional CONST _kernel_oserror *entity_dispose_all(EntityExitMethod * exit_method)
 {
   bool data_found;
 
@@ -479,7 +490,7 @@ CONST _kernel_oserror *entity_dispose_all(EntityExitMethod * exit_method)
     for (size_t entity = 0; entity < ARRAY_SIZE(entities_info); entity++)
     {
       if (!TEST_BITS(owned_entities, 1u<<entity) ||
-          entities_info[entity].data_method == NULL)
+          !entities_info[entity].data_method)
         continue;
 
       DEBUGF("Entity: Found data function for entity %zu\n", entity);
@@ -511,7 +522,7 @@ CONST _kernel_oserror *entity_dispose_all(EntityExitMethod * exit_method)
   else
   {
     DEBUGF("Entity: We don't own any entities with associated data\n");
-    if (exit_method != NULL)
+    if (exit_method)
       exit_method();
   }
 
@@ -564,8 +575,8 @@ static int _ent_datasave_msg_handler(WimpMessage *message, void *handle)
 {
   /* This handler must receive DataSave messages before the Loader
      component. We need to intercept replies to our DataRequest message. */
-  CONST _kernel_oserror *e;
-  RequestOpData *request_op_data;
+  _Optional CONST _kernel_oserror *e;
+  _Optional RequestOpData *request_op_data;
   NOT_USED(handle);
 
   DEBUGF("Entity: Received a DataSave message (ref. %d in reply to %d)\n",
@@ -586,7 +597,7 @@ static int _ent_datasave_msg_handler(WimpMessage *message, void *handle)
     _ent_load_finished(NULL,
                        message->data.data_save.file_type,
                        NULL,
-                       request_op_data);
+                       &*request_op_data);
   }
   else
   {
@@ -594,11 +605,11 @@ static int _ent_datasave_msg_handler(WimpMessage *message, void *handle)
     DEBUGF("Entity: Will load data associated with entity\n");
     request_op_data->data_request_ref = 0; /* prevent future matches */
     e = loader2_receive_data(message,
-                             NULL,
+                             (Loader2FileHandler *)NULL,
                              _ent_load_finished,
-                             request_op_data);
+                             &*request_op_data);
     if (e != NULL)
-      _ent_load_finished(e, FileType_Null, NULL, request_op_data);
+      _ent_load_finished(e, FileType_Null, NULL, &*request_op_data);
   }
 
   return 1; /* claim message to prevent transfer of entity data */
@@ -635,7 +646,7 @@ static int _ent_datarequest_msg_handler(WimpMessage *message, void *handle)
 
   for (size_t entity = 0; entity < ARRAY_SIZE(entities_info); entity++)
   {
-    EntityDataMethod *get_data_func;
+    _Optional EntityDataMethod *get_data_func;
 
     if (!TEST_BITS(data_request->flags, 1u<<entity) ||
         !TEST_BITS(owned_entities, 1u<<entity))
@@ -643,13 +654,13 @@ static int _ent_datarequest_msg_handler(WimpMessage *message, void *handle)
 
     /* Request data from the owner of this entity */
     get_data_func = entities_info[entity].data_method;
-    if (get_data_func != NULL)
+    if (get_data_func)
     {
       bool data_persists;
-      flex_ptr entity_data, new_anchor;
+      void *_Optional *entity_data;
       int data_type;
       WimpMessage msg;
-      CONST _kernel_oserror *e;
+      _Optional CONST _kernel_oserror *e;
 
       DEBUGF("Entity: Calling data function with %p for entity %zu\n",
             entities_info[entity].client_handle, entity);
@@ -668,40 +679,42 @@ static int _ent_datarequest_msg_handler(WimpMessage *message, void *handle)
       DEBUGF("Entity: Entity data is anchored at %p (file type &%x)\n",
             (void *)entity_data, data_type);
 
+      _Optional EntityDataSaveCtx *const ctx = malloc(sizeof(*ctx));
+      if (ctx == NULL)
+      {
+        DEBUGF("Entity: Not enough memory for callback context!\n");
+
+        /* Report the error, if an error-reporting function is registered */
+        check_error(lookup_error("NoMem"));
+
+        flex_free(&*entity_data); /* free the data associated with the entity */
+        continue; /* could not allocate memory for new anchor */
+      }
+
       /* We re-anchor the flex block holding the entity data unless it is
          persistent. This prevents a race condition if the same EntityDataMethod
          is called again before we reach _ent_data_sent(). */
+      flex_ptr data_to_send;
+      ctx->have_new_anchor = !data_persists;
+
       if (!data_persists)
       {
-        /* Allocate one word of heap memory as a new anchor for the flex block
-           containing the data associated with this entity. */
-        new_anchor = malloc(sizeof(*new_anchor));
-        if (new_anchor == NULL)
-        {
-          DEBUGF("Entity: Not enough memory to create new anchor!\n");
-
-          /* Report the error, if an error-reporting function is registered */
-          check_error(lookup_error("NoMem"));
-
-          flex_free(entity_data); /* free the data associated with the entity */
-          continue; /* could not allocate memory for new anchor */
-        }
-
-        if (!flex_reanchor(new_anchor, entity_data))
+        if (!flex_reanchor(&ctx->new_anchor, &*entity_data))
         {
           DEBUGF("Entity: Failed to reanchor data associated with entity %zu!\n",
                 entity);
-          flex_free(entity_data); /* free the data associated with the entity */
-          free(new_anchor); /* free the intended new anchor */
+          flex_free(&*entity_data); /* free the data associated with the entity */
+          free(ctx); /* free the intended new anchor */
           continue; /* could not re-anchor the data */
         }
 
-        DEBUGF("Entity: Data is temporary - re-anchored at %p\n", (void *)new_anchor);
+        DEBUGF("Entity: Data is temporary - re-anchored at %p\n", (void *)&ctx->new_anchor);
+        data_to_send = &ctx->new_anchor;
       }
       else
       {
         DEBUGF("Entity: Data is persistent - may not re-anchor\n");
-        new_anchor = entity_data;
+        data_to_send = &*entity_data;
       }
 
       msg.hdr.your_ref = message->hdr.my_ref;
@@ -720,20 +733,20 @@ static int _ent_datarequest_msg_handler(WimpMessage *message, void *handle)
 
       e = saver_send_data(message->hdr.sender,
                           &msg,
-                          new_anchor,
+                          data_to_send,
                           0,
-                          flex_size(new_anchor),
-                          NULL,
+                          flex_size(data_to_send),
+                          (SaverFileHandler *)NULL,
                           _ent_data_sent,
-                          data_persists ? NULL : new_anchor);
+                          &*ctx);
       if (check_error(e))
       {
         /* We cannot rely on _ent_data_sent() to free entity data if an error
            occurred */
-        if (!data_persists)
+        if (ctx->have_new_anchor)
         {
-          flex_free(new_anchor); /* free the flex block reanchored here */
-          free(new_anchor); /* free the anchor itself (in a heap block) */
+          flex_free(&ctx->new_anchor); /* free the flex block reanchored here */
+          free(ctx); /* free the anchor itself (in a heap block) */
         }
         continue;
       }
@@ -757,7 +770,7 @@ static int _ent_datarequest_msg_handler(WimpMessage *message, void *handle)
 static int _ent_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBlock *id_block, void *handle)
 {
   /* This is a handler for bounced messages */
-  RequestOpData *request_op_data;
+  _Optional RequestOpData *request_op_data;
   int claim = 0;
 
   NOT_USED(event_code);
@@ -784,7 +797,7 @@ static int _ent_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBlock
       if (finalisation_pending)
       {
         finalisation_pending = false;
-        if (client_exit_method != NULL)
+        if (client_exit_method)
           client_exit_method();
       }
       claim = 1; /* claim event */
@@ -802,7 +815,7 @@ static int _ent_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBlock
       _ent_load_finished(_ent_no_data(request_op_data->entity),
                          FileType_Null,
                          NULL,
-                         request_op_data);
+                         &*request_op_data);
       claim = 1; /* claim event */
       break;
 
@@ -816,7 +829,7 @@ static int _ent_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBlock
                          Miscellaneous internal functions
 */
 
-static bool check_error(CONST _kernel_oserror *e)
+static bool check_error(_Optional CONST _kernel_oserror *e)
 {
   bool is_error = false;
 #ifdef CBLIB_OBSOLETE
@@ -824,8 +837,8 @@ static bool check_error(CONST _kernel_oserror *e)
 #else
   if (e != NULL)
   {
-    if (report != NULL)
-      report(e);
+    if (report)
+      report(&*e);
     is_error = true;
   }
 #endif
@@ -859,7 +872,7 @@ static CONST _kernel_oserror *lookup_error(const char *token)
 
 /* ----------------------------------------------------------------------- */
 
-static void _ent_data_sent(bool success, CONST _kernel_oserror *err, const char *file_path, int datasave_ref, void *client_handle)
+static void _ent_data_sent(bool success, _Optional CONST _kernel_oserror *err, _Optional const char *file_path, int datasave_ref, void *client_handle)
 {
   /* This function is called after an attempt to send the data associated with
      an entity to another task. */
@@ -880,13 +893,13 @@ static void _ent_data_sent(bool success, CONST _kernel_oserror *err, const char 
 
   /* If the data returned by the client's EntityDataMethod is not persistent
      then 'client handle' is a pointer to the flex anchor */
-  flex_ptr new_anchor = (flex_ptr)client_handle; /* a neat trick */
-  if (new_anchor != NULL)
+  EntityDataSaveCtx *const ctx = client_handle;
+  if (ctx->have_new_anchor)
   {
-    DEBUGF("Entity: Freeing entity data anchored at %p\n", (void *)new_anchor);
-    flex_free(new_anchor); /* free the flex block pointed to by the anchor */
-    free(new_anchor); /* free the anchor itself (in a heap block) */
+    DEBUGF("Entity: Freeing entity data anchored at %p\n", (void *)&ctx->new_anchor);
+    flex_free(&ctx->new_anchor); /* free the flex block pointed to by the anchor */
   }
+  free(ctx);
 
   data_sent_count--;
   DEBUGF("Entity: %u data transfers outstanding\n", data_sent_count);
@@ -894,18 +907,18 @@ static void _ent_data_sent(bool success, CONST _kernel_oserror *err, const char 
   {
     finalisation_pending = false;
     DEBUGF("Entity: Calling exit function\n");
-    if (client_exit_method != NULL)
+    if (client_exit_method)
       client_exit_method();
   }
 }
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *_ent_request_data(int window, int icon, int x, int y, unsigned int flags, const int *file_types, int *my_ref)
+static _Optional CONST _kernel_oserror *_ent_request_data(int window, int icon, int x, int y, unsigned int flags, const int *file_types, int *my_ref)
 {
   WimpMessage message;
   WimpDataRequestMessage *drm = (WimpDataRequestMessage *)&message.data;
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
 
   message.hdr.your_ref = 0;
   message.hdr.action_code = Wimp_MDataRequest;
@@ -952,11 +965,11 @@ static CONST _kernel_oserror *_ent_request_data(int window, int icon, int x, int
 
 /* ----------------------------------------------------------------------- */
 
-static void _ent_load_finished(CONST _kernel_oserror *load_error, int file_type, flex_ptr buffer, void *client_handle)
+static void _ent_load_finished(_Optional CONST _kernel_oserror *load_error, int file_type, void *_Optional *buffer, void *client_handle)
 {
   /* This function is called when a load operation has finished
      (whether successful or not) */
-  RequestOpData *request_op_data = (RequestOpData *)client_handle;
+  RequestOpData *request_op_data = client_handle;
 
   assert(file_type == FileType_Null || load_error == NULL);
 
@@ -966,7 +979,7 @@ static void _ent_load_finished(CONST _kernel_oserror *load_error, int file_type,
   if (buffer != NULL)
     DEBUGF("Entity: Current address of flex block is %p\n", *buffer);
 
-  if (request_op_data->callback.funct != NULL)
+  if (request_op_data->callback.funct)
   {
     /* Call the client-supplied function to notify it that the load
        operation is complete. */
@@ -979,7 +992,7 @@ static void _ent_load_finished(CONST _kernel_oserror *load_error, int file_type,
   {
     DEBUGF("Entity: No client function\n");
     if (buffer != NULL)
-      flex_free(buffer);
+      flex_free(&*buffer);
   }
 
   /* Free data block for this request and de-link it from the list*/
@@ -992,9 +1005,9 @@ static void _ent_load_finished(CONST _kernel_oserror *load_error, int file_type,
 
 /* ----------------------------------------------------------------------- */
 
-static RequestOpData *_ent_find_data_req(int msg_ref)
+static _Optional RequestOpData *_ent_find_data_req(int msg_ref)
 {
-  RequestOpData *request_op_data;
+  _Optional RequestOpData *request_op_data;
 
   DEBUGF("Entity: Searching for data request awaiting reply to %d\n", msg_ref);
   request_op_data = (RequestOpData *)linkedlist_for_each(
@@ -1013,7 +1026,7 @@ static RequestOpData *_ent_find_data_req(int msg_ref)
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *_ent_probe_or_request(
+static _Optional CONST _kernel_oserror *_ent_probe_or_request(
                                     unsigned int             flags,
                                     int                      window,
                                     int                      icon,
@@ -1041,11 +1054,11 @@ static CONST _kernel_oserror *_ent_probe_or_request(
     {
       /* We own this entity, so we can bypass the Wimp message protocol */
       int data_type = FileType_Null;
-      flex_ptr data = NULL;
-      CONST _kernel_oserror *e = NULL;
+      void *_Optional *data = NULL;
+      _Optional CONST _kernel_oserror *e = NULL;
       void *copy_of_data;
 
-      if (entities_info[entity].data_method != NULL)
+      if (entities_info[entity].data_method)
       {
         bool data_persists;
 
@@ -1077,11 +1090,11 @@ static CONST _kernel_oserror *_ent_probe_or_request(
         {
           /* The entity data is persistent so we must create a copy for the
              Loader2FinishedHandler function to take ownership of it */
-          if (flex_alloc(&copy_of_data, flex_size(data)))
+          if (flex_alloc(&copy_of_data, flex_size(&*data)))
           {
             nobudge_register(PreExpandHeap); /* protect dereference of
                                                 flex pointer */
-            memcpy((char *)copy_of_data, *data, flex_size(data));
+            memcpy((char *)copy_of_data, *data, flex_size(&*data));
             nobudge_deregister();
 
             data = &copy_of_data;
@@ -1099,7 +1112,7 @@ static CONST _kernel_oserror *_ent_probe_or_request(
         e = _ent_no_data(entity);
       }
 
-      if (callback->funct != NULL)
+      if (callback->funct)
       {
         DEBUGF("Entity: Calling function with handle %p to deliver ",
                callback->arg);
@@ -1121,15 +1134,15 @@ static CONST _kernel_oserror *_ent_probe_or_request(
       {
         DEBUGF("Entity: No callback function to deliver data\n");
         if (data != NULL)
-          flex_free(data);
+          flex_free(&*data);
       }
     }
     else
     {
       /* We don't own this entity, so we must request the associated data from
          its owner. */
-      CONST _kernel_oserror *e;
-      RequestOpData *request_op_data;
+      _Optional CONST _kernel_oserror *e;
+      _Optional RequestOpData *request_op_data;
 
       DEBUGF("Entity: Creating a record for a data %s\n",
             probe ? "probe" : "import");

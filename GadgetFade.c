@@ -23,6 +23,7 @@
   CJB: 31-Aug-15: Replaced 'const' in the function definition with the macro
                   CONST to ensure that it matches the function declaration.
   CJB: 23-May-21: Added debugging output.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -34,15 +35,15 @@
 #include "gadgets.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "GadgetUtil.h"
+#include "Internal/CBMisc.h"
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *set_gadget_faded(ObjectId    window,
-                                        ComponentId gadget,
-                                        bool        fade)
+_Optional CONST _kernel_oserror *set_gadget_faded(ObjectId    window,
+                                                  ComponentId gadget,
+                                                  bool        fade)
 {
   unsigned int flags;
 

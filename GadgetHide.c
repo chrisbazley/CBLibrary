@@ -22,6 +22,7 @@
                   FednetCmp and SFToSpr applications.
   CJB: 03-Apr-16: Added brackets to avoid GNU C compiler warnings.
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -35,15 +36,15 @@
 #include "wimp.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "GadgetUtil.h"
+#include "Internal/CBMisc.h"
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *set_gadget_hidden(ObjectId    window,
-                                         ComponentId gadget,
-                                         bool        hide)
+_Optional CONST _kernel_oserror *set_gadget_hidden(ObjectId    window,
+                                                   ComponentId gadget,
+                                                   bool        hide)
 {
   BBox pos, extent;
   int bottom_of_gadget, top_of_work_area;

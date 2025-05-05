@@ -72,6 +72,7 @@ History:
                   CBLIB_OBSOLETE.
   CJB: 11-Dec-14: Deleted redundant brackets from function type definitions.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef Loader_h
@@ -90,6 +91,10 @@ History:
 /* Local headers */
 #include "Loader2.h"
 #include "Macros.h"
+
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
 
 /* ---------------- Client-supplied participation routines ------------------ */
 
@@ -125,7 +130,7 @@ typedef void LoaderFinishedHandler (int          /*drop_x*/,
 
 /* --------------------------- Library functions ---------------------------- */
 
-CONST _kernel_oserror *loader_initialise(unsigned int /*flags*/);
+_Optional CONST _kernel_oserror *loader_initialise(unsigned int /*flags*/);
    /*
     * Initialises the Loader component and sets up WIMP message handlers for
     * DataLoad, DataSave and (unless 'flags' bit 0 is set) DataOpen. These
@@ -145,7 +150,7 @@ CONST _kernel_oserror *loader_initialise(unsigned int /*flags*/);
 #define LOADER_QUIET_BADDROP 4
 #define LOADER_QUIET_NOTPERM 8
 
-CONST _kernel_oserror *loader_finalise(void);
+_Optional CONST _kernel_oserror *loader_finalise(void);
    /*
     * Removes the Loader component's message handlers and causes all registered
     * listeners to be forgotten (thus releasing any memory used). Any data
@@ -154,7 +159,7 @@ CONST _kernel_oserror *loader_finalise(void);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *loader_register_listener(
+_Optional CONST _kernel_oserror *loader_register_listener(
                               unsigned int            /*flags*/,
                               int                     /*file_type*/,
                               ObjectId                /*drop_object*/,
@@ -187,7 +192,7 @@ CONST _kernel_oserror *loader_register_listener(
 #define LISTENER_FILTER      8 /* Use filter function instead of file type */
 #define FILETYPE_ALL         -1
 
-CONST _kernel_oserror *loader_deregister_listener(
+_Optional CONST _kernel_oserror *loader_deregister_listener(
                                           int           /*file_type*/,
                                           ObjectId      /*drop_object*/,
                                           const ComponentId * /*drop_gadgets*/);
@@ -201,7 +206,7 @@ CONST _kernel_oserror *loader_deregister_listener(
     */
 
 
-CONST _kernel_oserror *loader_deregister_listeners_for_object(
+_Optional CONST _kernel_oserror *loader_deregister_listeners_for_object(
                                           ObjectId /*drop_object*/);
    /*
     * Removes any listeners that have been registered for the specified object.
@@ -209,18 +214,18 @@ CONST _kernel_oserror *loader_deregister_listeners_for_object(
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *loader_buffer_file(const char * /*file_path*/,
-                                          flex_ptr     /*buffer*/,
-                                          bool         /*sprite_file*/);
+_Optional CONST _kernel_oserror *loader_buffer_file(const char * /*file_path*/,
+                                                    flex_ptr     /*buffer*/,
+                                                    bool         /*sprite_file*/);
    /*
     * This function is deprecated - you should use 'loader2_buffer_file'
     * instead.
     */
 
-CONST _kernel_oserror *loader_canonicalise(char **      /*buffer*/,
-                                           const char * /*path_var*/,
-                                           const char * /*path_string*/,
-                                           const char * /*file_path*/);
+_Optional CONST _kernel_oserror *loader_canonicalise(char **      /*buffer*/,
+                                                     _Optional const char * /*path_var*/,
+                                                     _Optional const char * /*path_string*/,
+                                                     const char * /*file_path*/);
    /*
     * This function is deprecated - you should use 'canonicalise' instead.
     */

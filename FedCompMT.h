@@ -35,6 +35,7 @@ History:
                   should be called to initialise this module. Added "NoMem" to
                   list of required message tokens.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef FedCompMT_h
@@ -52,7 +53,11 @@ History:
 /* Local headers */
 #include "Macros.h"
 
-CONST _kernel_oserror *compress_initialise(MessagesFD */*mfd*/);
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
+_Optional CONST _kernel_oserror *compress_initialise(_Optional MessagesFD */*mfd*/);
    /*
     * Initialises the FedCompMT module. Unless 'mfd' is a null pointer, the
     * specified messages file will be given priority over the global messages
@@ -60,7 +65,7 @@ CONST _kernel_oserror *compress_initialise(MessagesFD */*mfd*/);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-unsigned int get_decomp_perc(FILE *** /*handle*/);
+unsigned int get_decomp_perc(FILE *_Optional ** /*handle*/);
    /*
     * Calculates what proportion of a decompression operation has been
     * completed and returns this as a percentage value. 'handle' must be the
@@ -68,7 +73,7 @@ unsigned int get_decomp_perc(FILE *** /*handle*/);
     * Returns: the percentage done of the specified decompression operation.
     */
 
-unsigned int get_comp_perc(FILE *** /*handle*/);
+unsigned int get_comp_perc(FILE *_Optional ** /*handle*/);
    /*
     * Calculates what proportion of a compression operation has been completed
     * and returns this as a percentage value. 'handle' must be the same pointer
@@ -76,7 +81,9 @@ unsigned int get_comp_perc(FILE *** /*handle*/);
     * Returns: the percentage done of the specified compression operation.
     */
 
-CONST _kernel_oserror *load_compressedM(const char * /*file_path*/, flex_ptr /*buffer_anchor*/, const volatile bool * /*time_up*/, FILE *** /*handle*/);
+_Optional CONST _kernel_oserror *load_compressedM(const char * /*file_path*/,
+   flex_ptr /*buffer_anchor*/, const volatile bool * /*time_up*/,
+   FILE *_Optional ** /*handle*/);
    /*
     * Loads data from the specified file 'file_path' and decompresses (using the
     * Fednet algorithm) into a new flex block anchored at 'buffer_anchor',
@@ -87,7 +94,10 @@ CONST _kernel_oserror *load_compressedM(const char * /*file_path*/, flex_ptr /*b
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *save_compressedM2(const char * /*file_path*/, flex_ptr /*buffer_anchor*/, const volatile bool * /*time_up*/, unsigned int /*start_offset*/, unsigned int /*end_offset*/, FILE *** /*handle*/);
+_Optional CONST _kernel_oserror *save_compressedM2(const char * /*file_path*/,
+   flex_ptr /*buffer_anchor*/, const volatile bool * /*time_up*/,
+   unsigned int /*start_offset*/, unsigned int /*end_offset*/,
+   FILE *_Optional ** /*handle*/);
    /*
     * Compresses (using the Fednet algorithm) an area of the flex block
     * 'buffer_anchor' that is delimited by 'start_offset' (inclusive) and
@@ -100,7 +110,9 @@ CONST _kernel_oserror *save_compressedM2(const char * /*file_path*/, flex_ptr /*
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *save_compressedM(const char * /*file_path*/, int /*file_type*/, flex_ptr /*buffer_anchor*/, const volatile bool * /*time_up*/, FILE *** /*handle*/);
+_Optional CONST _kernel_oserror *save_compressedM(const char * /*file_path*/,
+   int /*file_type*/, flex_ptr /*buffer_anchor*/, const volatile bool * /*time_up*/,
+   FILE *_Optional ** /*handle*/);
    /*
     * This function is deprecated - you should use 'save_compressedM2' instead.
     */

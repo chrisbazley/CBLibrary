@@ -19,6 +19,7 @@
 
 /* History:
   CJB: 11-Dec-20: Created this source file.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* Acorn C/C++ library headers */
@@ -26,20 +27,20 @@
 #include "toolbox.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Err.h"
 #include "EventExtra.h"
+#include "Internal/CBMisc.h"
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *remove_event_handlers_delete(ObjectId const object_id)
+_Optional CONST _kernel_oserror *remove_event_handlers_delete(ObjectId const object_id)
 {
   assert(object_id != NULL_ObjectId);
   DEBUGF("Removing all event handlers and deleting object 0x%x\n",
          object_id);
 
-  CONST _kernel_oserror *e = event_deregister_wimp_handlers_for_object(
+  _Optional CONST _kernel_oserror *e = event_deregister_wimp_handlers_for_object(
                                object_id);
   MERGE_ERR(e, event_deregister_toolbox_handlers_for_object(object_id));
   MERGE_ERR(e, toolbox_delete_object(0, object_id));

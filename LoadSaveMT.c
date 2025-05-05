@@ -58,6 +58,7 @@
   CJB: 06-Nov-19: Fixed failure to check the return value of fclose_dec().
   CJB: 10-Nov-19: Modified load_fileM2() to use get_file_size().
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -78,15 +79,15 @@
 #include "SprFormats.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "NoBudge.h"
 #include "LoadSaveMT.h"
-#include "FopenCount.h"
+#include "FOpenCount.h"
 #include "FileUtils.h"
 #ifdef CBLIB_OBSOLETE
 #include "msgtrans.h"
 #endif /* CBLIB_OBSOLETE */
 #include "Internal/FOpPrivate.h"
+#include "Internal/CBMisc.h"
 
 /*
   This is a workaround for the fact that IO buffering sometimes runs out when
@@ -120,7 +121,7 @@ fileop_state;
 #ifdef STATIC_BUFFER
 static char static_buffer[Granularity];
 #endif
-static MessagesFD *desc;
+static _Optional MessagesFD *desc;
 
 /* ----------------------------------------------------------------------- */
 /*                       Function prototypes                               */
@@ -130,7 +131,7 @@ static CONST _kernel_oserror *lookup_error(const char *token, const char *param)
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *loadsave_initialise(MessagesFD *mfd)
+_Optional CONST _kernel_oserror *loadsave_initialise(_Optional MessagesFD *mfd)
 {
   /* Store pointer to messages file descriptor */
   desc = mfd;
@@ -139,7 +140,7 @@ CONST _kernel_oserror *loadsave_initialise(MessagesFD *mfd)
 
 /* ----------------------------------------------------------------------- */
 
-unsigned int get_loadsave_perc(FILE ***handle)
+unsigned int get_loadsave_perc(FILE *_Optional **handle)
 {
   fileop_state *state = (fileop_state *)*handle;
   unsigned int bytes_done, total_size, perc_done;
@@ -168,9 +169,10 @@ unsigned int get_loadsave_perc(FILE ***handle)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *load_fileM2(const char *file_path, flex_ptr buffer_anchor, const volatile bool *time_up, FILE ***handle)
+_Optional CONST _kernel_oserror *load_fileM2(const char *file_path,
+  flex_ptr buffer_anchor, const volatile bool *time_up, FILE *_Optional **handle)
 {
-  fileop_state *state;
+  _Optional fileop_state *state;
 
   if (*handle == NULL)
   {
@@ -178,11 +180,11 @@ CONST _kernel_oserror *load_fileM2(const char *file_path, flex_ptr buffer_anchor
     DEBUGF("LoadSaveMT: Starting file load operation\n");
     state = malloc(sizeof(*state));
     if (state == NULL)
-      return lookup_error("NoMem", NULL);
+      return lookup_error("NoMem", "");
 
     /* Get size of file */
     int size;
-    CONST _kernel_oserror *const e = get_file_size(file_path, &size);
+    _Optional CONST _kernel_oserror *const e = get_file_size(file_path, &size);
     if (e != NULL)
     {
       free(state);
@@ -195,14 +197,14 @@ CONST _kernel_oserror *load_fileM2(const char *file_path, flex_ptr buffer_anchor
     if (size < 0 || !flex_alloc(buffer_anchor, size))
     {
       free(state);
-      return lookup_error("NoMem", NULL);
+      return lookup_error("NoMem", "");
     }
 
     state->limit = (unsigned)size;
     state->mem_pos = 0;
     state->start = 0;
     state->common.f = NULL;
-    state->common.destructor = NULL;
+    state->common.destructor = (fileop_destructor *)NULL;
     state->read_pos = 0; /* start reading from beginning of file */
   }
   else
@@ -219,11 +221,11 @@ CONST _kernel_oserror *load_fileM2(const char *file_path, flex_ptr buffer_anchor
     /* (Re)open file and start reading data where we left off */
     state->common.f = fopen_inc(file_path, "rb"); /* open for reading */
     if (state->common.f == NULL ||
-        fseek(state->common.f, state->read_pos, SEEK_SET) == -1)
+        fseek(&*state->common.f, state->read_pos, SEEK_SET) == -1)
     {
       DEBUGF("LoadSaveMT: fopen_inc or fseek failed\n");
       if (state->common.f != NULL)
-        fclose_dec(state->common.f);
+        fclose_dec(&*state->common.f);
       free(state);
       *handle = NULL; /* write back NULL pointer */
       ON_ERR_RTN_E(_kernel_last_oserror()); /* return any OS error */
@@ -253,7 +255,7 @@ CONST _kernel_oserror *load_fileM2(const char *file_path, flex_ptr buffer_anchor
 
 #ifdef STATIC_BUFFER
       /* Read chunk from file into static block */
-      num_read = fread(static_buffer, sizeof(char), chunk_size, state->common.f);
+      num_read = fread(static_buffer, sizeof(char), chunk_size, &*state->common.f);
       if (num_read > 0)
       {
         /* Copy chunk from static block to flex */
@@ -265,7 +267,7 @@ CONST _kernel_oserror *load_fileM2(const char *file_path, flex_ptr buffer_anchor
 #else
       /* Read chunk from file directly into flex block (budge is disabled) */
       num_read = fread((char *)ptr + state->mem_pos, sizeof(char), chunk_size,
-                 state->common.f);
+                 &*state->common.f);
 #endif
       if (num_read != chunk_size)
         break; /* EOF or read error */
@@ -282,24 +284,24 @@ CONST _kernel_oserror *load_fileM2(const char *file_path, flex_ptr buffer_anchor
 #endif
   hourglass_off();
 
-  if (ferror(state->common.f))
+  if (ferror(&*state->common.f))
   {
     /* File error on fread() */
     DEBUGF("LoadSaveMT: Aborting - file error on fread()\n");
-    fclose_dec(state->common.f);
+    fclose_dec(&*state->common.f);
     free(state);
     *handle = NULL; /* write back NULL pointer */
     ON_ERR_RTN_E(_kernel_last_oserror()); /* return any OS error */
     return lookup_error("ReadFail", file_path);
   }
 
-  if (state->mem_pos >= state->limit || feof(state->common.f))
+  if (state->mem_pos >= state->limit || feof(&*state->common.f))
   {
     /* Finished (got to end of input) */
-    DEBUGF("LoadSaveMT: Loading complete%s\n", feof(state->common.f) ? " (EOF)" : "");
+    DEBUGF("LoadSaveMT: Loading complete%s\n", feof(&*state->common.f) ? " (EOF)" : "");
     DEBUGF("LoadSaveMT: Final size of loaded data is %d\n",
           flex_size(buffer_anchor));
-    fclose_dec(state->common.f);
+    fclose_dec(&*state->common.f);
     free(state);
     *handle = NULL; /* write back NULL pointer */
   }
@@ -312,8 +314,8 @@ CONST _kernel_oserror *load_fileM2(const char *file_path, flex_ptr buffer_anchor
     if (fopen_num() >= FOPEN_MAX)
     {
       /* if we have no spare file handles then close file */
-      state->read_pos = ftell(state->common.f);
-      fclose_dec(state->common.f);
+      state->read_pos = ftell(&*state->common.f);
+      fclose_dec(&*state->common.f);
       state->common.f = NULL;
     }
     *handle = (FILE **)state; /* write back pointer to state */
@@ -323,9 +325,11 @@ CONST _kernel_oserror *load_fileM2(const char *file_path, flex_ptr buffer_anchor
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *save_fileM2(const char *file_path, flex_ptr buffer_anchor, const volatile bool *time_up, unsigned int start_offset, unsigned int end_offset, FILE ***handle)
+_Optional CONST _kernel_oserror *save_fileM2(const char *file_path,
+  flex_ptr buffer_anchor, const volatile bool *time_up, unsigned int start_offset,
+  unsigned int end_offset, FILE *_Optional **handle)
 {
-  fileop_state *state;
+  _Optional fileop_state *state;
   const char *open_mode;
 
   if (*handle == NULL)
@@ -335,13 +339,13 @@ CONST _kernel_oserror *save_fileM2(const char *file_path, flex_ptr buffer_anchor
 
     state = malloc(sizeof(*state));
     if (state == NULL)
-      return lookup_error("NoMem", NULL);
+      return lookup_error("NoMem", "");
 
     state->limit = end_offset;
     state->start= start_offset;
     state->mem_pos = start_offset;
     state->common.f = NULL;
-    state->common.destructor = NULL;
+    state->common.destructor = (fileop_destructor *)NULL;
     open_mode = "wb"; /* open for writing */
   }
   else
@@ -398,13 +402,13 @@ CONST _kernel_oserror *save_fileM2(const char *file_path, flex_ptr buffer_anchor
       nobudge_deregister();
 
       /* Write contents of static block out to file */
-      num_written = fwrite(static_buffer, sizeof(char), chunk_size, state->common.f);
+      num_written = fwrite(static_buffer, sizeof(char), chunk_size, &*state->common.f);
 #else
       /* Write chunk of flex block out to file (budge is disabled) */
       num_written = fwrite(ptr + state->mem_pos,
                            sizeof(char),
                            chunk_size,
-                           state->common.f);
+                           &*state->common.f);
 #endif
       if (num_written != chunk_size)
         break; /* write error */
@@ -423,10 +427,10 @@ CONST _kernel_oserror *save_fileM2(const char *file_path, flex_ptr buffer_anchor
 
   bool write_fail = false;
 
-  if (ferror(state->common.f))
+  if (ferror(&*state->common.f))
   {
     DEBUGF("LoadSaveMT: File error on fwrite()\n");
-    fclose_dec(state->common.f);
+    fclose_dec(&*state->common.f);
     write_fail = true;
     free(state);
     state = NULL;
@@ -435,7 +439,7 @@ CONST _kernel_oserror *save_fileM2(const char *file_path, flex_ptr buffer_anchor
   {
     /* Finished (got to end of input) */
     DEBUGF("LoadSaveMT: Saving complete\n");
-    if (fclose_dec(state->common.f))
+    if (fclose_dec(&*state->common.f))
     {
       write_fail = true;
     }
@@ -451,7 +455,7 @@ CONST _kernel_oserror *save_fileM2(const char *file_path, flex_ptr buffer_anchor
     if (fopen_num() >= FOPEN_MAX)
     {
       /* if we have no spare file handles then close file */
-      if (fclose_dec(state->common.f))
+      if (fclose_dec(&*state->common.f))
       {
         write_fail = true;
         free(state);
@@ -479,7 +483,8 @@ CONST _kernel_oserror *save_fileM2(const char *file_path, flex_ptr buffer_anchor
 
 #ifdef CBLIB_OBSOLETE
 /* The following function is deprecated; use load_fileM2(). */
-CONST _kernel_oserror *load_fileM(const char *file_path, flex_ptr buffer_anchor, const volatile bool *time_up, FILE ***handle, bool sprite)
+_Optional CONST _kernel_oserror *load_fileM(const char *file_path, flex_ptr buffer_anchor,
+  const volatile bool *time_up, FILE *_Optional **handle, bool sprite)
 {
   ON_ERR_RTN_E(load_fileM2(file_path, buffer_anchor, time_up, handle));
 
@@ -491,7 +496,7 @@ CONST _kernel_oserror *load_fileM(const char *file_path, flex_ptr buffer_anchor,
     if (!flex_midextend(buffer_anchor, 0, sizeof((*area)->size)))
     {
       /* Failed to extend input buffer at start */
-      return lookup_error("NoMem", NULL);
+      return lookup_error("NoMem", "");
     }
     /* Write sprite area size as first word */
     (*area)->size = flex_size(buffer_anchor);
@@ -502,7 +507,8 @@ CONST _kernel_oserror *load_fileM(const char *file_path, flex_ptr buffer_anchor,
 /* ----------------------------------------------------------------------- */
 
 /* The following function is deprecated; use save_fileM2(). */
-CONST _kernel_oserror *save_fileM(const char *file_path, int file_type, flex_ptr buffer_anchor, const volatile bool *time_up, FILE ***handle, bool sprite)
+_Optional CONST _kernel_oserror *save_fileM(const char *file_path, int file_type,
+  flex_ptr buffer_anchor, const volatile bool *time_up, FILE *_Optional **handle, bool sprite)
 {
   SpriteAreaHeader *dummy = (SpriteAreaHeader *)0;
   ON_ERR_RTN_E(save_fileM2(file_path, buffer_anchor, time_up, sprite ?

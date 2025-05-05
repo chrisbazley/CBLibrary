@@ -31,6 +31,7 @@ History:
                   Norcroft compiler when assigning 'long' values to it.
   CJB: 15-Oct-09: Changed wait time to 'int' to match wimp_pollidle. :-(
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef Timer_h
@@ -45,7 +46,11 @@ History:
 /* Local headers */
 #include "Macros.h"
 
-CONST _kernel_oserror *timer_register(volatile bool * /*timeup_flag*/, int /*wait_time*/);
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
+_Optional CONST _kernel_oserror *timer_register(volatile bool * /*timeup_flag*/, int /*wait_time*/);
    /*
     * Sets the variable pointed to by 'timeup_flag' to false and sets up a
     * ticker event to change it to true after 'wait_time' centiseconds have
@@ -58,7 +63,7 @@ CONST _kernel_oserror *timer_register(volatile bool * /*timeup_flag*/, int /*wai
 
 
 
-CONST _kernel_oserror *timer_deregister(volatile bool * /*timeup_flag*/);
+_Optional CONST _kernel_oserror *timer_deregister(volatile bool * /*timeup_flag*/);
    /*
     * Removes a pending ticker timer event. The value of 'timeup_flag' must be
     * the same as when the timer was registered. Call this function before

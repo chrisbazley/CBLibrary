@@ -41,6 +41,7 @@ History:
                   prototypes conditional.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
   CJB: 29-Aug-22: Use size_t rather than unsigned int for nparam.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef MsgTrans_h
@@ -53,7 +54,11 @@ History:
 /* Local headers */
 #include "Macros.h"
 
-CONST _kernel_oserror *msgs_initialise(MessagesFD */*mfd*/);
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
+_Optional CONST _kernel_oserror *msgs_initialise(MessagesFD */*mfd*/);
    /*
     * Sets the descriptor for a messages file which will be be given priority
     * over the global messages file when looking up messages, by all functions
@@ -138,7 +143,7 @@ char *msgs_globalsub(const char */*token*/,
                      const char */*param2*/,
                      const char */*param3*/);
 
-CONST _kernel_oserror *msgs_errorsubn(int           /*errnum*/,
+_Optional CONST _kernel_oserror *msgs_errorsubn(int           /*errnum*/,
                                       const char   */*token*/,
                                       size_t        /*nparam*/,
                                       ...);

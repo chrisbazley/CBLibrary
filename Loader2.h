@@ -36,6 +36,7 @@ History:
   CJB: 17-Dec-14: Made the arguments to loader2_initialise conditional upon
                   CBLIB_OBSOLETE.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef Loader2_h
@@ -52,10 +53,14 @@ History:
 /* Local headers */
 #include "Macros.h"
 
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
 /* ---------------- Client-supplied participation routines ------------------ */
 
-typedef CONST _kernel_oserror *Loader2FileHandler (const char * /*file_path*/,
-                                                   flex_ptr     /*buffer*/);
+typedef _Optional CONST _kernel_oserror *Loader2FileHandler (const char * /*file_path*/,
+                                                             flex_ptr     /*buffer*/);
 /*
  * This function is called to request for a new flex block to be allocated
  * (anchored at 'buffer') and the file at 'file_path' loaded into it. To be used
@@ -64,9 +69,9 @@ typedef CONST _kernel_oserror *Loader2FileHandler (const char * /*file_path*/,
  * Return: a pointer to an OS error block, or else NULL for success.
  */
 
-typedef void Loader2FinishedHandler (CONST _kernel_oserror * /*load_error*/,
+typedef void Loader2FinishedHandler (_Optional CONST _kernel_oserror * /*load_error*/,
                                      int                     /*file_type*/,
-                                     flex_ptr                /*buffer*/,
+                                     void       *_Optional * /*buffer*/,
                                      void                  * /*client_handle*/);
 /*
  * This function is called when a load operation has been completed or has
@@ -82,9 +87,9 @@ typedef void Loader2FinishedHandler (CONST _kernel_oserror * /*load_error*/,
 /* --------------------------- Library functions ---------------------------- */
 
 #ifdef CBLIB_OBSOLETE
-CONST _kernel_oserror *loader2_initialise(void);
+_Optional CONST _kernel_oserror *loader2_initialise(void);
 #else
-CONST _kernel_oserror *loader2_initialise(MessagesFD */*mfd*/);
+_Optional CONST _kernel_oserror *loader2_initialise(_Optional MessagesFD */*mfd*/);
 #endif
    /*
     * Initialises the Loader2 component and sets up handlers for DataLoad and
@@ -101,7 +106,7 @@ CONST _kernel_oserror *loader2_initialise(MessagesFD */*mfd*/);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *loader2_finalise(void);
+_Optional CONST _kernel_oserror *loader2_finalise(void);
    /*
     * Deregisters the Loader component's event handlers and releases any memory
     * claimed by this library component. Any incomplete load operations will be
@@ -110,7 +115,7 @@ CONST _kernel_oserror *loader2_finalise(void);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *loader2_receive_data(
+_Optional CONST _kernel_oserror *loader2_receive_data(
                                 const WimpMessage         * /*data_save*/,
                                 Loader2FileHandler        * /*load_method*/,
                                 Loader2FinishedHandler    * /*finished_method*/,

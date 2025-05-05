@@ -46,6 +46,7 @@
                   Used size_t for loop counters to match type of ARRAY_SIZE.
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 #ifdef CBLIB_OBSOLETE /* Use c.Scheduler instead */
@@ -62,12 +63,12 @@
 #include "toolbox.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Err.h"
 #include "NullPoll.h"
 #include "Timer.h"
 #include "RoundRobin.h"
 #include "msgtrans.h"
+#include "Internal/CBMisc.h"
 
 typedef struct
 {
@@ -91,7 +92,7 @@ static void ensure_timer_removed(void);
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *RoundRobin_initialise(unsigned int time)
+_Optional CONST _kernel_oserror *RoundRobin_initialise(unsigned int time)
 {
   ON_ERR_RTN_E(event_register_wimp_handler(-1,
                                            Wimp_ENull,
@@ -109,9 +110,9 @@ CONST _kernel_oserror *RoundRobin_initialise(unsigned int time)
 /* ----------------------------------------------------------------------- */
 
 #ifdef INCLUDE_FINALISATION_CODE
-CONST _kernel_oserror *RoundRobin_finalise(void)
+_Optional CONST _kernel_oserror *RoundRobin_finalise(void)
 {
-  CONST _kernel_oserror *return_error;
+  _Optional CONST _kernel_oserror *return_error;
 
   return_error = event_deregister_wimp_handler(-1,
                                                Wimp_ENull,
@@ -128,7 +129,7 @@ CONST _kernel_oserror *RoundRobin_finalise(void)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *RoundRobin_register(RoundRobinHandler *handler, void *handle)
+_Optional CONST _kernel_oserror *RoundRobin_register(RoundRobinHandler *handler, void *handle)
 {
   /* Add record to threads data */
   RoundRobinRecord *write_data = NULL;
@@ -169,7 +170,7 @@ CONST _kernel_oserror *RoundRobin_register(RoundRobinHandler *handler, void *han
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *RoundRobin_deregister(RoundRobinHandler *handler, void *handle)
+_Optional CONST _kernel_oserror *RoundRobin_deregister(RoundRobinHandler *handler, void *handle)
 {
   RoundRobinRecord *write_data = NULL;
 
@@ -194,7 +195,7 @@ CONST _kernel_oserror *RoundRobin_deregister(RoundRobinHandler *handler, void *h
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *RoundRobin_suspend(void)
+_Optional CONST _kernel_oserror *RoundRobin_suspend(void)
 {
   if (suspended == 0 && num_threads > 0)
     nullpoll_deregister();
@@ -204,7 +205,7 @@ CONST _kernel_oserror *RoundRobin_suspend(void)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *RoundRobin_resume(void)
+_Optional CONST _kernel_oserror *RoundRobin_resume(void)
 {
   /* Can't resume if not suspended! */
   assert(suspended >= 1);
@@ -235,7 +236,7 @@ static int null_event_handler(int event_code, WimpPollBlock *event, IdBlock *id_
     return 0; /* nothing to do - pass event on */
 
   {
-    CONST _kernel_oserror *err;
+    _Optional CONST _kernel_oserror *err;
     time_up = false;
     err = timer_register(&time_up, maxtime);
     if (err != NULL) {

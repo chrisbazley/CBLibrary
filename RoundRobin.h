@@ -39,6 +39,7 @@ History:
                   very old code that requires a return value.
   CJB: 11-Dec-14: Deleted redundant brackets from function type definitions.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef RoundRobin_h
@@ -55,6 +56,10 @@ History:
 /* Local headers */
 #include "Macros.h"
 
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
 typedef void RoundRobinHandler (void                *handle,
                                 const volatile bool *time_up);
    /*
@@ -65,7 +70,7 @@ typedef void RoundRobinHandler (void                *handle,
     * other RoundRobinHandlers.
     */
 
-CONST _kernel_oserror *RoundRobin_initialise(unsigned int /*time*/);
+_Optional CONST _kernel_oserror *RoundRobin_initialise(unsigned int /*time*/);
    /*
     * Initialises the RoundRobin system and sets up a Wimp event handler for
     * null events. When a null event is delivered to your application, this
@@ -82,7 +87,7 @@ CONST _kernel_oserror *RoundRobin_initialise(unsigned int /*time*/);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *RoundRobin_finalise(void);
+_Optional CONST _kernel_oserror *RoundRobin_finalise(void);
    /*
     * Removes the RoundRobin system's null event handler and causes all
     * registered RoundRobinHandlers to be forgotten (thus releasing any memory
@@ -92,7 +97,7 @@ CONST _kernel_oserror *RoundRobin_finalise(void);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *RoundRobin_register(RoundRobinHandler * /*handler*/, void * /*handle*/);
+_Optional CONST _kernel_oserror *RoundRobin_register(RoundRobinHandler * /*handler*/, void * /*handle*/);
    /*
     * Registers a RoundRobinHandler function to be called on null events when
     * it is its turn, or when the previous RoundRobinHandler has ceded control
@@ -104,7 +109,7 @@ CONST _kernel_oserror *RoundRobin_register(RoundRobinHandler * /*handler*/, void
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *RoundRobin_deregister(RoundRobinHandler * /*handler*/, void * /*handle*/);
+_Optional CONST _kernel_oserror *RoundRobin_deregister(RoundRobinHandler * /*handler*/, void * /*handle*/);
    /*
     * Deregisters a RoundRobinHandler function. Unless the system is suspended
     * (see RoundRobin_suspend) or there are other NullPoll registrants then
@@ -114,7 +119,7 @@ CONST _kernel_oserror *RoundRobin_deregister(RoundRobinHandler * /*handler*/, vo
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *RoundRobin_suspend(void);
+_Optional CONST _kernel_oserror *RoundRobin_suspend(void);
    /*
     * Causes cessation of all background processing activity controlled by
     * the RoundRobin system. Registered RoundRobinHandlers will not be called
@@ -125,7 +130,7 @@ CONST _kernel_oserror *RoundRobin_suspend(void);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *RoundRobin_resume(void);
+_Optional CONST _kernel_oserror *RoundRobin_resume(void);
    /*
     * Causes resumption of any background processing activity controlled by
     * the RoundRobin system, once this function has been called the same number

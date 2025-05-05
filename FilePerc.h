@@ -42,6 +42,7 @@ History:
   CJB: 26-Jun-10: Made definition of deprecated type and constant names
                   conditional upon definition of CBLIB_OBSOLETE.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef FilePerc_h
@@ -55,6 +56,10 @@ History:
 /* Local headers */
 #include "Macros.h"
 
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
 typedef enum
 {
   FilePercOp_Load = 1,/* Load a plain file */
@@ -64,7 +69,7 @@ typedef enum
 }
 FilePercOp;
 
-CONST _kernel_oserror *file_perc_initialise(MessagesFD */*mfd*/);
+_Optional CONST _kernel_oserror *file_perc_initialise(_Optional MessagesFD */*mfd*/);
    /*
     * Initialises the FilePerc module. Unless 'mfd' is a null pointer, the
     * specified messages file will be given priority over the global messages
@@ -72,7 +77,7 @@ CONST _kernel_oserror *file_perc_initialise(MessagesFD */*mfd*/);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *file_perc_load(FilePercOp /*type*/, const char */*file_path*/, flex_ptr /*buffer_anchor*/);
+_Optional CONST _kernel_oserror *file_perc_load(FilePercOp /*type*/, const char */*file_path*/, flex_ptr /*buffer_anchor*/);
    /*
     * Does a file input operation specified by the 'type' argument (which must
     * be FilePercOp_Load or FilePercOp_Decomp). The contents of the file
@@ -81,7 +86,7 @@ CONST _kernel_oserror *file_perc_load(FilePercOp /*type*/, const char */*file_pa
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *file_perc_save(FilePercOp /*type*/, const char */*file_path*/, unsigned int /*file_type*/, flex_ptr /*buffer_anchor*/, unsigned int /*start_offset*/, unsigned int /*end_offset*/);
+_Optional CONST _kernel_oserror *file_perc_save(FilePercOp /*type*/, const char */*file_path*/, unsigned int /*file_type*/, flex_ptr /*buffer_anchor*/, unsigned int /*start_offset*/, unsigned int /*end_offset*/);
    /*
     * Does a file output operation specified by the 'type' argument (which must
     * be FilePercOp_Save or FilePercOp_Comp). The contents of flex block
@@ -94,7 +99,7 @@ CONST _kernel_oserror *file_perc_save(FilePercOp /*type*/, const char */*file_pa
 /* Obsolete flag for use with perc_operation() */
 #define FILEPERC_SPRITEAREA (1u<<31)
 
-CONST _kernel_oserror *perc_operation(FilePercOp /*type*/, const char * /*file_path*/, unsigned int /*file_type*/, flex_ptr /*buffer_anchor*/);
+_Optional CONST _kernel_oserror *perc_operation(FilePercOp /*type*/, const char * /*file_path*/, unsigned int /*file_type*/, flex_ptr /*buffer_anchor*/);
    /*
     * This function is deprecated - you should use 'file_perc_load' or
     * 'file_perc_save' instead.

@@ -75,6 +75,7 @@
   CJB: 29-Aug-20: Deleted redundant static function pre-declarations.
   CJB: 28-May-22: Allow initialisation with a 'const' palette array.
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -100,13 +101,13 @@
 #include "OSVDU.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Pal256.h"
 #include "scheduler.h"
 #ifdef CBLIB_OBSOLETE
 #include "msgtrans.h"
 #include "Err.h"
 #endif /* CBLIB_OBSOLETE */
+#include "Internal/CBMisc.h"
 
 #undef CancelDrag /* definition in "wimplib.h" is wrong! */
 #define CancelDrag ((WimpDragBox *)-1)
@@ -186,7 +187,7 @@ static const VDUVar mode_vars[VarIndex_LAST + 1] =
   (VDUVar)ModeVar_YEigFactor,
   VDUVar_EndOfList
 };
-static MessagesFD *desc;
+static _Optional MessagesFD *desc;
 #ifndef CBLIB_OBSOLETE
 static void (*report)(CONST _kernel_oserror *);
 #endif
@@ -201,27 +202,27 @@ static ToolboxEventHandler key_handler;
 static ToolboxEventHandler numberrange_value_changed;
 #endif /* KEY_CONTROL */
 static WimpEventHandler redraw_window, mouse_click, user_drag;
-static CONST _kernel_oserror *display_colour(Pal256Data *pal_data, unsigned int col, unsigned int row, bool update_number);
-static CONST _kernel_oserror *draw_colour(PaletteEntry palette_entry, int left_x, int bottom_y, bool selected);
-static CONST _kernel_oserror *update_window(const Pal256Data *pal_data, unsigned int col, unsigned int row, bool selected);
-static CONST _kernel_oserror *apply_selection(Pal256Data *pal_data);
+static _Optional CONST _kernel_oserror *display_colour(Pal256Data *pal_data, unsigned int col, unsigned int row, bool update_number);
+static _Optional CONST _kernel_oserror *draw_colour(PaletteEntry palette_entry, int left_x, int bottom_y, bool selected);
+static _Optional CONST _kernel_oserror *update_window(const Pal256Data *pal_data, unsigned int col, unsigned int row, bool selected);
+static _Optional CONST _kernel_oserror *apply_selection(Pal256Data *pal_data);
 static bool decode_pointer_pos(const WimpGetWindowStateBlock *window_state, int mouse_x, int mouse_y, unsigned int *row, unsigned int *col);
 static CONST _kernel_oserror *lookup_error(const char *token);
 
 /*----------------------------------------------------------------------- */
 /*                        Public functions                                */
 
-CONST _kernel_oserror *Pal256_initialise(
-                         ObjectId       object,
-                         PaletteEntry const palette[]
+_Optional CONST _kernel_oserror *Pal256_initialise(
+                         ObjectId             object,
+                         PaletteEntry const   palette[]
 #ifndef CBLIB_OBSOLETE
-                        ,MessagesFD    *mfd,
-                         void         (*report_error)(CONST _kernel_oserror *)
+                        ,_Optional MessagesFD *mfd,
+                         void                 (*report_error)(CONST _kernel_oserror *)
 #endif
 )
 {
-  Pal256Data *pal_data;
-  CONST _kernel_oserror *e = NULL;
+  _Optional Pal256Data *pal_data;
+  _Optional CONST _kernel_oserror *e = NULL;
 
   assert(palette != NULL);
 
@@ -254,53 +255,53 @@ CONST _kernel_oserror *Pal256_initialise(
     /* Set the Toolbox object's client handle so that we can access its data
        given only its object ID */
     if (e == NULL)
-      e = toolbox_set_client_handle(0, object, pal_data);
+      e = toolbox_set_client_handle(0, object, &*pal_data);
 
     /* Register Wimp event handlers */
     if (e == NULL)
       e = event_register_wimp_handler(object,
                                       Wimp_ERedrawWindow,
                                       redraw_window,
-                                      pal_data);
+                                      &*pal_data);
     if (e == NULL)
       e = event_register_wimp_handler(object,
                                       Wimp_EMouseClick,
                                       mouse_click,
-                                      pal_data);
+                                      &*pal_data);
     if (e == NULL)
       e = event_register_wimp_handler(-1,
                                       Wimp_EUserDrag,
                                       user_drag,
-                                      pal_data);
+                                      &*pal_data);
 
     /* Register Toolbox event handlers */
     if (e == NULL)
       e = event_register_toolbox_handler(object,
                                          ActionButton_Selected,
                                          actionbutton_selected,
-                                         pal_data);
+                                         &*pal_data);
 
 #ifdef KEY_CONTROL
     if (e == NULL)
       e = event_register_toolbox_handler(object,
                                          -1,
                                          key_handler,
-                                         pal_data);
+                                         &*pal_data);
 #else /* KEY_CONTROL */
     if (e == NULL)
       e = event_register_toolbox_handler(object,
                                          NumberRange_ValueChanged,
                                          numberrange_value_changed,
-                                         pal_data);
+                                         &*pal_data);
 #endif /* KEY_CONTROL */
     if (e == NULL)
       e = event_register_toolbox_handler(object,
                                          Toolbox_ObjectDeleted,
                                          object_deleted,
-                                         pal_data);
+                                         &*pal_data);
 
     if (e != NULL)
-      object_deleted(0, NULL, NULL, pal_data);
+      object_deleted(0, &(ToolboxEvent){0}, &(IdBlock){0}, &*pal_data);
   }
 
   return e;
@@ -308,7 +309,7 @@ CONST _kernel_oserror *Pal256_initialise(
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *Pal256_set_colour(ObjectId object, unsigned int c)
+_Optional CONST _kernel_oserror *Pal256_set_colour(ObjectId object, unsigned int c)
 {
   /* Set the currently selected colour */
   Pal256Data *pal_data;
@@ -335,13 +336,13 @@ char Pal256_colour_brightness(unsigned long colour)
 /* ----------------------------------------------------------------------- */
 /*                         Private functions                               */
 
-static void check_error(CONST _kernel_oserror *e)
+static void check_error(_Optional CONST _kernel_oserror *e)
 {
 #ifdef CBLIB_OBSOLETE
   (void)err_check(e);
 #else
-  if (e != NULL && report != NULL)
-    report(e);
+  if (e != NULL && report)
+    report(&*e);
 #endif
 }
 
@@ -361,7 +362,7 @@ static SchedulerTime track_pointer(void *handle, SchedulerTime time_now, const v
   int mouse_x, mouse_y, but;
   ObjectId window;
   ComponentId comp;
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
 
   NOT_USED(time_up);
 
@@ -398,7 +399,7 @@ static SchedulerTime track_pointer(void *handle, SchedulerTime time_now, const v
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *display_colour(Pal256Data *pal_data, unsigned int col, unsigned int row, bool update_number)
+static _Optional CONST _kernel_oserror *display_colour(Pal256Data *pal_data, unsigned int col, unsigned int row, bool update_number)
 {
   /* Change the displayed colour */
   char validation[MaxValidationLen + 1];
@@ -540,7 +541,7 @@ static int numberrange_value_changed(int event_code, ToolboxEvent *event, IdBloc
 
 static int actionbutton_selected(int event_code, ToolboxEvent *event, IdBlock *id_block, void *handle)
 {
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
   Pal256Data *pal_data = handle;
 
   NOT_USED(event_code);
@@ -582,7 +583,7 @@ static int mouse_click(int event_code, WimpPollBlock *event, IdBlock *id_block, 
   WimpMouseClickEvent *wmce = (WimpMouseClickEvent *)event;
   Pal256Data *pal_data = handle;
   unsigned int row, col;
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
   WimpGetWindowStateBlock window_state;
 
   NOT_USED(event_code);
@@ -725,7 +726,7 @@ static int redraw_window(int event_code, WimpPollBlock *event, IdBlock *id_block
 {
   /* Custom redraw for colour palette */
   const Pal256Data *pal_data = handle;
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
   int more, colsleft_scrx, colsbot_scry;
   WimpRedrawWindowBlock block;
 
@@ -850,7 +851,7 @@ static int redraw_window(int event_code, WimpPollBlock *event, IdBlock *id_block
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *draw_colour(PaletteEntry colour,
+static _Optional CONST _kernel_oserror *draw_colour(PaletteEntry colour,
                                           int          left_x,
                                           int          bottom_y,
                                           bool         selected)
@@ -937,17 +938,17 @@ static int object_deleted(int           event_code,
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *update_window(const Pal256Data *pal_data,
-                                            unsigned int      col,
-                                            unsigned int      row,
-                                            bool              selected)
+static _Optional CONST _kernel_oserror *update_window(const Pal256Data *pal_data,
+                                                      unsigned int      col,
+                                                      unsigned int      row,
+                                                      bool              selected)
 {
   /* Calculate redraw rectangle in work area (relative) coordinates */
   int left_x = XOrigin + col * CellWidth;
   int bottom_y = YOrigin + row * CellHeight;
   WimpRedrawWindowBlock block;
   int more;
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
 
   assert(pal_data != NULL);
 
@@ -982,7 +983,7 @@ static CONST _kernel_oserror *update_window(const Pal256Data *pal_data,
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *apply_selection(Pal256Data *pal_data)
+static _Optional CONST _kernel_oserror *apply_selection(Pal256Data *pal_data)
 {
   Pal256ColourSelectedEvent warn_client;
 

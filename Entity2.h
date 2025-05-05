@@ -28,6 +28,7 @@ History:
                   the Entity2ReadMethod. Pass the estimated file size as an
                   extra argument.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef Entity2_h
@@ -49,6 +50,10 @@ History:
 #include "Loader3.h"
 #include "Saver2.h"
 #include "Macros.h"
+
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
 
 /* ---------------- Client-supplied participation routines ------------------ */
 
@@ -95,7 +100,7 @@ typedef bool Entity2ReadMethod (
   int          /*estimated_size*/,
   int          /*file_type*/,
   const char * /*leaf_name*/,
-  void       * /*client_handle*/);
+  void * /*client_handle*/);
 /*
  * This function is called in order to deliver data associated with an entity.
  * It reads data from the given 'reader' object. 'file_type' is the type of the
@@ -106,7 +111,7 @@ typedef bool Entity2ReadMethod (
  * Returns: true on success or false on failure.
  */
 
-typedef void Entity2FailedMethod(CONST _kernel_oserror * /*error*/,
+typedef void Entity2FailedMethod(_Optional CONST _kernel_oserror * /*error*/,
   void * /*client_handle*/);
 /*
  * This function is called when an entity data request operation has failed.
@@ -117,9 +122,9 @@ typedef void Entity2FailedMethod(CONST _kernel_oserror * /*error*/,
 
 /* --------------------------- Library functions ---------------------------- */
 
-CONST _kernel_oserror *entity2_initialise(
-  MessagesFD  */*mfd*/,
-  void       (*/*error_method*/)(CONST _kernel_oserror *)
+_Optional CONST _kernel_oserror *entity2_initialise(
+  _Optional MessagesFD */*mfd*/,
+  void (*/*error_method*/)(CONST _kernel_oserror *)
 );
    /*
     * Initialises the Entity2 component and registers WIMP message handlers
@@ -137,13 +142,13 @@ CONST _kernel_oserror *entity2_initialise(
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *entity2_claim(
-  unsigned int            /*flags*/,
-  const int             * /*file_types*/,
-  Entity2EstimateMethod * /*estimate_method*/,
-  Saver2WriteMethod     * /*write_method*/,
-  Entity2LostMethod     * /*lost_method*/,
-  void                  * /*client_handle*/);
+_Optional CONST _kernel_oserror *entity2_claim(
+  unsigned int                      /*flags*/,
+  _Optional const int             * /*file_types*/,
+  _Optional Entity2EstimateMethod * /*estimate_method*/,
+  _Optional Saver2WriteMethod     * /*write_method*/,
+  _Optional Entity2LostMethod     * /*lost_method*/,
+  void                            * /*client_handle*/);
    /*
     * Claims possession of the entities represented by bits set in the 'flags'
     * word (as for a ClaimEntity message) and registers functions to be called
@@ -154,11 +159,11 @@ CONST _kernel_oserror *entity2_claim(
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *entity2_request_data(
-  const WimpDataRequestMessage * /*data_request*/,
-  Entity2ReadMethod            * /*read_method*/,
-  Entity2FailedMethod          * /*failed_method*/,
-  void                         * /*client_handle*/);
+_Optional CONST _kernel_oserror *entity2_request_data(
+  const WimpDataRequestMessage  * /*data_request*/,
+  _Optional Entity2ReadMethod   * /*read_method*/,
+  _Optional Entity2FailedMethod * /*failed_method*/,
+  void                          * /*client_handle*/);
    /*
     * This function requests any data associated with an entity specified in
     * a given DataRequest message, which must include an array of preferred
@@ -174,11 +179,11 @@ CONST _kernel_oserror *entity2_request_data(
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *entity2_probe_data(
-  const WimpDataRequestMessage * /*data_request*/,
-  Entity2ProbeMethod           * /*probe_method*/,
-  Entity2FailedMethod          * /*failed_method*/,
-  void                         * /*client_handle*/);
+_Optional CONST _kernel_oserror *entity2_probe_data(
+  const WimpDataRequestMessage  * /*data_request*/,
+  _Optional Entity2ProbeMethod  * /*probe_method*/,
+  _Optional Entity2FailedMethod * /*failed_method*/,
+  void                          * /*client_handle*/);
    /*
     * This function probes any data associated with an entity specified in
     * a given DataRequest message, which must include an array of preferred
@@ -194,7 +199,7 @@ CONST _kernel_oserror *entity2_probe_data(
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *entity2_dispose_all(Entity2ExitMethod * /*exit_method*/);
+_Optional CONST _kernel_oserror *entity2_dispose_all(Entity2ExitMethod * /*exit_method*/);
    /*
     * If our task owns any entities then this function broadcasts a message to
     * inform other tasks that this is their last chance to request the
@@ -219,7 +224,7 @@ void entity2_release(unsigned int /*flags*/);
     * functions registered when those entities were claimed will be called.
     */
 
-CONST _kernel_oserror *entity2_finalise(void);
+_Optional CONST _kernel_oserror *entity2_finalise(void);
    /*
     * Deregisters the Entity2 component's event handlers and releases any memory
     * claimed by this library component. It also releases any entities that

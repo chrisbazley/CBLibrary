@@ -24,6 +24,7 @@
   CJB: 05-May-12: Added support for stress-testing failure of _kernel_osfile.
   CJB: 18-Apr-15: Assertions are now provided by debug.h.
   CJB: 29-May-16: Functionality is now delegated to FileSType.c.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -36,13 +37,13 @@
 #include "OSFile.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "FileUtils.h"
+#include "Internal/CBMisc.h"
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *set_file_type(const char *f, int type)
+_Optional CONST _kernel_oserror *set_file_type(const char *f, int type)
 {
   return os_file_set_type(f, type);
 }

@@ -47,6 +47,7 @@ History:
                   upon CBLIB_OBSOLETE.
   CJB: 11-Dec-14: Deleted redundant brackets from function type definitions.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef Scheduler_h
@@ -61,6 +62,10 @@ History:
 
 /* Local headers */
 #include "Macros.h"
+
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
 
 enum
 {
@@ -86,11 +91,11 @@ typedef SchedulerTime SchedulerIdleFunction (void                */*handle*/,
     * by some delay period.
     */
 
-CONST _kernel_oserror *scheduler_initialise(
-                    SchedulerTime   /*nice*/
+_Optional CONST _kernel_oserror *scheduler_initialise(
+                    SchedulerTime           /*nice*/
 #ifndef CBLIB_OBSOLETE
-                   ,MessagesFD     */*mfd*/,
-                    void          (*/*report_error*/)(CONST _kernel_oserror *)
+                   ,_Optional MessagesFD  * /*mfd*/,
+                    void                 (* /*report_error*/ )(CONST _kernel_oserror *)
 #endif
 );
    /*
@@ -106,7 +111,7 @@ CONST _kernel_oserror *scheduler_initialise(
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *scheduler_finalise(void);
+_Optional CONST _kernel_oserror *scheduler_finalise(void);
    /*
     * Removes the scheduler's null event handler and causes all registered
     * functions to be forgotten (thus releasing memory). Null events may be
@@ -126,7 +131,7 @@ void scheduler_set_time_slice(SchedulerTime /*nice*/);
     * TaskWindow cede control after 10cs).
     */
 
-CONST _kernel_oserror *scheduler_register(SchedulerIdleFunction */*function*/, void */*handle*/, SchedulerTime /*first_call*/, int /*priority*/);
+_Optional CONST _kernel_oserror *scheduler_register(SchedulerIdleFunction */*function*/, void */*handle*/, SchedulerTime /*first_call*/, int /*priority*/);
    /*
     * Registers a function to be called as soon as possible after the OS
     * monotonic time 'first_call', when the system is otherwise idle.
@@ -139,7 +144,7 @@ CONST _kernel_oserror *scheduler_register(SchedulerIdleFunction */*function*/, v
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *scheduler_register_delay(SchedulerIdleFunction */*function*/, void */*handle*/, SchedulerTime /*delay*/, int /*priority*/);
+_Optional CONST _kernel_oserror *scheduler_register_delay(SchedulerIdleFunction */*function*/, void */*handle*/, SchedulerTime /*delay*/, int /*priority*/);
    /*
     * As scheduler_register except that the 'delay' argument is a time period
     * (in centiseconds) to delay before calling the registered function for the
@@ -157,7 +162,7 @@ void scheduler_deregister(SchedulerIdleFunction */*function*/, void *handle);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *scheduler_poll(int */*event_code*/, WimpPollBlock */*poll_block*/, void */*poll_word*/);
+_Optional CONST _kernel_oserror *scheduler_poll(_Optional int */*event_code*/, _Optional WimpPollBlock */*poll_block*/, _Optional void */*poll_word*/);
    /*
     * This function is intended as a direct replacement for event_poll. It polls
     * the Wimp to allow other tasks to run and ensures that unnecessary null

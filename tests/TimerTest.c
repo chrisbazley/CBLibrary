@@ -41,7 +41,7 @@ static void test1(void)
   /* Register and wait */
   bool timeup_flag = true;
   const clock_t start = clock();
-  CONST _kernel_oserror * const e = timer_register(&timeup_flag, WaitTime);
+  _Optional CONST _kernel_oserror * const e = timer_register(&timeup_flag, WaitTime);
   assert(e == NULL);
   assert(!timeup_flag);
 
@@ -66,7 +66,7 @@ static void test2(void)
   /* Register and deregister */
   bool timeup_flag = true;
   const clock_t start = clock();
-  CONST _kernel_oserror *e = timer_register(&timeup_flag, WaitTime);
+  _Optional CONST _kernel_oserror *e = timer_register(&timeup_flag, WaitTime);
   assert(e == NULL);
   assert(!timeup_flag);
 
@@ -89,7 +89,7 @@ static void test3(void)
 {
   /* Register multiple and wait */
   bool timeup_flags[NFlags];
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
 
   const clock_t start = clock();
   for (size_t n = 0; n < NFlags; ++n)
@@ -129,7 +129,7 @@ static void test4(void)
 {
   /* Register and deregister multiple and wait */
   bool timeup_flags[NFlags];
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
 
   const clock_t start = clock();
   for (size_t n = 0; n < NFlags; ++n)

@@ -30,6 +30,7 @@
   CJB: 17-Jul-22: Deleted a bad assertion in notify_closed (failed for
                   unknown UI object classes, including Menu).
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 
@@ -53,20 +54,20 @@
 #include "window.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Err.h"
 #include "msgtrans.h"
 #include "DeIconise.h"
+#include "Internal/CBMisc.h"
 
 /* ----------------------------------------------------------------------- */
 /*                       Function prototypes                               */
 
-static CONST _kernel_oserror *notify_closed(ObjectId id);
+static _Optional CONST _kernel_oserror *notify_closed(ObjectId id);
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *DeIconise_hide_object(unsigned int flags, ObjectId id)
+_Optional CONST _kernel_oserror *DeIconise_hide_object(unsigned int flags, ObjectId id)
 {
   unsigned int state;
 
@@ -84,7 +85,9 @@ CONST _kernel_oserror *DeIconise_hide_object(unsigned int flags, ObjectId id)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *DeIconise_show_object(unsigned int flags, ObjectId id, int show_type, void *type, ObjectId parent, ComponentId parent_component)
+_Optional CONST _kernel_oserror *DeIconise_show_object(unsigned int flags,
+  ObjectId id, int show_type, _Optional void *type,
+  ObjectId parent, ComponentId parent_component)
 {
   /* First check whether window object is hidden */
   unsigned int state;
@@ -113,11 +116,11 @@ CONST _kernel_oserror *DeIconise_show_object(unsigned int flags, ObjectId id, in
 /* ----------------------------------------------------------------------- */
 /*                         Private functions                               */
 
-static CONST _kernel_oserror *notify_closed(ObjectId id)
+static _Optional CONST _kernel_oserror *notify_closed(ObjectId id)
 {
   WimpMessage msg_block;
   ObjectClass obj_class;
-  CONST _kernel_oserror *e;
+  _Optional CONST _kernel_oserror *e;
 
   /* Determine toolbox ID of underlying Window object (if any) */
   ON_ERR_RTN_E(toolbox_get_object_class(0, id, &obj_class));

@@ -23,6 +23,7 @@
   CJB: 18-Apr-15: Assertions are now provided by debug.h.
   CJB: 28-Oct-20: A destructor called by abort_file_op may require the file
                   handle to be open so don't close it.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 /* ISO library headers */
@@ -30,28 +31,28 @@
 #include <stdio.h>
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "FOpenCount.h"
 #include "AbortFOp.h"
 #include "Internal/FOpPrivate.h"
+#include "Internal/CBMisc.h"
 
-void abort_file_op(FILE ***handle)
+void abort_file_op(FILE *_Optional **handle)
 {
-  fileop_common *fop;
+  _Optional fileop_common *fop;
 
   assert(handle != NULL);
   fop = (fileop_common *)*handle;
   if (fop != NULL)
   {
-    if (fop->destructor != NULL)
+    if (fop->destructor)
     {
-      fop->destructor(fop);
+      fop->destructor(&*fop);
     }
     else
     {
       if (fop->f != NULL)
       {
-        fclose_dec(fop->f);
+        fclose_dec(&*fop->f);
       }
       free(fop);
     }

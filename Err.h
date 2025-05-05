@@ -48,6 +48,7 @@ History:
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
   CJB: 04-Jun-21: Redefined the macro err_check_fatal() and the function
                   err_check() as inline functions.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef Err_h
@@ -63,14 +64,18 @@ History:
 /* Local headers */
 #include "Macros.h"
 
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
 /* Define some abbreviations for 'wrapper' functions that are used to
    check for error return from other functions */
 #define EF(func) err_check_fatal(func)
 #define E(func) err_check(func)
 
-CONST _kernel_oserror *err_initialise(const char * /*name*/,
-                                      bool         /*new_errs*/,
-                                      MessagesFD * /*mfd*/);
+_Optional CONST _kernel_oserror *err_initialise(const char           * /*name*/,
+                                                bool                   /*new_errs*/,
+                                                _Optional MessagesFD * /*mfd*/);
    /*
     * Records 'name' as the application name to be used in the title of Wimp
     * error boxes (maximum 31 characters). The value of 'new_errs' determines
@@ -91,7 +96,7 @@ void err_check_rep(const _kernel_oserror * /*er*/);
     * be recorded rather than reported to the user.
     */
 
-static inline bool err_check(const _kernel_oserror *const er)
+static inline bool err_check(_Optional const _kernel_oserror *const er)
 {
   if (er == NULL)
   {
@@ -99,7 +104,7 @@ static inline bool err_check(const _kernel_oserror *const er)
   }
   else
   {
-    err_check_rep(er);
+    err_check_rep(&*er);
     return true;
   }
 }
@@ -120,11 +125,11 @@ void err_check_fatal_rep(const _kernel_oserror * /*er*/);
     * error box, and then quits the application.
     */
 
-static inline void err_check_fatal(const _kernel_oserror *const er)
+static inline void err_check_fatal(_Optional const _kernel_oserror *const er)
 {
   if (er != NULL)
   {
-    err_check_fatal_rep(er);
+    err_check_fatal_rep(&*er);
   }
 }
    /*
@@ -172,7 +177,7 @@ void err_suppress_errors(void);
     * switch when the source code is compiled.
     */
 
-CONST _kernel_oserror *err_dump_suppressed(void);
+_Optional CONST _kernel_oserror *err_dump_suppressed(void);
    /*
     * Disables suppression of non-fatal errors and returns a pointer to
     * the last error to be suppressed by err_report, err_complain or

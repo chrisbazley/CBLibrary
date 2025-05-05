@@ -68,6 +68,7 @@
                   scheduler_deregister() followed by scheduler_register()
                   (for the same client) in a SchedulerIdleFunction.
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -89,13 +90,13 @@
 #include "OSReadTime.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "scheduler.h"
 #include "Timer.h"
 #ifdef CBLIB_OBSOLETE
 #include "msgtrans.h"
 #include "Err.h"
 #endif /* CBLIB_OBSOLETE */
+#include "Internal/CBMisc.h"
 
 
 typedef struct
@@ -125,12 +126,12 @@ typedef struct
 SchedulerFindEarliestData;
 
 static LinkedList clients_list;
-static SchedulerClient *next_client;
+static _Optional SchedulerClient *global_next;
 static SchedulerTime max_time_in_app;
 static volatile bool time_up;
 static bool defer_removals, removal_deferred, list_changed, initialised = false;
 static unsigned int suspended, clients_count;
-static MessagesFD *desc;
+static _Optional MessagesFD *desc;
 #ifndef CBLIB_OBSOLETE
 static void (*report)(CONST _kernel_oserror *);
 #endif
@@ -143,16 +144,16 @@ static WimpEventHandler _scheduler_null_handler;
 static void _scheduler_mask_nulls(bool mask);
 static CONST _kernel_oserror *lookup_error(const char *token);
 static LinkedListCallbackFn _scheduler_destroy_client, _scheduler_client_has_callback, _scheduler_find_earliest, _scheduler_destroy_pending;
-static SchedulerClient *_scheduler_find_client(SchedulerClientCallback *callback);
+static _Optional SchedulerClient *_scheduler_find_client(SchedulerClientCallback *callback);
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *scheduler_initialise(
-                         SchedulerTime   nice
+_Optional CONST _kernel_oserror *scheduler_initialise(
+                         SchedulerTime        nice
 #ifndef CBLIB_OBSOLETE
-                        ,MessagesFD     *mfd,
-                         void          (*report_error)(CONST _kernel_oserror *)
+                        ,_Optional MessagesFD *mfd,
+                         void                 (*report_error)(CONST _kernel_oserror *)
 #endif
 )
 {
@@ -170,10 +171,10 @@ CONST _kernel_oserror *scheduler_initialise(
   ON_ERR_RTN_E(event_register_wimp_handler(-1,
                                            Wimp_ENull,
                                            _scheduler_null_handler,
-                                           NULL));
+                                           (void *)NULL));
   _scheduler_mask_nulls(true);
   linkedlist_init(&clients_list);
-  next_client = NULL;
+  global_next = NULL;
   defer_removals = false;
   suspended = clients_count = 0;
   max_time_in_app = nice;
@@ -190,9 +191,9 @@ CONST _kernel_oserror *scheduler_initialise(
 /* ----------------------------------------------------------------------- */
 
 #ifdef INCLUDE_FINALISATION_CODE
-CONST _kernel_oserror *scheduler_finalise(void)
+_Optional CONST _kernel_oserror *scheduler_finalise(void)
 {
-  CONST _kernel_oserror *return_error = NULL;
+  _Optional CONST _kernel_oserror *return_error = NULL;
 
   assert(initialised);
   initialised = false;
@@ -200,7 +201,7 @@ CONST _kernel_oserror *scheduler_finalise(void)
   DEBUGF("Scheduler: Finalising\n");
 
   /* Free the linked list of idle client handlers */
-  linkedlist_for_each(&clients_list, _scheduler_destroy_client, NULL);
+  linkedlist_for_each(&clients_list, _scheduler_destroy_client, (void *)NULL);
 
   if (!suspended && clients_count)
   {
@@ -213,7 +214,7 @@ CONST _kernel_oserror *scheduler_finalise(void)
             event_deregister_wimp_handler(-1,
                                           Wimp_ENull,
                                           _scheduler_null_handler,
-                                          NULL));
+                                          (void *)NULL));
 
   return return_error;
 }
@@ -232,7 +233,7 @@ void scheduler_set_time_slice(SchedulerTime nice)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *scheduler_register_delay(SchedulerIdleFunction *function, void *handle, SchedulerTime delay, int priority)
+_Optional CONST _kernel_oserror *scheduler_register_delay(SchedulerIdleFunction *function, void *handle, SchedulerTime delay, int priority)
 {
   SchedulerTime time_now;
 
@@ -243,9 +244,9 @@ CONST _kernel_oserror *scheduler_register_delay(SchedulerIdleFunction *function,
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *scheduler_register(SchedulerIdleFunction *function, void *handle, SchedulerTime first_call, int priority)
+_Optional CONST _kernel_oserror *scheduler_register(SchedulerIdleFunction *function, void *handle, SchedulerTime first_call, int priority)
 {
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
 
   DEBUGF("Scheduler: request to register function (handle %p, time %d,"
         " priority %d)\n", handle, first_call, priority);
@@ -260,13 +261,13 @@ CONST _kernel_oserror *scheduler_register(SchedulerIdleFunction *function, void 
 
   /* Ensure that the proposed key (function pointer and handle) is unique */
   SchedulerClientCallback callback = {.funct = function, .arg = handle};
-  const SchedulerClient *const client_data = _scheduler_find_client(&callback);
+  _Optional const SchedulerClient *const client_data = _scheduler_find_client(&callback);
   assert(client_data == NULL);
   if (client_data != NULL)
     return NULL; /* already registered */
 
   /* Create new record for timed function */
-  SchedulerClient *const new_record = malloc(sizeof(*new_record));
+  _Optional SchedulerClient *const new_record = malloc(sizeof(*new_record));
   if (new_record == NULL)
   {
     DEBUGF("Scheduler: Not enough memory to create record!\n");
@@ -304,7 +305,7 @@ void scheduler_deregister(SchedulerIdleFunction *function, void *handle)
   assert(initialised);
 
   SchedulerClientCallback callback = {.funct = function, .arg = handle};
-  SchedulerClient *const client_data = _scheduler_find_client(&callback);
+  _Optional SchedulerClient *const client_data = _scheduler_find_client(&callback);
 
   if (client_data != NULL)
   {
@@ -318,7 +319,7 @@ void scheduler_deregister(SchedulerIdleFunction *function, void *handle)
     }
     else
     {
-      _scheduler_destroy_client(&clients_list, &client_data->list_item, NULL);
+      _scheduler_destroy_client(&clients_list, &client_data->list_item, (void *)NULL);
     }
 
     assert(clients_count > 0);
@@ -341,7 +342,8 @@ void scheduler_deregister(SchedulerIdleFunction *function, void *handle)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *scheduler_poll(int *event_code, WimpPollBlock *poll_block, void *poll_word)
+_Optional CONST _kernel_oserror *scheduler_poll(_Optional int *event_code,
+  _Optional WimpPollBlock *poll_block, _Optional void *poll_word)
 {
   assert(initialised);
 
@@ -412,7 +414,7 @@ void scheduler_suspend(void)
 /* ----------------------------------------------------------------------- */
 /*                         Private functions                               */
 
-static bool check_error(CONST _kernel_oserror *e)
+static bool check_error(_Optional CONST _kernel_oserror *e)
 {
   bool is_error = false;
 #ifdef CBLIB_OBSOLETE
@@ -420,8 +422,8 @@ static bool check_error(CONST _kernel_oserror *e)
 #else
   if (e != NULL)
   {
-    if (report != NULL)
-      report(e);
+    if (report)
+      report(&*e);
     is_error = true;
   }
 #endif
@@ -467,14 +469,14 @@ static int _scheduler_null_handler(int event_code, WimpPollBlock *event, IdBlock
 
   /* Call any registered 'idle' client functions until our program's
      time slice has expired (or all functions are blocking) */
-  SchedulerClient const *last_called = NULL;
+  _Optional SchedulerClient *last_called = NULL, *next_client = global_next;
   while (clients_count)
   {
     if (next_client == NULL)
     {
       /* We have lost our place in the list, or reached the end */
       DEBUG_VERBOSEF("Scheduler: returning to head of client list\n");
-      LinkedListItem *const head = linkedlist_get_head(&clients_list);
+      _Optional LinkedListItem *const head = linkedlist_get_head(&clients_list);
       if (head == NULL)
       {
         DEBUGF("Scheduler: client list is empty!\n");
@@ -509,7 +511,7 @@ static int _scheduler_null_handler(int event_code, WimpPollBlock *event, IdBlock
          it is time for the client function to return. */
       time_up = false;
 
-      CONST _kernel_oserror *err = timer_register(&time_up,
+      _Optional CONST _kernel_oserror *err = timer_register(&time_up,
                            time_left < next_client->next_time_slice ?
                              time_left : next_client->next_time_slice);
       if (check_error(err))
@@ -535,13 +537,13 @@ static int _scheduler_null_handler(int event_code, WimpPollBlock *event, IdBlock
       cancel_ticker();
 
       DEBUGF("Scheduler: client function returned %d%s\n",
-             next_client->next_invocation,
+             last_called->next_invocation,
              premature_rtn ? " (premature return)" : "");
 
       if (check_error(err))
         break;
 
-      if (!next_client->removal_pending)
+      if (!last_called->removal_pending)
       {
         SchedulerTime const elapsed = post_time - pre_time;
         DEBUGF("Scheduler: function ran for %d ticks\n", elapsed);
@@ -550,21 +552,21 @@ static int _scheduler_null_handler(int event_code, WimpPollBlock *event, IdBlock
            expired, yet it does not want to sleep, then we will call it back
            A.S.A.P. to complete. (Typically happens to the last function called
            before we return from this event handler.) */
-        if (elapsed < next_client->next_time_slice &&
-            post_time - next_client->next_invocation >= 0)
+        if (elapsed < last_called->next_time_slice &&
+            post_time - last_called->next_invocation >= 0)
         {
           /* Reduce the time slice for the next invocation of this function by
              the time elapsed during this invocation */
-          next_client->next_time_slice -= elapsed;
+          last_called->next_time_slice -= elapsed;
 
           DEBUGF("Scheduler: will call it back A.S.A.P. for remaining %d ticks\n",
-                next_client->next_time_slice);
+                last_called->next_time_slice);
 
           continue; /* Do not advance to next record in linked list */
         }
 
         /* Revert to normal run time for next invocation */
-        next_client->next_time_slice = next_client->time_slice;
+        last_called->next_time_slice = last_called->time_slice;
       }
     }
     else
@@ -578,16 +580,18 @@ static int _scheduler_null_handler(int event_code, WimpPollBlock *event, IdBlock
       }
     }
 
-    LinkedListItem *const next = linkedlist_get_next(&next_client->list_item);
-    next_client = next ? CONTAINER_OF(next, SchedulerClient, list_item) : NULL;
+    _Optional LinkedListItem *const next_item = linkedlist_get_next(&next_client->list_item);
+    next_client = next_item ? CONTAINER_OF(next_item, SchedulerClient, list_item) : NULL;
   }
+
+  global_next = next_client;
 
   /* Do any deferred removals of 'idle' functions */
   defer_removals = false;
   if (removal_deferred)
   {
     DEBUGF("Scheduler: Doing deferred removals\n");
-    linkedlist_for_each(&clients_list, _scheduler_destroy_pending, NULL);
+    linkedlist_for_each(&clients_list, _scheduler_destroy_pending, (void *)NULL);
   }
 
   DEBUG_VERBOSEF("Scheduler: exiting null event handler\n");
@@ -627,12 +631,12 @@ static void _scheduler_mask_nulls(bool mask)
 
 /* ----------------------------------------------------------------------- */
 
-static SchedulerClient *_scheduler_find_client(SchedulerClientCallback *callback)
+static _Optional SchedulerClient *_scheduler_find_client(SchedulerClientCallback *callback)
 {
   assert(callback != NULL);
   DEBUGF("Scheduler: Searching for client with function arg %p\n", callback->arg);
 
-  LinkedListItem *const item = linkedlist_for_each(
+  _Optional LinkedListItem *const item = linkedlist_for_each(
                     &clients_list, _scheduler_client_has_callback, callback);
 
   if (item == NULL)
@@ -657,17 +661,17 @@ static bool _scheduler_destroy_client(LinkedList *list, LinkedListItem *item, vo
 
   /* If we are about to remove the client to be called on the next null
      event then bring forward the next client instead */
-  if (next_client == client_data)
+  if (global_next == client_data)
   {
-    LinkedListItem *const next = linkedlist_get_next(&client_data->list_item);
+    _Optional LinkedListItem *const next = linkedlist_get_next(&client_data->list_item);
     if (next != NULL)
     {
-      next_client = CONTAINER_OF(next, SchedulerClient, list_item);
-      DEBUGF("Scheduler: Promoting client with function arg %p\n", next_client->callback.arg);
+      global_next = CONTAINER_OF(next, SchedulerClient, list_item);
+      DEBUGF("Scheduler: Promoting client with function arg %p\n", global_next->callback.arg);
     }
     else
     {
-      next_client = NULL;
+      global_next = NULL;
     }
   }
   linkedlist_remove(list, &client_data->list_item);

@@ -109,6 +109,7 @@ History:
   CJB: 23-May-22: Redefined the ON_ERR_RPT macro as a simple call to err_check()
                   that discards its result, since err_check() is now defined
                   inline.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef Macros_h
@@ -142,7 +143,7 @@ enum
  * functions and module code.
  */
 #define ON_ERR_RTN_E(error_source) do { \
-  CONST _kernel_oserror *error = (error_source); \
+  _Optional CONST _kernel_oserror *error = (error_source); \
   if (error != NULL) \
     return error; \
 } while (0)
@@ -153,7 +154,7 @@ enum
  * to occur.
  */
 #define MERGE_ERR(current_error, error_source) do { \
-  CONST _kernel_oserror *error = (error_source); \
+  _Optional CONST _kernel_oserror *error = (error_source); \
   if ((current_error) == NULL) \
     (current_error) = error; \
 } while (0)
@@ -162,9 +163,9 @@ enum
  * the user and return the specified value from the current function.
  */
 #define ON_ERR_RPT_RTN_V(error_source, return_value) do { \
-  const _kernel_oserror *error = (error_source); \
+  _Optional const _kernel_oserror *error = (error_source); \
   if (error != NULL) { \
-    err_check_rep (error); \
+    err_check_rep (&*error); \
     return (return_value); \
   } \
 } while (0)
@@ -173,9 +174,9 @@ enum
  * the user and return from the current function.
  */
 #define ON_ERR_RPT_RTN(error_source) do { \
-  const _kernel_oserror *error = (error_source); \
+  _Optional const _kernel_oserror *error = (error_source); \
   if (error != NULL) { \
-    err_check_rep (error); \
+    err_check_rep (&*error); \
     return; \
   } \
 } while (0)
@@ -236,7 +237,7 @@ enum
  */
 #define STRCPY_SAFE(string_1, string_2) do { \
   strncpy((string_1), (string_2), sizeof(string_1) - 1); \
-  string_1[sizeof(string_1) - 1]='\0'; \
+  (string_1)[sizeof(string_1) - 1]='\0'; \
 } while (0)
 
 
@@ -285,7 +286,7 @@ enum
 #define PI (3.1415926535897896)
 
 /* Convert a null pointer into an empty string. */
-#define STRING_OR_NULL(s) ((s) == NULL ? "" : (s))
+#define STRING_OR_NULL(s) ((s) == NULL ? "" : &*(s))
 
 /* --- Bitwise manipulation (e.g. flags) --- */
 

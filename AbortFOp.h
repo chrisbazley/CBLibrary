@@ -25,6 +25,7 @@ Message tokens: None.
 History:
   CJB: 05-Nov-04: Added clib-style documentation and dependency information.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef AbortFOp_h
@@ -33,7 +34,11 @@ History:
 /* ISO library headers */
 #include <stdio.h>
 
-void abort_file_op(FILE *** /*handle*/);
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
+void abort_file_op(FILE *_Optional ** /*handle*/);
    /*
     * Causes a stream to be flushed and the associated file to be closed, then
     * deallocation of the heap block that contained a pointer to this stream

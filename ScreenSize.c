@@ -24,6 +24,7 @@
                   and named constants instead of 'magic' values. Fixed a bug
                   where returned dimensions were too short by one pixel.
   CJB: 11-Dec-20: Prefer to declare variable with initializer.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -37,13 +38,13 @@
 #include "OSVDU.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "ScreenSize.h"
+#include "Internal/CBMisc.h"
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *get_screen_size(int *width, int *height)
+_Optional CONST _kernel_oserror *get_screen_size(int *width, int *height)
 {
   /* Keep this enumeration synchronised with mode_vars[] */
   enum
@@ -65,7 +66,7 @@ CONST _kernel_oserror *get_screen_size(int *width, int *height)
   };
   int var_vals[VarIndex_LAST];
 
-  CONST _kernel_oserror *e = os_read_vdu_variables(mode_vars, var_vals);
+  _Optional CONST _kernel_oserror *e = os_read_vdu_variables(mode_vars, var_vals);
   if (e == NULL)
   {
     /* Convert screen dimensions to external graphics units */

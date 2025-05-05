@@ -28,6 +28,7 @@ Message tokens: NoMem, RecDied, OpenOutFail.
 History:
   CJB: 22-Sep-19: Created this header file from <Saver.h>.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef Saver2_h
@@ -47,13 +48,17 @@ History:
 /* Local headers */
 #include "Macros.h"
 
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
 /* ---------------- Client-supplied participation routines ------------------ */
 
 typedef bool Saver2WriteMethod(
   Writer     * /*writer*/,
   int          /*file_type*/,
   const char * /*filename*/,
-  void       * /*client_handle*/);
+  void * /*client_handle*/);
 /*
  * This function is called in order to get data when it becomes required.
  * It writes data via the given 'writer' object. 'file_type' is the type of
@@ -67,7 +72,7 @@ typedef bool Saver2WriteMethod(
  * Returns: true on success or false on failure.
  */
 
-typedef void Saver2FailedMethod(CONST _kernel_oserror * /*error*/,
+typedef void Saver2FailedMethod(_Optional CONST _kernel_oserror * /*error*/,
   void * /*client_handle*/);
 /*
  * This function is called when a save operation has failed.
@@ -77,10 +82,10 @@ typedef void Saver2FailedMethod(CONST _kernel_oserror * /*error*/,
  */
 
 typedef void Saver2CompleteMethod(
-  int          /*file_type*/,
-  const char * /*file_path*/,
-  int          /*datasave_ref*/,
-  void       * /*client_handle*/);
+  int                    /*file_type*/,
+  _Optional const char * /*file_path*/,
+  int                    /*datasave_ref*/,
+  void                 * /*client_handle*/);
 /*
  * This function is called when a save operation has completed successfully.
  * 'file_type' is the type of the saved data (from the DataSave message).
@@ -93,8 +98,8 @@ typedef void Saver2CompleteMethod(
 
 /* --------------------------- Library functions ---------------------------- */
 
-CONST _kernel_oserror *saver2_initialise(
-  int /*task_handle*/, MessagesFD * /*mfd*/);
+_Optional CONST _kernel_oserror *saver2_initialise(
+  int /*task_handle*/, _Optional MessagesFD * /*mfd*/);
    /*
     * Initialises the Saver2 component and registers Wimp message handlers for
     * DataSaveAck, DataLoadAck and RAMFetch. These are used to handle the data
@@ -109,7 +114,7 @@ CONST _kernel_oserror *saver2_initialise(
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *saver2_finalise(void);
+_Optional CONST _kernel_oserror *saver2_finalise(void);
    /*
     * Deregisters the Saver2 component's event handlers and releases any memory
     * claimed by this library component. Any incomplete save operations are
@@ -119,13 +124,13 @@ CONST _kernel_oserror *saver2_finalise(void);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *saver2_send_data(
-  int                     /*task_handle*/,
-  WimpMessage           * /*message*/,
-  Saver2WriteMethod     * /*write_method*/,
-  Saver2CompleteMethod  * /*complete_method*/,
-  Saver2FailedMethod    * /*failed_method*/,
-  void                  * /*client_handle*/);
+_Optional CONST _kernel_oserror *saver2_send_data(
+  int                               /*task_handle*/,
+  WimpMessage                     * /*message*/,
+  _Optional Saver2WriteMethod     * /*write_method*/,
+  _Optional Saver2CompleteMethod  * /*complete_method*/,
+  _Optional Saver2FailedMethod    * /*failed_method*/,
+   void                           * /*client_handle*/);
    /*
     * Sends a DataSave message to the task specified by 'task_handle'. The
     * action code and message size are filled out automatically. If

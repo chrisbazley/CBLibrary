@@ -133,7 +133,7 @@ static void check_path(void)
 static void test1(void)
 {
   /* Make whole path */
-  CONST _kernel_oserror *e;
+  _Optional CONST _kernel_oserror *e;
 
   /* Start with a cleanish state (don't delete Scrap directory) */
   wipe(paths[1]);
@@ -146,7 +146,7 @@ static void test1(void)
 static void test2(void)
 {
   /* Make partial path */
-  CONST _kernel_oserror *e;
+  _Optional CONST _kernel_oserror *e;
 
   /* Start with a cleanish state (don't delete Scrap directory) */
   wipe(paths[1]);
@@ -163,7 +163,7 @@ static void test2(void)
 static void test3(void)
 {
   /* Make degenerate partial path */
-  CONST _kernel_oserror *e;
+  _Optional CONST _kernel_oserror *e;
 
   /* Start with a cleanish state (don't delete Scrap directory) */
   wipe(paths[1]);
@@ -181,7 +181,7 @@ static void test4(void)
 {
   /* Make existing path */
   size_t i;
-  CONST _kernel_oserror *e;
+  _Optional CONST _kernel_oserror *e;
 
   /* Start with a cleanish state (don't delete Scrap directory) */
   wipe(paths[1]);

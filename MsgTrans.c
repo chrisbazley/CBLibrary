@@ -49,6 +49,7 @@
   CJB: 18-Apr-16: Cast pointer parameters to void * to match %p.
   CJB: 29-Aug-22: Use size_t rather than unsigned int for nparam.
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 /* ISO library headers */
@@ -63,9 +64,9 @@
 #include "MessTrans.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Err.h"
 #include "msgtrans.h"
+#include "Internal/CBMisc.h"
 
 /* Miscellaneous numeric constants */
 enum
@@ -74,27 +75,27 @@ enum
   MaxParameters     = 4
 };
 
-static MessagesFD *desc = NULL;
+static _Optional MessagesFD *desc = NULL;
 
 /* ----------------------------------------------------------------------- */
 /*                       Function prototypes                               */
 
 #ifdef CBLIB_OBSOLETE
-static char *generic_lookup(MessagesFD   *mfd,
-                            const char   *token,
-                            size_t  nparam,
+static char *generic_lookup(_Optional MessagesFD *mfd,
+                            const char           *token,
+                            size_t               nparam,
                             ...);
 #endif /* CBLIB_OBSOLETE */
 
-static char *generic_vlookup(MessagesFD   *mfd,
-                             const char   *token,
-                             size_t  nparam,
-                             va_list       ap);
+static char *generic_vlookup(_Optional MessagesFD   *mfd,
+                             const char             *token,
+                             size_t                 nparam,
+                             va_list                ap);
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *msgs_initialise(MessagesFD *mfd)
+_Optional CONST _kernel_oserror *msgs_initialise(MessagesFD *mfd)
 {
   /* Set the message file descriptor to be used for future look-ups */
   DEBUGF("MsgTrans: Setting messages file descriptor %p\n", (void *)mfd);
@@ -175,7 +176,7 @@ MessagesFD *msgs_get_descriptor(void)
            (void *)desc);
   }
 
-  return desc;
+  return &*desc;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -222,12 +223,12 @@ char *msgs_globalsub(const char *token, const char *param0, const char *param1, 
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *msgs_errorsubn(int errnum, const char *token, size_t nparam, ...)
+_Optional CONST _kernel_oserror *msgs_errorsubn(int errnum, const char *token, size_t nparam, ...)
 {
   /* look up error message and create error block, with substitution of a
      variable number of parameters */
   va_list ap;
-  CONST _kernel_oserror *e;
+  _Optional CONST _kernel_oserror *e;
 
   va_start(ap, nparam); /* make ap point to 1st unnamed arg */
   e = messagetrans_error_vlookup(desc, errnum, token, nparam, ap);
@@ -242,7 +243,7 @@ CONST _kernel_oserror *msgs_errorsubn(int errnum, const char *token, size_t npar
 /*                         Private functions                               */
 
 #ifdef CBLIB_OBSOLETE
-static char *generic_lookup(MessagesFD *mfd, const char *token,
+static char *generic_lookup(_Optional MessagesFD *mfd, const char *token,
                             size_t  nparam, ...)
 {
   va_list ap;
@@ -258,12 +259,12 @@ static char *generic_lookup(MessagesFD *mfd, const char *token,
 
 /* ----------------------------------------------------------------------- */
 
-static char *generic_vlookup(MessagesFD *mfd, const char *token,
+static char *generic_vlookup(_Optional MessagesFD *mfd, const char *token,
                              size_t nparam, va_list ap)
 {
   /* look in application messages file, with substitution of a variable
      number of parameters */
-  CONST _kernel_oserror *e;
+  _Optional CONST _kernel_oserror *e;
   static char message_buffer[MessageBufferSize] = "";
 
   assert(token != NULL);

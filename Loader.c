@@ -161,6 +161,7 @@
                   Get rid of nested #ifdef CBLIB_OBSOLETE blocks.
   CJB: 29-Aug-20: Deleted a redundant static function pre-declaration.
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifdef CBLIB_OBSOLETE /* Use c.Loader2 instead */
@@ -190,7 +191,6 @@
 #include "SprFormats.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Err.h"
 #include "msgtrans.h"
 #include "Loader.h"
@@ -199,6 +199,7 @@
 #include "FilePerc.h"
 #endif
 #include "Loader2.h"
+#include "Internal/CBMisc.h"
 
 #define ERR_BAD_OBJECT_ID    0x1b80cb02
 #define ERR_BAD_COMPONENT_ID 0x1b80a914
@@ -257,7 +258,7 @@ static LoaderListenerBlk *_ldr_find_listener(LoaderListenerCriteria *criteria);
 static LoaderListenerBlk *_ldr_find_suitable_listener(const char *perma_file_path, int window, int icon, int file_type);
 static Loader2FinishedHandler _ldr_finished;
 static void _ldr_destroy_extra_op(ExtraOpData *extra_op_data);
-static CONST _kernel_oserror *_ldr_abs_to_work_area(int window_handle, int *x, int *y);
+static _Optional CONST _kernel_oserror *_ldr_abs_to_work_area(int window_handle, int *x, int *y);
 static LinkedListCallbackFn _ldr_cancel_matching_op, _ldr_kill_listener_for_object, _ldr_listener_is_match;
 
 /* -----------------------------------------------------------------------
@@ -293,7 +294,7 @@ msg_handlers[] =
                          Public library functions
 */
 
-CONST _kernel_oserror *loader_initialise(unsigned int flags)
+_Optional CONST _kernel_oserror *loader_initialise(unsigned int flags)
 {
   unsigned int mask;
 
@@ -330,9 +331,9 @@ CONST _kernel_oserror *loader_initialise(unsigned int flags)
 
 /* ----------------------------------------------------------------------- */
 #ifdef INCLUDE_FINALISATION_CODE
-CONST _kernel_oserror *loader_finalise(void)
+_Optional CONST _kernel_oserror *loader_finalise(void)
 {
-  CONST _kernel_oserror *return_error = NULL;
+  _Optional CONST _kernel_oserror *return_error = NULL;
 
   assert(initialised);
   initialised = false;
@@ -359,7 +360,7 @@ CONST _kernel_oserror *loader_finalise(void)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *loader_register_listener(unsigned int flags, int file_type, ObjectId drop_object, const ComponentId *drop_gadgets, LoaderFileHandler *loader_method, LoaderFinishedHandler *finished_method, void *client_handle)
+_Optional CONST _kernel_oserror *loader_register_listener(unsigned int flags, int file_type, ObjectId drop_object, const ComponentId *drop_gadgets, LoaderFileHandler *loader_method, LoaderFinishedHandler *finished_method, void *client_handle)
 {
   LoaderListenerBlk *newlistener;
   LoaderListenerCriteria criteria;
@@ -431,7 +432,7 @@ CONST _kernel_oserror *loader_register_listener(unsigned int flags, int file_typ
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *loader_deregister_listeners_for_object(ObjectId drop_object)
+_Optional CONST _kernel_oserror *loader_deregister_listeners_for_object(ObjectId drop_object)
 {
   /* Kill all listeners for a given object */
   DEBUGF("Loader: Removing all listeners for object %d\n", drop_object);
@@ -445,7 +446,7 @@ CONST _kernel_oserror *loader_deregister_listeners_for_object(ObjectId drop_obje
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *loader_deregister_listener(int file_type, ObjectId drop_object, const ComponentId *drop_gadgets)
+_Optional CONST _kernel_oserror *loader_deregister_listener(int file_type, ObjectId drop_object, const ComponentId *drop_gadgets)
 {
   /* Kill a specified listener */
   LoaderListenerBlk *find_it;
@@ -468,7 +469,7 @@ CONST _kernel_oserror *loader_deregister_listener(int file_type, ObjectId drop_o
 /* ----------------------------------------------------------------------- */
 
 /* The following function is deprecated; use canonicalise(). */
-CONST _kernel_oserror *loader_canonicalise(char **buffer, const char *path_var, const char *path_string, const char *file_path)
+_Optional CONST _kernel_oserror *loader_canonicalise(_Optional char **buffer, _Optional const char *path_var, _Optional const char *path_string, const char *file_path)
 {
   return canonicalise(buffer, path_var, path_string, file_path);
 }
@@ -476,7 +477,7 @@ CONST _kernel_oserror *loader_canonicalise(char **buffer, const char *path_var, 
 /* ----------------------------------------------------------------------- */
 
 /* The following function is deprecated; use loader2_buffer_file(). */
-CONST _kernel_oserror *loader_buffer_file(const char *file_path, flex_ptr buffer, bool sprite_file)
+_Optional CONST _kernel_oserror *loader_buffer_file(const char *file_path, flex_ptr buffer, bool sprite_file)
 {
   DEBUGF("Loader: will load %sfile '%s' into a flex block anchored at %p\n",
          sprite_file ? "sprite " : "", file_path, (void *)buffer);
@@ -507,7 +508,7 @@ static int _ldr_datasave_msg_handler(WimpMessage *message, void *handle)
   /* This is a handler for DataSave messages. It must be registered early or
      else it will intercept messages intended for the Loader2 or Entity library
      components). */
-  CONST _kernel_oserror *e;
+  _Optional CONST _kernel_oserror *e;
   LoaderListenerBlk *listener;
   ExtraOpData *extra_op_data;
   NOT_USED(handle);
@@ -575,8 +576,8 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
   /* This is a handler for DataLoad and DataOpen messages. It must be
      registered early or else it will intercept messages intended for the
      Loader2 or Entity library components). */
-  CONST _kernel_oserror *e;
-  char *full_path = NULL;
+  _Optional CONST _kernel_oserror *e;
+  _Optional char *full_path = NULL;
   LoaderListenerBlk *found_listener;
   int file_type, drop_x, drop_y;
   NOT_USED(handle);
@@ -793,9 +794,9 @@ static LoaderListenerBlk *_ldr_find_broadcast_listener(const char *file_path, in
 
 /* ----------------------------------------------------------------------- */
 
-static LoaderListenerBlk *_ldr_find_listener(LoaderListenerCriteria *criteria)
+static _Optional LoaderListenerBlk *_ldr_find_listener(LoaderListenerCriteria *criteria)
 {
-  return (LoaderListenerBlk *)linkedlist_for_each(
+  return (_Optional LoaderListenerBlk *)linkedlist_for_each(
          &listener_list, _ldr_listener_is_match, criteria);
 }
 
@@ -858,7 +859,7 @@ static bool _ldr_check_dropzone(ObjectId object, const ComponentId *gadgets, int
   {
     ObjectClass objclass;
     {
-      _kernel_oserror *errptr;
+      _Optional _kernel_oserror *errptr;
       errptr=toolbox_get_object_class(0, object, &objclass);
       if (errptr != NULL) {
         if (errptr->errnum != ERR_BAD_OBJECT_ID)
@@ -904,7 +905,7 @@ static bool _ldr_check_dropzone(ObjectId object, const ComponentId *gadgets, int
 
     /* get list size */
     int nbytes;
-    _kernel_oserror *errptr = gadget_get_icon_list(0, object, gadgets[j], NULL,
+    _Optional _kernel_oserror *errptr = gadget_get_icon_list(0, object, gadgets[j], NULL,
                               0, &nbytes);
     if (errptr != NULL) {
       /* ignore gadget if bad gadget ID */
@@ -1060,11 +1061,11 @@ static LoaderListenerBlk *_ldr_find_suitable_listener(const char *perma_file_pat
 
 /* ----------------------------------------------------------------------- */
 
-static void _ldr_finished(CONST _kernel_oserror *load_error, int file_type, flex_ptr buffer, void *client_handle)
+static void _ldr_finished(_Optional CONST _kernel_oserror *load_error, int file_type, flex_ptr buffer, void *client_handle)
 {
   /* This function is called when a load operation has finished
      (whether successful or not) */
-  ExtraOpData *extra_op_data = (ExtraOpData *)client_handle;
+  ExtraOpData *extra_op_data = client_handle;
   LoaderListenerBlk *parent_listener = extra_op_data->listener;
 
   assert(file_type == -1 || load_error == NULL);
@@ -1119,7 +1120,7 @@ static void _ldr_destroy_extra_op(ExtraOpData *extra_op_data)
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *_ldr_abs_to_work_area(int window_handle, int *x, int *y)
+static _Optional CONST _kernel_oserror *_ldr_abs_to_work_area(int window_handle, int *x, int *y)
 {
   WimpGetWindowStateBlock state;
   state.window_handle = window_handle;

@@ -27,6 +27,7 @@ History:
   CJB: 05-Nov-04: Added clib-style documentation and dependency information.
   CJB: 05-Mar-05: Updated documentation on fclose_dec.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef FopenCount_h
@@ -35,7 +36,11 @@ History:
 /* ISO library headers */
 #include <stdio.h>
 
-FILE *fopen_inc(const char * /*filename*/, const char * /*mode*/);
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
+_Optional FILE *fopen_inc(const char * /*filename*/, const char * /*mode*/);
    /*
     * Opens the file whose name is the string pointed to by 'filename', and
     * associates a stream with it. This function is a direct replacement for

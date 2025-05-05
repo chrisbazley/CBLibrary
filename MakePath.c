@@ -22,6 +22,7 @@
   CJB: 07-Dec-14: Ensure string is restored upon error.
   CJB: 18-Apr-15: Assertions are now provided by debug.h.
   CJB: 07-Aug-18: Modified to use PATH_SEPARATOR from "Platform.h".
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -31,17 +32,17 @@
 #include "OSFile.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Platform.h"
 #include "FileUtils.h"
+#include "Internal/CBMisc.h"
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *make_path(char *f, size_t offset)
+_Optional CONST _kernel_oserror *make_path(char *f, size_t offset)
 {
-  char *end;
-  CONST _kernel_oserror *e = NULL;
+  _Optional char *end;
+  _Optional CONST _kernel_oserror *e = NULL;
 
   assert(f != NULL);
   assert(offset <= strlen(f));
@@ -49,7 +50,7 @@ CONST _kernel_oserror *make_path(char *f, size_t offset)
   /* Find each path separator in turn */
   for (end = strchr(f + offset, PATH_SEPARATOR);
        e == NULL && end != NULL;
-       end = strchr(end + 1, PATH_SEPARATOR))
+       end = strchr(&*end + 1, PATH_SEPARATOR))
   {
     *end = '\0'; /* Slice string at path separator */
     e = os_file_create_dir(f, OS_File_CreateDir_DefaultNoOfEntries);

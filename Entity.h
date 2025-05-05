@@ -40,6 +40,7 @@ History:
                   CBLIB_OBSOLETE.
   CJB: 11-Dec-14: Deleted redundant brackets from function type definitions.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef Entity_h
@@ -56,6 +57,10 @@ History:
 #include "Loader2.h"
 #include "Macros.h"
 
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
 /* ---------------- Client-supplied participation routines ------------------ */
 
 typedef void EntityLostMethod (void * /*client_handle*/);
@@ -67,11 +72,11 @@ typedef void EntityLostMethod (void * /*client_handle*/);
  * remove or fade any visual display of that entity (e.g. caret or selection).
  */
 
-typedef flex_ptr EntityDataMethod (const int * /*pref_file_types*/,
-                                   bool        /*probe_only*/,
-                                   void      * /*client_handle*/,
-                                   bool      * /*data_persists*/,
-                                   int       * /*file_type*/);
+typedef void *_Optional *EntityDataMethod (const int * /*pref_file_types*/,
+                                           bool        /*probe_only*/,
+                                           void      * /*client_handle*/,
+                                           bool      * /*data_persists*/,
+                                           int       * /*file_type*/);
 /*
  * This function is called to get the data associated with an entity, for
  * example to paste from the clipboard. 'client_handle' will be the pointer
@@ -95,12 +100,12 @@ typedef void EntityExitMethod (void);
 
 /* --------------------------- Library functions ---------------------------- */
 
-CONST _kernel_oserror *entity_initialise(
+_Optional CONST _kernel_oserror *entity_initialise(
 #ifdef CBLIB_OBSOLETE
                        void
 #else
-                       MessagesFD  */*mfd*/,
-                       void       (*/*report_error*/)(CONST _kernel_oserror *)
+                       _Optional MessagesFD */*mfd*/,
+                       void (*/*report_error*/)(CONST _kernel_oserror *)
 #endif
 );
    /*
@@ -119,10 +124,10 @@ CONST _kernel_oserror *entity_initialise(
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *entity_claim(unsigned int /*flags*/,
-                                    EntityLostMethod * /*lost_method*/,
-                                    EntityDataMethod * /*data_method*/,
-                                    void * /*client_handle*/);
+_Optional CONST _kernel_oserror *entity_claim(unsigned int /*flags*/,
+                                              _Optional EntityLostMethod * /*lost_method*/,
+                                              _Optional EntityDataMethod * /*data_method*/,
+                                              void * /*client_handle*/);
    /*
     * Claims possession of the entities represented by bits set in the flags
     * word (as for a ClaimEntity message) and registers functions to be called
@@ -132,11 +137,11 @@ CONST _kernel_oserror *entity_claim(unsigned int /*flags*/,
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *entity_probe_data(
+_Optional CONST _kernel_oserror *entity_probe_data(
                                 unsigned int /*flags*/,
                                 int /*window*/,
                                 const int * /*file_types*/,
-                                Loader2FinishedHandler * /*inform_entity_data*/,
+                                _Optional Loader2FinishedHandler * /*inform_entity_data*/,
                                 void * /*client_handle*/);
    /*
     * This function probes to see whether there is any data associated with the
@@ -151,14 +156,14 @@ CONST _kernel_oserror *entity_probe_data(
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *entity_request_data(
+_Optional CONST _kernel_oserror *entity_request_data(
                                unsigned int /*flags*/,
                                int /*window*/,
                                int /*icon*/,
                                int /*x*/,
                                int /*y*/,
                                const int * /*file_types*/,
-                               Loader2FinishedHandler * /*deliver_entity_data*/,
+                               _Optional Loader2FinishedHandler * /*deliver_entity_data*/,
                                void * /*client_handle*/);
    /*
     * This function requests any data associated with the entities specified by
@@ -175,7 +180,7 @@ CONST _kernel_oserror *entity_request_data(
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *entity_dispose_all(EntityExitMethod * exit_method);
+_Optional CONST _kernel_oserror *entity_dispose_all(EntityExitMethod * exit_method);
    /*
     * If our task owns any entities then this function broadcasts a message to
     * inform other tasks that this is their last chance to request the
@@ -201,7 +206,7 @@ void entity_release(unsigned int /*flags*/);
     * functions registered when those entities were claimed will be called.
     */
 
-CONST _kernel_oserror *entity_finalise(void);
+_Optional CONST _kernel_oserror *entity_finalise(void);
    /*
     * Deregisters the Entity component's event handlers and releases any memory
     * claimed by this library component. It also releases any entities that

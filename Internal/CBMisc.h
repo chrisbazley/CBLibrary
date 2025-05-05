@@ -15,6 +15,12 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ */
+
+ /*
+History:
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 #ifndef CBMisc_h
@@ -54,5 +60,9 @@
 #endif /* USE_CBDEBUG */
 
 #include "Macros.h"
+
+#ifdef USE_OPTIONAL
+#include "Optional.h"
+#endif
 
 #endif /* CBMisc_h */

@@ -27,15 +27,16 @@
   CJB: 23-Dec-14: Apply Event library function calls.
   CJB: 18-Apr-16: Passed a pointer parameter of type void * to match %p.
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* Acorn C/C++ library headers */
 #include "event.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Err.h"
 #include "EventExtra.h"
+#include "Internal/CBMisc.h"
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */

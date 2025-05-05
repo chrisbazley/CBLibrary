@@ -28,6 +28,7 @@ History:
   CJB: 13-Oct-06: Qualified returned _kernel_oserror pointers as 'const'.
   CJB: 25-Oct-06: Added proper clib-style documentation.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef InputFocus_h
@@ -40,7 +41,11 @@ History:
 /* Local headers */
 #include "Macros.h"
 
-CONST _kernel_oserror *InputFocus_initialise(void);
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
+_Optional CONST _kernel_oserror *InputFocus_initialise(void);
    /*
     * Initialises the InputFocus component by registering a handler for
     * MenusDeleted messages.
@@ -58,7 +63,7 @@ ToolboxEventHandler InputFocus_recordcaretpos;
     * Returns: 0 (event not claimed)
     */
 
-CONST _kernel_oserror *InputFocus_restorecaret(void);
+_Optional CONST _kernel_oserror *InputFocus_restorecaret(void);
    /*
     * If no window owns the caret then this function will attempt to restore the
     * caret position recorded by InputFocus_recordcaretpos(). No error will be

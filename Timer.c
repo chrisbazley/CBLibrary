@@ -22,6 +22,7 @@
   CJB: 07-Jun-16: Prevented interception of _kernel_swi for error simulation
                   in timer_deregister because it's dangerous to interfere
                   with ticker event deregistration.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -32,12 +33,12 @@
 #include "swis.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Timer.h"
+#include "Internal/CBMisc.h"
 
 extern void timer_set_flag(void);
 
-CONST _kernel_oserror *timer_register(volatile bool *timeup_flag, int wait_time)
+_Optional CONST _kernel_oserror *timer_register(volatile bool *timeup_flag, int wait_time)
 {
   _kernel_swi_regs regs;
   *timeup_flag = false;
@@ -50,7 +51,7 @@ CONST _kernel_oserror *timer_register(volatile bool *timeup_flag, int wait_time)
 /* It's dangerous to prevent ticker event deregistration */
 #undef _kernel_swi
 
-CONST _kernel_oserror *timer_deregister(volatile bool *timeup_flag)
+_Optional CONST _kernel_oserror *timer_deregister(volatile bool *timeup_flag)
 {
   _kernel_swi_regs regs;
   regs.r[0] = (int)&timer_set_flag;

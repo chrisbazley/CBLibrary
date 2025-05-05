@@ -42,6 +42,7 @@ History:
   CJB: 26-Feb-12: Made the arguments to ViewsMenu_create conditional upon
                   CBLIB_OBSOLETE.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef ViewsMenu_h
@@ -57,12 +58,16 @@ History:
 /* Local headers */
 #include "Macros.h"
 
-CONST _kernel_oserror *ViewsMenu_create(
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
+_Optional CONST _kernel_oserror *ViewsMenu_create(
 #ifdef CBLIB_OBSOLETE
                        void
 #else
-                       MessagesFD  */*mfd*/,
-                       void       (*/*report_error*/)(CONST _kernel_oserror *)
+                       _Optional MessagesFD  * /*mfd*/,
+                       void                 (* /*report_error*/ )(CONST _kernel_oserror *)
 #endif
 );
    /*
@@ -76,7 +81,7 @@ CONST _kernel_oserror *ViewsMenu_create(
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *ViewsMenu_parentcreated(ObjectId /*parent_menu*/, ComponentId /*parent_entry*/);
+_Optional CONST _kernel_oserror *ViewsMenu_parentcreated(ObjectId /*parent_menu*/, ComponentId /*parent_entry*/);
    /*
     * Records 'parent_menu' as being the Toolbox object Id of our parent menu,
     * and registers event handlers to enable/disable our menu item (specified
@@ -87,7 +92,7 @@ CONST _kernel_oserror *ViewsMenu_parentcreated(ObjectId /*parent_menu*/, Compone
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *ViewsMenu_add(ObjectId /*showobject*/, const char * /*view_name*/, const char * /*file_path*/);
+_Optional CONST _kernel_oserror *ViewsMenu_add(ObjectId /*showobject*/, const char * /*view_name*/, const char * /*file_path*/);
    /*
     * Adds an entry named 'view_name' to the bottom of our menu and associates
     * this with the specified object Id 'showobject' and contents of string
@@ -99,7 +104,7 @@ CONST _kernel_oserror *ViewsMenu_add(ObjectId /*showobject*/, const char * /*vie
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *ViewsMenu_setname(ObjectId /*showobject*/, const char * /*view_name*/, const char * /*file_path*/);
+_Optional CONST _kernel_oserror *ViewsMenu_setname(ObjectId /*showobject*/, const char * /*view_name*/, _Optional const char * /*file_path*/);
    /*
     * Changes the text of the menu entry and/or file path associated with the
     * Toolbox object 'showobject'. Either or both of the 'view_name' and
@@ -109,7 +114,7 @@ CONST _kernel_oserror *ViewsMenu_setname(ObjectId /*showobject*/, const char * /
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *ViewsMenu_remove(ObjectId /*showobject*/);
+_Optional CONST _kernel_oserror *ViewsMenu_remove(ObjectId /*showobject*/);
    /*
     * Removes the menu entry and file path associated with the Toolbox object
     * 'showobject'. The menu entry will not be removed immediately if it is on
@@ -119,7 +124,7 @@ CONST _kernel_oserror *ViewsMenu_remove(ObjectId /*showobject*/);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *ViewsMenu_showall(void);
+_Optional CONST _kernel_oserror *ViewsMenu_showall(void);
    /*
     * Shows all known Toolbox objects in the reverse order to that in which the
     * entries were added to the menu (i.e. latest first). Internally this
@@ -157,7 +162,7 @@ ObjectId ViewsMenu_getnext(ObjectId /*current*/);
 /* The following functions are deprecated and should not be used in
    new or updated programs. */
 bool ViewsMenu_strcmp_nc(const char * /*string1*/, const char * /*string2*/);
-CONST _kernel_oserror *ViewsMenu_show_object(unsigned int /*flags*/, ObjectId /*id*/, int /*show_type*/, void * /*type*/, ObjectId /*parent*/, ComponentId /*parent_component*/);
+_Optional CONST _kernel_oserror *ViewsMenu_show_object(unsigned int /*flags*/, ObjectId /*id*/, int /*show_type*/, void * /*type*/, ObjectId /*parent*/, ComponentId /*parent_component*/);
 ObjectId ViewMenu_getfirst(void);
 ObjectId ViewMenu_getnext(ObjectId /*current*/);
 

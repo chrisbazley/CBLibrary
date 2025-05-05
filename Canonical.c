@@ -33,6 +33,7 @@
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
   CJB: 25-Aug-20: Fixed null pointers instead of strings passed to DEBUGF.
   CJB: 11-Dec-20: Prefer to declare variable with initializer.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -47,14 +48,15 @@
 #include "OSFSCntrl.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Macros.h"
 #include "FileUtils.h"
+#include "Internal/CBMisc.h"
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *canonicalise(char **b, const char *pv, const char *ps, const char *f)
+_Optional CONST _kernel_oserror *canonicalise(_Optional char **b, _Optional const char *pv,
+                                              _Optional const char *ps, const char *f)
 {
   assert(b != NULL);
   assert(f != NULL);
@@ -63,11 +65,11 @@ CONST _kernel_oserror *canonicalise(char **b, const char *pv, const char *ps, co
 
   /* First pass - determine buffer size needed */
   size_t nbytes;
-  CONST _kernel_oserror *e = os_fscontrol_canonicalise(
+  _Optional CONST _kernel_oserror *e = os_fscontrol_canonicalise(
                                  NULL, 0, pv, ps, f, &nbytes);
   if (e == NULL)
   {
-    char *result;
+    _Optional char *result;
 
     DEBUGF("Canonical: Allocating string buffer of %zu bytes\n", nbytes);
     result = malloc(nbytes);
@@ -78,11 +80,11 @@ CONST _kernel_oserror *canonicalise(char **b, const char *pv, const char *ps, co
     else
     {
       /* Second pass - write canonicalised path */
-      e = os_fscontrol_canonicalise(result, nbytes, pv, ps, f, NULL);
+      e = os_fscontrol_canonicalise(&*result, nbytes, pv, ps, f, NULL);
       if (e == NULL)
       {
         DEBUGF("Canonical: result is '%s'\n", result);
-        *b = result;
+        *b = &*result;
       }
       else
       {
@@ -96,5 +98,8 @@ CONST _kernel_oserror *canonicalise(char **b, const char *pv, const char *ps, co
     DEBUGF("Canonical: SWI error 0x%x '%s' (1)\n", e->errnum, e->errmess);
   }
 
+  if (e) {
+    *b = NULL;
+  }
   return e;
 }

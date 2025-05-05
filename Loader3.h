@@ -33,6 +33,7 @@ History:
   CJB: 07-Nov-20: Added the loader3_load_file function to allow DataOpen and
                   DataLoad handlers to reuse existing code.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef Loader3_h
@@ -51,6 +52,10 @@ History:
 /* Local headers */
 #include "Macros.h"
 
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
 /* ---------------- Client-supplied participation routines ------------------ */
 
 typedef bool Loader3ReadMethod (
@@ -58,7 +63,7 @@ typedef bool Loader3ReadMethod (
   int          /*estimated_size*/,
   int          /*file_type*/,
   const char * /*leaf_name*/,
-  void       * /*client_handle*/);
+  void * /*client_handle*/);
 /*
  * This function is called in order to deliver data when it becomes available.
  * It reads data from the given 'reader' object. 'file_type' is the type of the
@@ -68,7 +73,7 @@ typedef bool Loader3ReadMethod (
  * Returns: true on success or false on failure.
  */
 
-typedef void Loader3FailedMethod(CONST _kernel_oserror * /*error*/,
+typedef void Loader3FailedMethod(_Optional CONST _kernel_oserror * /*error*/,
   void * /*client_handle*/);
 /*
  * This function is called when a load operation has failed.
@@ -79,7 +84,7 @@ typedef void Loader3FailedMethod(CONST _kernel_oserror * /*error*/,
 
 /* --------------------------- Library functions ---------------------------- */
 
-CONST _kernel_oserror *loader3_initialise(MessagesFD * /*mfd*/);
+_Optional CONST _kernel_oserror *loader3_initialise(_Optional MessagesFD * /*mfd*/);
    /*
     * Initialises the Loader3 component and sets up handlers for DataLoad and
     * Wimp_MRAMTransmit messages. These are used to handle the data transfer
@@ -95,7 +100,7 @@ CONST _kernel_oserror *loader3_initialise(MessagesFD * /*mfd*/);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *loader3_finalise(void);
+_Optional CONST _kernel_oserror *loader3_finalise(void);
    /*
     * Deregisters the Loader component's event handlers and releases any memory
     * claimed by this library component. Any incomplete load operations are
@@ -104,11 +109,11 @@ CONST _kernel_oserror *loader3_finalise(void);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *loader3_receive_data(
-  const WimpMessage   * /*message*/,
-  Loader3ReadMethod   * /*read_method*/,
-  Loader3FailedMethod * /*failed_method*/,
-  void                * /*client_handle*/);
+_Optional CONST _kernel_oserror *loader3_receive_data(
+  const WimpMessage             * /*message*/,
+  _Optional Loader3ReadMethod   * /*read_method*/,
+  _Optional Loader3FailedMethod * /*failed_method*/,
+  void                          * /*client_handle*/);
    /*
     * Sends a RAMFetch or DataSaveAck message in reply to the specified
     * DataSave message.
@@ -127,11 +132,11 @@ void loader3_cancel_receives(void * /*client_handle*/);
     */
 
 bool loader3_load_file(
-  const char *          /*file_name*/,
-  int                   /*file_type*/,
-  Loader3ReadMethod   * /*read_method*/,
-  Loader3FailedMethod * /*failed_method*/,
-  void                * /*client_handle*/);
+  const char                    * /*file_name*/,
+  int                             /*file_type*/,
+  _Optional Loader3ReadMethod   * /*read_method*/,
+  _Optional Loader3FailedMethod * /*failed_method*/,
+  void                          * /*client_handle*/);
    /*
     * Loads the contents of a file with the specified 'file_name' (which
     * (must be a full path). If successful then the specified 'read_method'

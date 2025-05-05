@@ -36,6 +36,7 @@ History:
   CJB: 26-Jun-10: Made definition of deprecated constant name conditional
                   upon definition of CBLIB_OBSOLETE.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef StackViews_h
@@ -47,6 +48,10 @@ History:
 
 /* Local headers */
 #include "Macros.h"
+
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
 
 /* For use with StackViews_configure */
 enum
@@ -66,7 +71,7 @@ void StackViews_configure(int /*xmin*/, int /*ymax*/, int /*width*/, int /*heigh
     * using ResEd). By default all are StackViewsAuto.
     */
 
-CONST _kernel_oserror *StackViews_open(ObjectId /*id*/, ObjectId /*parent*/, ComponentId /*parent_component*/);
+_Optional CONST _kernel_oserror *StackViews_open(ObjectId /*id*/, ObjectId /*parent*/, ComponentId /*parent_component*/);
    /*
     * The first time this function is called it shows the specified Window
     * object at the stack's start position, and associates it with the given
@@ -80,7 +85,7 @@ CONST _kernel_oserror *StackViews_open(ObjectId /*id*/, ObjectId /*parent*/, Com
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *StackViews_open_get_bbox(ObjectId /*id*/, ObjectId /*parent*/, ComponentId /*parent_component*/, BBox */*bbox*/);
+_Optional CONST _kernel_oserror *StackViews_open_get_bbox(ObjectId /*id*/, ObjectId /*parent*/, ComponentId /*parent_component*/, BBox */*bbox*/);
    /*
     * Equivalent to StackViews_open except that the visible area coordinates of
     * the Window just shown are written to the struct pointed to by 'bbox'

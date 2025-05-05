@@ -63,6 +63,10 @@ History:
 /* Local headers */
 #include "Macros.h"
 
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
 /* ---------------- Client-supplied participation routines ------------------ */
 
 typedef _kernel_oserror *SaverFileHandler (const char * /*file_path*/,
@@ -78,11 +82,11 @@ typedef _kernel_oserror *SaverFileHandler (const char * /*file_path*/,
  */
 
 
-typedef void SaverFinishedHandler (bool                    /*success*/,
-                                   CONST _kernel_oserror * /*save_error*/,
-                                   const char            * /*file_path*/,
-                                   int                     /*datasave_ref*/,
-                                   void                  * /*client_handle*/);
+typedef void SaverFinishedHandler (bool                              /*success*/,
+                                   _Optional CONST _kernel_oserror * /*save_error*/,
+                                   _Optional const char            * /*file_path*/,
+                                   int                               /*datasave_ref*/,
+                                   void                            * /*client_handle*/);
 /*
  * This function is called when a save operation has been completed or has
  * irretrievably broken down (as indicated by boolean argument 'success').
@@ -97,8 +101,8 @@ typedef void SaverFinishedHandler (bool                    /*success*/,
 
 /* --------------------------- Library functions ---------------------------- */
 
-CONST _kernel_oserror *saver_initialise(int         /*task_handle*/,
-                                        MessagesFD */*mfd*/);
+_Optional CONST _kernel_oserror *saver_initialise(int                    /*task_handle*/,
+                                                  _Optional MessagesFD * /*mfd*/);
    /*
     * Initialises the Saver component and registers Wimp message handlers for
     * DataSaveAck, DataLoadAck and RAMFetch. These are used to handle the data
@@ -111,7 +115,7 @@ CONST _kernel_oserror *saver_initialise(int         /*task_handle*/,
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *saver_finalise(void);
+_Optional CONST _kernel_oserror *saver_finalise(void);
    /*
     * Deregisters the Saver component's event handlers and releases any memory
     * claimed by this library component. Any incomplete save operations will be
@@ -121,14 +125,14 @@ CONST _kernel_oserror *saver_finalise(void);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *saver_send_data(int /*task_handle*/,
-                                    WimpMessage * /*message*/,
-                                    flex_ptr /*data*/,
-                                    unsigned int /*start_offset*/,
-                                    unsigned int /*end_offset*/,
-                                    SaverFileHandler * /*save_method*/,
-                                    SaverFinishedHandler * /*finished_method*/,
-                                    void * /*client_handle*/);
+_Optional CONST _kernel_oserror *saver_send_data(int /*task_handle*/,
+                                                 WimpMessage * /*message*/,
+                                                 flex_ptr /*data*/,
+                                                 unsigned int /*start_offset*/,
+                                                 unsigned int /*end_offset*/,
+                                                 _Optional SaverFileHandler * /*save_method*/,
+                                                 _Optional SaverFinishedHandler * /*finished_method*/,
+                                                 void * /*client_handle*/);
    /*
     * Sends a DataSave message to the task specified by 'task_handle'. The
     * action code, message size and estimated file size are filled out

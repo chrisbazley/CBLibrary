@@ -63,6 +63,7 @@
                   to try to avoid having to send a second RAMFetch message.
                   Modified loader2_buffer_file() to use get_file_size().
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 /* ISO library headers */
@@ -87,7 +88,6 @@
 #include "Hourglass.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Loader2.h"
 #include "NoBudge.h"
 #include "scheduler.h"
@@ -100,11 +100,12 @@
 #ifdef CBLIB_OBSOLETE
 #include "msgtrans.h"
 #endif /* CBLIB_OBSOLETE */
+#include "Internal/CBMisc.h"
 
 typedef struct
 {
-  Loader2FinishedHandler *funct; /* may be NULL */
-  void                   *arg;
+  _Optional Loader2FinishedHandler *funct; /* may be NULL */
+  void                             *arg;
 }
 LoadOpCallback;
 
@@ -114,13 +115,14 @@ typedef struct
   LinkedListItem          list_item;
   int                     last_message_ref;
   int                     last_message_type;
-  bool                    RAM_capable;
-  bool                    idle_function;
-  bool                    no_flex_budge;
+  bool                    RAM_capable:1;
+  bool                    idle_function:1;
+  bool                    no_flex_budge:1;
+  bool                    have_RAM_buffer:1;
   int                     file_type;
   WimpRAMFetchMessage     ram_fetch; /* includes flex anchor */
-  WimpMessage            *datasave_msg; /* heap block */
-  Loader2FileHandler     *loader_funct;
+  _Optional WimpMessage        *datasave_msg; /* heap block */
+  _Optional Loader2FileHandler *loader_funct;
   LoadOpCallback          callback;
 }
 LoadOpData;
@@ -140,12 +142,12 @@ enum
                         Internal function prototypes
 */
 
-static CONST _kernel_oserror *_ldr2_replyto_datasave(const WimpMessage *reply_to, LoadOpData *load_op_data);
+static _Optional CONST _kernel_oserror *_ldr2_replyto_datasave(const WimpMessage *reply_to, LoadOpData *load_op_data);
 static WimpMessageHandler _ldr2_dataload_msg_handler,
                           _ldr2_ramtransmit_msg_handler;
 static WimpEventHandler _ldr2_msg_bounce_handler;
-static void _ldr2_finished(LoadOpData *load_op_data, bool success, CONST _kernel_oserror *e);
-static LoadOpData *_ldr2_find_record(int msg_ref);
+static void _ldr2_finished(LoadOpData *load_op_data, bool success, _Optional CONST _kernel_oserror *e);
+static _Optional LoadOpData *_ldr2_find_record(int msg_ref);
 static void _ldr2_destroy_op(LoadOpData *load_op_data);
 static SchedulerIdleFunction _ldr2_time_out;
 static CONST _kernel_oserror *lookup_error(const char *token, const char *param);
@@ -158,16 +160,16 @@ static void _ldr2_retain_my_ref(LoadOpData *load_op_data, const WimpMessage *msg
 
 static bool initialised;
 static LinkedList load_op_data_list;
-static MessagesFD *desc;
+static _Optional MessagesFD *desc;
 
 /* -----------------------------------------------------------------------
                          Public library functions
 */
 
 #ifdef CBLIB_OBSOLETE
-CONST _kernel_oserror *loader2_initialise(void)
+_Optional CONST _kernel_oserror *loader2_initialise(void)
 #else
-CONST _kernel_oserror *loader2_initialise(MessagesFD *mfd)
+_Optional CONST _kernel_oserror *loader2_initialise(_Optional MessagesFD *mfd)
 #endif
 {
   unsigned int mask;
@@ -189,17 +191,17 @@ CONST _kernel_oserror *loader2_initialise(MessagesFD *mfd)
 
   ON_ERR_RTN_E(event_register_message_handler(Wimp_MDataLoad,
                                               _ldr2_dataload_msg_handler,
-                                              NULL));
+                                              (void *)NULL));
 
   ON_ERR_RTN_E(event_register_message_handler(Wimp_MRAMTransmit,
                                               _ldr2_ramtransmit_msg_handler,
-                                              NULL));
+                                              (void *)NULL));
 
   /* Register handler for messages that return to us as wimp event 19 */
   ON_ERR_RTN_E(event_register_wimp_handler(-1,
                                            Wimp_EUserMessageAcknowledge,
                                            _ldr2_msg_bounce_handler,
-                                           NULL));
+                                           (void *)NULL));
 
   /* Ensure that messages are not masked */
   event_get_mask(&mask);
@@ -221,35 +223,35 @@ CONST _kernel_oserror *loader2_initialise(MessagesFD *mfd)
 /* ----------------------------------------------------------------------- */
 
 #ifdef INCLUDE_FINALISATION_CODE
-CONST _kernel_oserror *loader2_finalise(void)
+_Optional CONST _kernel_oserror *loader2_finalise(void)
 {
-  CONST _kernel_oserror *return_error = NULL;
+  _Optional CONST _kernel_oserror *return_error = NULL;
 
   assert(initialised);
   initialised = false;
 
   /* Cancel any outstanding save operations */
   DEBUGF("Loader2: Cancelling outstanding operations\n");
-  linkedlist_for_each(&load_op_data_list, _ldr2_cancel_matching_op, NULL);
+  linkedlist_for_each(&load_op_data_list, _ldr2_cancel_matching_op, (void *)NULL);
 
   /* Deregister Wimp message handlers for data transfer protocol */
 
   MERGE_ERR(return_error,
             event_deregister_message_handler(Wimp_MDataLoad,
                                              _ldr2_dataload_msg_handler,
-                                             NULL));
+                                             (void *)NULL));
 
   MERGE_ERR(return_error,
             event_deregister_message_handler(Wimp_MRAMTransmit,
                                              _ldr2_ramtransmit_msg_handler,
-                                             NULL));
+                                             (void *)NULL));
 
   /* Deregister handler for messages that return to us as wimp event 19 */
   MERGE_ERR(return_error,
             event_deregister_wimp_handler(-1,
                                           Wimp_EUserMessageAcknowledge,
                                           _ldr2_msg_bounce_handler,
-                                          NULL));
+                                          (void *)NULL));
 
   return return_error;
 }
@@ -257,10 +259,10 @@ CONST _kernel_oserror *loader2_finalise(void)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message, Loader2FileHandler *load_method, Loader2FinishedHandler *finished_method, void *client_handle)
+_Optional CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message, Loader2FileHandler *load_method, Loader2FinishedHandler *finished_method, void *client_handle)
 {
-  LoadOpData *load_op_data;
-  CONST _kernel_oserror *e = NULL;
+  _Optional LoadOpData *load_op_data;
+  _Optional CONST _kernel_oserror *e = NULL;
 
   assert(initialised);
   assert(message != NULL);
@@ -283,7 +285,7 @@ CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message, Loader2F
   DEBUGF("Loader2: Creating a record for a new load operation\n");
   load_op_data = malloc(sizeof(*load_op_data));
   if (load_op_data == NULL)
-    return lookup_error("NoMem", NULL);
+    return lookup_error("NoMem", "");
 
   /* Initialise record for a new load operation */
   load_op_data->RAM_capable = false;
@@ -296,7 +298,7 @@ CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message, Loader2F
   else
     load_op_data->file_type = message->data.data_save.file_type;
 
-  load_op_data->ram_fetch.buffer = NULL; /* no flex block here */
+  load_op_data->have_RAM_buffer = false; /* no flex block here */
   load_op_data->ram_fetch.buffer_size = 0;
   load_op_data->datasave_msg = NULL; /* no heap block here */
   load_op_data->callback.funct = finished_method; /* may be NULL */
@@ -312,13 +314,13 @@ CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message, Loader2F
      To prevent us leaking memory, we abandon stalled load operations after
      30 seconds. */
   e = scheduler_register_delay(_ldr2_time_out,
-                               load_op_data,
+                               &*load_op_data,
                                DataLoadWaitTime,
                                SchedulerPriority_Min);
 
   if (e != NULL)
   {
-    _ldr2_destroy_op(load_op_data);
+    _ldr2_destroy_op(&*load_op_data);
     return e;
   }
   load_op_data->idle_function = true;
@@ -326,7 +328,7 @@ CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message, Loader2F
   /* How shall we reply (is RAM transfer allowed?) */
   if (message->data.data_save.file_type != FileType_Directory &&
       message->data.data_save.file_type != FileType_Application &&
-      load_method == NULL)
+      !load_method)
   {
     /* Can try RAM transfer (see if they support it) */
 
@@ -345,14 +347,14 @@ CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message, Loader2F
     if (load_op_data->datasave_msg == NULL)
     {
       /* De-link new record from head of linked list and scrap it */
-      _ldr2_destroy_op(load_op_data);
-      return lookup_error("NoMem", NULL); /* Could not claim memory */
+      _ldr2_destroy_op(&*load_op_data);
+      return lookup_error("NoMem", ""); /* Could not claim memory */
     }
 
     DEBUGF("Loader2: Copying DataSave message to %p\n",
           (void *)load_op_data->datasave_msg);
 
-    memcpy(load_op_data->datasave_msg, message, msg_size);
+    memcpy(&*load_op_data->datasave_msg, message, msg_size);
     load_op_data->datasave_msg->hdr.size = msg_size;
 
     /* Use estimated file size as buffer size unless it is implausible
@@ -367,17 +369,19 @@ CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message, Loader2F
     if (!flex_alloc(&load_op_data->ram_fetch.buffer,
                     load_op_data->ram_fetch.buffer_size))
     {
-      _ldr2_destroy_op(load_op_data);
-      return lookup_error("NoMem", NULL); /* Could not claim memory */
+      _ldr2_destroy_op(&*load_op_data);
+      return lookup_error("NoMem", ""); /* Could not claim memory */
     }
 
+    load_op_data->have_RAM_buffer = true;
+
     { /* Allocate (very) temporary buffer for a RAMFetch message */
-      WimpMessage *reply = malloc(sizeof(message->hdr) +
-                                  sizeof(WimpRAMFetchMessage));
+      _Optional WimpMessage *reply = malloc(sizeof(message->hdr) +
+                                            sizeof(WimpRAMFetchMessage));
       if (reply == NULL)
       {
-        _ldr2_destroy_op(load_op_data);
-        return lookup_error("NoMem", NULL); /* Could not claim memory */
+        _ldr2_destroy_op(&*load_op_data);
+        return lookup_error("NoMem", ""); /* Could not claim memory */
       }
 
       /* Populate header of RAMFetch message */
@@ -396,14 +400,14 @@ CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message, Loader2F
       /* Send our reply to the sender of the DataSave message (recorded
          delivery) */
       e = wimp_send_message(Wimp_EUserMessageRecorded,
-                            reply,
+                            &*reply,
                             message->hdr.sender,
                             0,
                             NULL);
       if (e != NULL)
-        _ldr2_destroy_op(load_op_data);
+        _ldr2_destroy_op(&*load_op_data);
       else
-        _ldr2_retain_my_ref(load_op_data, reply);
+        _ldr2_retain_my_ref(&*load_op_data, &*reply);
 
       free(reply);
     }
@@ -411,9 +415,9 @@ CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message, Loader2F
   else
   {
     /* Must use Scrap transfer protocol */
-    e = _ldr2_replyto_datasave(message, load_op_data);
+    e = _ldr2_replyto_datasave(message, &*load_op_data);
     if (e != NULL)
-      _ldr2_destroy_op(load_op_data);
+      _ldr2_destroy_op(&*load_op_data);
   }
 
   return e;
@@ -438,7 +442,7 @@ void loader2_cancel_receives(Loader2FinishedHandler *finished_method, void *clie
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *loader2_buffer_file(const char *file_path, flex_ptr buffer)
+_Optional CONST _kernel_oserror *loader2_buffer_file(const char *file_path, flex_ptr buffer)
 {
   assert(file_path != NULL);
   assert(buffer != NULL);
@@ -456,20 +460,20 @@ CONST _kernel_oserror *loader2_buffer_file(const char *file_path, flex_ptr buffe
   /* Allocate buffer for data */
   DEBUGF("Loader2: Allocating %ld bytes\n", size);
   if (size < 0 || !flex_alloc(buffer, size))
-    return lookup_error("NoMem", NULL);
+    return lookup_error("NoMem", "");
 
   /* Load file */
   _kernel_last_oserror(); /* reset */
   hourglass_on();
-  FILE *const f = fopen_inc(file_path, "rb"); /* open for reading */
+  _Optional FILE *const f = fopen_inc(file_path, "rb"); /* open for reading */
   size_t n = 0;
   if (f != NULL)
   {
     nobudge_register(PreExpandHeap); /* protect dereference of flex pointer */
-    n = fread(*buffer, (size_t)size, 1, f);
+    n = fread(*buffer, (size_t)size, 1, &*f);
     nobudge_deregister();
 
-    fclose_dec(f);
+    fclose_dec(&*f);
   }
   hourglass_off();
 
@@ -494,8 +498,8 @@ static int _ldr2_dataload_msg_handler(WimpMessage *message, void *handle)
 {
   /* This handler must receive DataLoad messages before the Loader
      component. We need to intercept replies to our DataSave message. */
-  LoadOpData *load_op_data;
-  CONST _kernel_oserror *e;
+     _Optional LoadOpData *load_op_data;
+  _Optional CONST _kernel_oserror *e;
 
   assert(message != NULL);
   NOT_USED(handle);
@@ -517,14 +521,17 @@ static int _ldr2_dataload_msg_handler(WimpMessage *message, void *handle)
   }
 
   if (load_op_data->idle_function) {
-    scheduler_deregister(_ldr2_time_out, load_op_data);
+    scheduler_deregister(_ldr2_time_out, &*load_op_data);
     load_op_data->idle_function = false;
   }
 
   /* This should 'never' happen because unwonted DataLoad messages are
      rejected (see above) but free any allocated buffer just in case. */
-  if (load_op_data->ram_fetch.buffer != NULL)
+  if (load_op_data->have_RAM_buffer)
+  {
     flex_free(&load_op_data->ram_fetch.buffer);
+    load_op_data->have_RAM_buffer = false;
+  }
 
   /* Update the file type associated with this load operation. Normally this
      should be the same as in the DataSave message, but we don't want to risk
@@ -538,7 +545,7 @@ static int _ldr2_dataload_msg_handler(WimpMessage *message, void *handle)
   if (message->data.data_load.file_type != FileType_Application &&
       message->data.data_load.file_type != FileType_Directory)
   {
-    if (load_op_data->loader_funct == NULL)
+    if (!load_op_data->loader_funct)
     {
       /* Use standard file loader */
       DEBUGF("Loader2: Using standard file loader\n");
@@ -554,7 +561,8 @@ static int _ldr2_dataload_msg_handler(WimpMessage *message, void *handle)
     }
     if (e != NULL)
     {
-      _ldr2_finished(load_op_data, false, e);
+      load_op_data->have_RAM_buffer = true;
+      _ldr2_finished(&*load_op_data, false, e);
       return 1; /* claim message */
     }
   }
@@ -571,7 +579,7 @@ static int _ldr2_dataload_msg_handler(WimpMessage *message, void *handle)
                         NULL);
   if (e != NULL)
   {
-    _ldr2_finished(load_op_data, false, e);
+    _ldr2_finished(&*load_op_data, false, e);
     return 1; /* claim message */
   }
   DEBUGF("Loader2: Have sent DataLoadAck message (ref. %d)\n",
@@ -582,7 +590,7 @@ static int _ldr2_dataload_msg_handler(WimpMessage *message, void *handle)
   remove(message->data.data_load.leaf_name);
 
   /* Data transfer completed successfully */
-  _ldr2_finished(load_op_data, true, NULL);
+  _ldr2_finished(&*load_op_data, true, NULL);
 
   return 1; /* claim message */
 }
@@ -592,8 +600,8 @@ static int _ldr2_dataload_msg_handler(WimpMessage *message, void *handle)
 static int _ldr2_ramtransmit_msg_handler(WimpMessage *message, void *handle)
 {
   /* This is a handler for RAMTransmit messages */
-  LoadOpData *load_op_data;
-  CONST _kernel_oserror *e;
+  _Optional LoadOpData *load_op_data;
+  _Optional CONST _kernel_oserror *e;
 
   assert(message != NULL);
   NOT_USED(handle);
@@ -639,16 +647,16 @@ static int _ldr2_ramtransmit_msg_handler(WimpMessage *message, void *handle)
                        message->data.ram_transmit.nbytes))
     {
       /* Failed to change size of flex block */
-      _ldr2_finished(load_op_data, false, lookup_error("NoMem", NULL));
+      _ldr2_finished(&*load_op_data, false, lookup_error("NoMem", ""));
       return 1; /* claim message */
     }
 
     /* Data transfer completed successfully */
-    _ldr2_finished(load_op_data, true, NULL);
+    _ldr2_finished(&*load_op_data, true, NULL);
   }
   else
   {
-    WimpMessage *reply;
+    _Optional WimpMessage *reply;
     DEBUGF("Loader2: RAM transfer buffer filled (unfinished)\n");
 
     /* Extend the buffer for more data */
@@ -657,7 +665,7 @@ static int _ldr2_ramtransmit_msg_handler(WimpMessage *message, void *handle)
                      BufferExtend))
     {
       /* Failed to change size of flex block */
-      _ldr2_finished(load_op_data, false, lookup_error("NoMem", NULL));
+      _ldr2_finished(&*load_op_data, false, lookup_error("NoMem", ""));
       return 1; /* claim message */
     }
     load_op_data->ram_fetch.buffer_size = BufferExtend;
@@ -666,7 +674,7 @@ static int _ldr2_ramtransmit_msg_handler(WimpMessage *message, void *handle)
     reply = malloc(sizeof(message->hdr) + sizeof(WimpRAMFetchMessage));
     if (reply == NULL)
     {
-      _ldr2_finished(load_op_data, false, lookup_error("NoMem", NULL));
+      _ldr2_finished(&*load_op_data, false, lookup_error("NoMem", ""));
       return 1; /* claim message */
     }
 
@@ -690,14 +698,14 @@ static int _ldr2_ramtransmit_msg_handler(WimpMessage *message, void *handle)
     /* Send our reply to the sender of the RAMTransmit message (recorded
        delivery) */
     e = wimp_send_message(Wimp_EUserMessageRecorded,
-                          reply,
+                          &*reply,
                           message->hdr.sender,
                           0,
                           NULL);
     if (e != NULL)
-      _ldr2_finished(load_op_data, false, e);
+      _ldr2_finished(&*load_op_data, false, e);
     else
-      _ldr2_retain_my_ref(load_op_data, reply);
+      _ldr2_retain_my_ref(&*load_op_data, &*reply);
 
     free(reply);
   } /* was not last bufferful */
@@ -712,8 +720,8 @@ static int _ldr2_ramtransmit_msg_handler(WimpMessage *message, void *handle)
 static int _ldr2_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBlock *id_block, void *handle)
 {
   /* This is a handler for bounced messages */
-  LoadOpData *load_op_data;
-  CONST _kernel_oserror *e;
+  _Optional LoadOpData *load_op_data;
+  _Optional CONST _kernel_oserror *e = NULL;
 
   NOT_USED(event_code);
   assert(event != NULL);
@@ -744,19 +752,24 @@ static int _ldr2_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBloc
       {
         /* Use file transfer instead, by replying to the old DataSave message */
         flex_free(&load_op_data->ram_fetch.buffer);
+        load_op_data->have_RAM_buffer = false;
 
-        e = _ldr2_replyto_datasave(load_op_data->datasave_msg, load_op_data);
+        if (load_op_data->datasave_msg)
+        {
+          e = _ldr2_replyto_datasave(&*load_op_data->datasave_msg, &*load_op_data);
 
-        free(load_op_data->datasave_msg); /* no longer require copy of DataSave */
-        load_op_data->datasave_msg = NULL;
-        if (e != NULL)
-          _ldr2_finished(load_op_data, false, e);
+          free(load_op_data->datasave_msg); /* no longer require copy of DataSave */
+          load_op_data->datasave_msg = NULL;
+        }
+
+        if (!load_op_data->datasave_msg || e != NULL)
+          _ldr2_finished(&*load_op_data, false, e);
       }
       else
       {
         /* RAM transfer broke in the middle. PRM says "No error should be
            generated because the other end will have already reported one." */
-        _ldr2_finished(load_op_data, false, NULL);
+        _ldr2_finished(&*load_op_data, false, NULL);
       }
       return 1; /* claim event */
   }
@@ -775,7 +788,7 @@ static CONST _kernel_oserror *lookup_error(const char *token, const char *param)
 
 /* ----------------------------------------------------------------------- */
 
-static void _ldr2_finished(LoadOpData *load_op_data, bool success, CONST _kernel_oserror *e)
+static void _ldr2_finished(LoadOpData *load_op_data, bool success, _Optional CONST _kernel_oserror *e)
 {
   DEBUGF("Loader2: Operation %p finished %ssuccessfully\n", (void *)load_op_data,
         success ? "" : "un");
@@ -787,14 +800,15 @@ static void _ldr2_finished(LoadOpData *load_op_data, bool success, CONST _kernel
 
   /* If the load failed or the client supplied no handler function
      then release any memory allocated for the input buffer */
-  if (load_op_data->ram_fetch.buffer != NULL &&
-      (load_op_data->callback.funct == NULL || !success))
+  if (load_op_data->have_RAM_buffer &&
+      (!load_op_data->callback.funct || !success))
   {
     DEBUGF("Loader2: Freeing loaded data\n");
     flex_free(&load_op_data->ram_fetch.buffer);
+    load_op_data->have_RAM_buffer = false;
   }
 
-  if (load_op_data->callback.funct != NULL)
+  if (load_op_data->callback.funct)
   {
     /* Call the client-supplied function to notify it that the load
        operation is complete. */
@@ -802,7 +816,7 @@ static void _ldr2_finished(LoadOpData *load_op_data, bool success, CONST _kernel
     load_op_data->callback.funct(e,
                                  success ?
                                    load_op_data->file_type : FileType_Null,
-                                 load_op_data->ram_fetch.buffer == NULL ?
+                                 !load_op_data->have_RAM_buffer ?
                                    NULL : &load_op_data->ram_fetch.buffer,
                                  load_op_data->callback.arg);
   }
@@ -813,9 +827,9 @@ static void _ldr2_finished(LoadOpData *load_op_data, bool success, CONST _kernel
 
 /* ----------------------------------------------------------------------- */
 
-static LoadOpData *_ldr2_find_record(int msg_ref)
+static _Optional LoadOpData *_ldr2_find_record(int msg_ref)
 {
-  LoadOpData *load_op_data;
+  _Optional LoadOpData *load_op_data;
 
   DEBUGF("Loader2: Searching for operation awaiting reply to %d\n", msg_ref);
   load_op_data = (LoadOpData *)linkedlist_for_each(
@@ -834,10 +848,10 @@ static LoadOpData *_ldr2_find_record(int msg_ref)
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *_ldr2_replyto_datasave(const WimpMessage *reply_to, LoadOpData *load_op_data)
+static _Optional CONST _kernel_oserror *_ldr2_replyto_datasave(const WimpMessage *reply_to, LoadOpData *load_op_data)
 {
-  CONST _kernel_oserror *e;
-  WimpMessage *reply;
+  _Optional CONST _kernel_oserror *e;
+  _Optional WimpMessage *reply;
   int msg_size;
 
   assert(reply_to != NULL);
@@ -851,7 +865,7 @@ static CONST _kernel_oserror *_ldr2_replyto_datasave(const WimpMessage *reply_to
 
   reply = malloc(msg_size);
   if (reply == NULL)
-    return lookup_error("NoMem", NULL); /* Memory couldn't be claimed */
+    return lookup_error("NoMem", ""); /* Memory couldn't be claimed */
 
   /* Populate header of DataSaveAck message */
   reply->hdr.size = msg_size;
@@ -874,17 +888,17 @@ static CONST _kernel_oserror *_ldr2_replyto_datasave(const WimpMessage *reply_to
 
   reply->data.data_save_ack.estimated_size = -1; /* not a safe destination */
   reply->data.data_save_ack.file_type = reply_to->data.data_save.file_type;
-  strcpy(reply->data.data_save_ack.leaf_name, "<Wimp$Scrap>");
+  strcpy(&*reply->data.data_save_ack.leaf_name, "<Wimp$Scrap>");
 
   /* Send our reply to the sender of the DataSave message */
   e = wimp_send_message(Wimp_EUserMessage,
-                        reply,
+                        &*reply,
                         reply_to->hdr.sender,
                         0,
                         NULL);
 
   if (e == NULL)
-    _ldr2_retain_my_ref(load_op_data, reply);
+    _ldr2_retain_my_ref(load_op_data, &*reply);
 
   free(reply);
 
@@ -906,7 +920,7 @@ static void _ldr2_destroy_op(LoadOpData *load_op_data)
 
   free(load_op_data->datasave_msg);
 
-  if (load_op_data->ram_fetch.buffer != NULL)
+  if (load_op_data->have_RAM_buffer)
     flex_free(&load_op_data->ram_fetch.buffer);
 
   linkedlist_remove(&load_op_data_list, &load_op_data->list_item);

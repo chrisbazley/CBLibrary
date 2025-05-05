@@ -72,6 +72,7 @@
   CJB: 18-Apr-16: Cast pointer parameters to void * to match %p.
   CJB: 29-Aug-20: Deleted a redundant static function pre-declaration.
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -94,13 +95,13 @@
 #include "MessTrans.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "ViewsMenu.h"
 #include "DeIconise.h"
 #ifdef CBLIB_OBSOLETE
 #include "msgtrans.h"
 #include "Err.h"
 #endif /* CBLIB_OBSOLETE */
+#include "Internal/CBMisc.h"
 
 typedef struct ViewInfo
 {
@@ -116,7 +117,7 @@ static ComponentId VM_parent_entry;
 static LinkedList view_list;
 static ObjectId VM, VM_parent;
 static bool menu_showing = false, removals_pending = false;
-static MessagesFD *desc;
+static _Optional MessagesFD *desc;
 #ifndef CBLIB_OBSOLETE
 static void (*report)(CONST _kernel_oserror *);
 #endif
@@ -127,18 +128,18 @@ static void (*report)(CONST _kernel_oserror *);
 static ToolboxEventHandler parent_about_to_be_shown, menu_selection, parent_has_been_hidden;
 static void do_deferred_removals(void);
 static CONST _kernel_oserror *lookup_error(const char *token);
-static CONST _kernel_oserror *destroy_view(ViewInfo *view_info);
+static _Optional CONST _kernel_oserror *destroy_view(ViewInfo *view_info);
 static LinkedListCallbackFn destroy_view_if_pending, view_has_matching_path, view_has_matching_object, view_show_object;
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *ViewsMenu_create(
+_Optional CONST _kernel_oserror *ViewsMenu_create(
 #ifdef CBLIB_OBSOLETE
                          void
 #else
-                         MessagesFD  *mfd,
-                         void       (*report_error)(const _kernel_oserror *)
+                         _Optional MessagesFD  *mfd,
+                         void                 (*report_error)(const _kernel_oserror *)
 #endif
 )
 {
@@ -162,12 +163,12 @@ CONST _kernel_oserror *ViewsMenu_create(
   return event_register_toolbox_handler(VM,
                                         Menu_Selection,
                                         menu_selection,
-                                        NULL);
+                                        (void *)NULL);
 }
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *ViewsMenu_parentcreated(ObjectId parent_menu, ComponentId parent_entry)
+_Optional CONST _kernel_oserror *ViewsMenu_parentcreated(ObjectId parent_menu, ComponentId parent_entry)
 {
   /* To be called when parent menu is created */
   VM_parent_entry = parent_entry;
@@ -177,20 +178,20 @@ CONST _kernel_oserror *ViewsMenu_parentcreated(ObjectId parent_menu, ComponentId
   ON_ERR_RTN_E(event_register_toolbox_handler(parent_menu,
                                               Menu_AboutToBeShown,
                                               parent_about_to_be_shown,
-                                              NULL));
+                                              (void *)NULL));
 
   return event_register_toolbox_handler(parent_menu,
                                         Menu_HasBeenHidden,
                                         parent_has_been_hidden,
-                                        NULL);
+                                        (void *)NULL);
 }
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *ViewsMenu_setname(ObjectId showobject, const char *view_name, const char *file_path)
+_Optional CONST _kernel_oserror *ViewsMenu_setname(ObjectId showobject, const char *view_name, _Optional const char *file_path)
 {
-  ViewInfo *view_info;
-  char *new_ptr;
+  _Optional ViewInfo *view_info;
+  _Optional char *new_ptr;
 
   view_info = (ViewInfo *)linkedlist_for_each(
               &view_list, view_has_matching_object, &showobject);
@@ -208,7 +209,7 @@ CONST _kernel_oserror *ViewsMenu_setname(ObjectId showobject, const char *view_n
         return lookup_error("NoMem");
 
       free(view_info->file_path);
-      view_info->file_path = new_ptr;
+      view_info->file_path = &*new_ptr;
     }
     if (view_name != NULL)
     {
@@ -217,7 +218,7 @@ CONST _kernel_oserror *ViewsMenu_setname(ObjectId showobject, const char *view_n
          but the menu_set_entry_text() definition is lax.) */
       ON_ERR_RTN_E(menu_set_entry_text(0,
                                        VM,
-                                       (ComponentId)view_info,
+                                       (ComponentId)(uintptr_t)view_info,
                                        (char *)view_name));
     }
   }
@@ -229,10 +230,10 @@ CONST _kernel_oserror *ViewsMenu_setname(ObjectId showobject, const char *view_n
 
 ObjectId ViewsMenu_getfirst(void)
 {
-  ViewInfo *view_info;
+  _Optional ViewInfo *view_info;
 
   view_info = (ViewInfo *)linkedlist_for_each(
-              &view_list, view_has_matching_object, NULL);
+              &view_list, view_has_matching_object, (void *)NULL);
 
   return view_info == NULL ? NULL_ObjectId : view_info->object;
 }
@@ -241,7 +242,7 @@ ObjectId ViewsMenu_getfirst(void)
 
 ObjectId ViewsMenu_getnext(ObjectId current)
 {
-  ViewInfo *view_info;
+  _Optional ViewInfo *view_info;
 
   view_info = (ViewInfo *)linkedlist_for_each(
               &view_list, view_has_matching_object, &current);
@@ -261,9 +262,9 @@ ObjectId ViewsMenu_getnext(ObjectId current)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *ViewsMenu_add(ObjectId showobject, const char *view_name, const char *file_path)
+_Optional CONST _kernel_oserror *ViewsMenu_add(ObjectId showobject, const char *view_name, const char *file_path)
 {
-  ViewInfo *new_view, *view_info;
+  _Optional ViewInfo *new_view, *view_info;
 
   DEBUGF("ViewsMenu: Add viewsmenu entry for object 0x%x with name %s and path %s\n",
          showobject, view_name, file_path);
@@ -283,30 +284,31 @@ CONST _kernel_oserror *ViewsMenu_add(ObjectId showobject, const char *view_name,
 
   /* Set entry text, and associated toolbox object & filepath */
   new_view->remove_me = false;
-  new_view->file_path = strdup(file_path);
-  if (new_view->file_path == NULL)
+  _Optional char *p = strdup(file_path);
+  if (p == NULL)
   {
     free(new_view);
     return lookup_error("NoMem");
   }
+  new_view->file_path = &*p;
 
   new_view->object = showobject;
-  STRCPY_SAFE(new_view->name, view_name);
+  STRCPY_SAFE(&*new_view->name, view_name);
 
   /* Add entry to menu */
   {
-    _kernel_oserror *errptr;
+    _Optional _kernel_oserror *errptr;
     MenuTemplateEntry Entry =
     {
       0,
-      (ComponentId)new_view,
-      new_view->name,
+      (ComponentId)(uintptr_t)new_view,
+      &*new_view->name,
       sizeof(new_view->name),
-      NULL,
-      NULL,
+      (void *)NULL,
+      (void *)NULL,
       0,
       0,
-      NULL,
+      (void *)NULL,
       0
     };
 
@@ -331,20 +333,20 @@ CONST _kernel_oserror *ViewsMenu_add(ObjectId showobject, const char *view_name,
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *ViewsMenu_showall(void)
+_Optional CONST _kernel_oserror *ViewsMenu_showall(void)
 {
   /* Bring all open windows to the front */
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
   linkedlist_for_each(&view_list, view_show_object, &e);
   return e;
 }
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *ViewsMenu_remove(ObjectId showobject)
+_Optional CONST _kernel_oserror *ViewsMenu_remove(ObjectId showobject)
 {
   /* Remove a window from the list */
-  ViewInfo *view_info;
+  _Optional ViewInfo *view_info;
 
   DEBUGF("ViewsMenu: Remove viewsmenu entry for object 0x%x\n", showobject);
 
@@ -367,7 +369,7 @@ CONST _kernel_oserror *ViewsMenu_remove(ObjectId showobject)
     }
     else
     {
-      ON_ERR_RTN_E(destroy_view(view_info));
+      ON_ERR_RTN_E(destroy_view(&*view_info));
     }
   }
 
@@ -379,7 +381,7 @@ CONST _kernel_oserror *ViewsMenu_remove(ObjectId showobject)
 ObjectId ViewsMenu_findview(const char *file_path_to_match)
 {
   /* Find a view matching the specified name */
-  const ViewInfo *view_info;
+  _Optional const ViewInfo *view_info;
 
   assert(file_path_to_match != NULL);
 
@@ -400,7 +402,7 @@ bool ViewsMenu_strcmp_nc(const char *string1, const char *string2)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *ViewsMenu_show_object(unsigned int flags, ObjectId id, int show_type, void *type, ObjectId parent, ComponentId parent_component)
+_Optional CONST _kernel_oserror *ViewsMenu_show_object(unsigned int flags, ObjectId id, int show_type, void *type, ObjectId parent, ComponentId parent_component)
 {
   return DeIconise_show_object(flags,
                                id,
@@ -428,13 +430,13 @@ ObjectId ViewMenu_getnext(ObjectId current)
 /* ----------------------------------------------------------------------- */
 /*                         Private functions                               */
 
-static void check_error(CONST _kernel_oserror *e)
+static void check_error(_Optional CONST _kernel_oserror *e)
 {
 #ifdef CBLIB_OBSOLETE
   (void)err_check(e);
 #else
-  if (e != NULL && report != NULL)
-    report(e);
+  if (e != NULL && report)
+    report(&*e);
 #endif
 }
 
@@ -500,13 +502,13 @@ static int menu_selection(int           event_code,
   ObjectId parent;
   ComponentId parent_component;
   ViewInfo *view_info;
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
 
   NOT_USED(event_code);
   NOT_USED(event);
   NOT_USED(handle);
 
-  view_info = (ViewInfo *)id_block->self_component;
+  view_info = (ViewInfo *)(uintptr_t)id_block->self_component;
   if (view_info->remove_me)
   {
     putchar('\a'); /* beep */
@@ -547,7 +549,7 @@ static void do_deferred_removals(void)
 {
   /* Remove any entries on views menu that have been marked as dead
      (either because menu showing or client is walking list) */
-  linkedlist_for_each(&view_list, destroy_view_if_pending, NULL);
+  linkedlist_for_each(&view_list, destroy_view_if_pending, (void *)NULL);
   removals_pending = false;
 }
 
@@ -602,8 +604,8 @@ static bool view_has_matching_object(LinkedList *list, LinkedListItem *item, voi
 static bool view_show_object(LinkedList *list, LinkedListItem *item, void *arg)
 {
   const ViewInfo * const view_info = (ViewInfo *)item;
-  CONST _kernel_oserror ** const eout = arg;
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror ** const eout = arg;
+  _Optional CONST _kernel_oserror *e = NULL;
 
   assert(view_info != NULL);
   assert(eout != NULL);
@@ -641,7 +643,7 @@ static bool view_show_object(LinkedList *list, LinkedListItem *item, void *arg)
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *destroy_view(ViewInfo *view_info)
+static _Optional CONST _kernel_oserror *destroy_view(ViewInfo *view_info)
 {
   assert(view_info != NULL);
   DEBUGF("ViewsMenu: Removing view record %p\n", (void *)view_info);
@@ -652,5 +654,5 @@ static CONST _kernel_oserror *destroy_view(ViewInfo *view_info)
   free(view_info->file_path);
   free(view_info);
 
-  return menu_remove_entry(0, VM, (ComponentId)view_info);
+  return menu_remove_entry(0, VM, (ComponentId)(uintptr_t)view_info);
 }

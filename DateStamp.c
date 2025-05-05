@@ -45,6 +45,7 @@
                   os_file_generate_error functions instead of _kernel_osfile.
   CJB: 18-Apr-15: Assertions are now provided by debug.h.
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -59,8 +60,8 @@
 #include "OSFile.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "DateStamp.h"
+#include "Internal/CBMisc.h"
 
 #define LoadAddressHasStamp (0xfff00000u)
 #define LoadAddressStampMSB (0x000000ffu)
@@ -68,9 +69,9 @@
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *get_date_stamp(const char *f, OS_DateAndTime *utc)
+_Optional CONST _kernel_oserror *get_date_stamp(const char *f, OS_DateAndTime *utc)
 {
-  CONST _kernel_oserror *e;
+  _Optional CONST _kernel_oserror *e;
   OS_File_CatalogueInfo cat;
 
   assert(f != NULL);

@@ -45,6 +45,7 @@
                   avoid GNU C compiler warnings.
   CJB: 04-Nov-18: Got rid of OLD_SCL_STUBS usage (assumed to be always true).
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 #ifdef CBLIB_OBSOLETE /* Use c.FedCompMT instead */
@@ -62,11 +63,11 @@
 #include "Hourglass.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "msgtrans.h"
 #include "NoBudge.h"
 #include "FednetComp.h"
 #include "FileUtils.h"
+#include "Internal/CBMisc.h"
 
 /* Constant numeric values */
 enum
@@ -80,7 +81,7 @@ enum
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *load_compressed(const char *file_path, flex_ptr buffer_anchor)
+_Optional CONST _kernel_oserror *load_compressed(const char *file_path, flex_ptr buffer_anchor)
 {
   /* Allocate buffer and load compressed Fednet datafile */
   assert(file_path != NULL);
@@ -149,7 +150,7 @@ CONST _kernel_oserror *load_compressed(const char *file_path, flex_ptr buffer_an
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *save_compressed(const char *file_path, int file_type, flex_ptr buffer_anchor)
+_Optional CONST _kernel_oserror *save_compressed(const char *file_path, int file_type, flex_ptr buffer_anchor)
 {
   /* Save the specified memory as a compressed Fednet file */
   assert(file_path != NULL);

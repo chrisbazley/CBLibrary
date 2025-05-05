@@ -27,6 +27,7 @@ History:
   CJB: 15-May-05: Added declaration of delete_object_on_event.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
   CJB: 20-Dec-20: Added declaration of remove_event_handlers_delete.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 #ifndef EventExtra_h
@@ -38,6 +39,10 @@ History:
 
 /* Local headers */
 #include "Macros.h"
+
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
 
 ToolboxEventHandler remove_event_handlers_reset_id;
    /*
@@ -63,7 +68,7 @@ ToolboxEventHandler delete_object_on_event;
     * Returns: 1 (i.e. claim event).
     */
 
-CONST _kernel_oserror *remove_event_handlers_delete(ObjectId object_id);
+_Optional CONST _kernel_oserror *remove_event_handlers_delete(ObjectId object_id);
    /*
     * Removes any Toolbox and Wimp event handlers that have been registered
     * for the object specified by the passed object_id, then deletes the

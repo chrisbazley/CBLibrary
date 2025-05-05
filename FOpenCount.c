@@ -26,6 +26,7 @@
   CJB: 18-Apr-16: Cast pointer parameters to void * to match %p.
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
   CJB: 28-Apr-19: Less verbose debugging output.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -33,15 +34,15 @@
 #include <errno.h>
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "FOpenCount.h"
+#include "Internal/CBMisc.h"
 
 static unsigned int fopen_count = 0;
 
-FILE *fopen_inc(const char *filename, const char *mode)
+_Optional FILE *fopen_inc(const char *filename, const char *mode)
 {
   /* Open a file, incrementing the counter if successful */
-  FILE *const f = fopen(filename, mode);
+  _Optional FILE *const f = fopen(filename, mode);
   if (f != NULL) {
     fopen_count++;
   }

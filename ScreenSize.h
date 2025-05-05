@@ -25,6 +25,7 @@ Message tokens: None.
 History:
   CJB: 23-Aug-09: Created this header file from scratch.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef ScreenSize_h
@@ -36,7 +37,11 @@ History:
 /* Local headers */
 #include "Macros.h"
 
-CONST _kernel_oserror *get_screen_size(int *width, int *height);
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
+_Optional CONST _kernel_oserror *get_screen_size(int *width, int *height);
    /*
     * Gets the width and/or height of the current screen mode, in OS units.
     * Either or both of the arguments may be NULL, in which case the

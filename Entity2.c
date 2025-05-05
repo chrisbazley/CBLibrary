@@ -26,6 +26,7 @@
   CJB: 02-Oct-21: Release entities upon exit triggered by entity2_dispose_all
                   to avoid leaks if the client doesn't call entity2_finalise.
                   Assign a compound literal when releasing an entity.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 /* ISO library headers */
@@ -57,12 +58,12 @@
 #include "FileTypes.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Saver2.h"
 #include "Loader3.h"
 #include "Entity2.h"
 #include "WriterNull.h"
 #include "NoBudge.h"
+#include "Internal/CBMisc.h"
 
 /* The following structure holds all the state for a data request */
 typedef struct
@@ -71,9 +72,9 @@ typedef struct
   size_t               entity;
   int                  data_request_ref;
   void                *client_handle;
-  Entity2ProbeMethod  *probe_method;
-  Entity2ReadMethod   *read_method;
-  Entity2FailedMethod *failed_method;
+  _Optional Entity2ProbeMethod  *probe_method;
+  _Optional Entity2ReadMethod   *read_method;
+  _Optional Entity2FailedMethod *failed_method;
 }
 RequestOpData;
 
@@ -82,14 +83,14 @@ typedef struct
 #ifdef COPY_ARRAY_ARGS
   /* The following pointer references a heap block
      if COPY_ARRAY_ARGS is defined */
-  int *file_types;
+  _Optional int *file_types;
 #else
-  const int *file_types;
+  _Optional const int *file_types;
 #endif
-  Saver2WriteMethod     *write_method; /* call this to get the associated data */
-  Entity2EstimateMethod *estimate_method; /* call this to get the file type */
-  Entity2LostMethod     *lost_method; /* call this when the claimant is usurped */
-  void                  *client_handle; /* this is passed to the above functions */
+  _Optional Saver2WriteMethod     *write_method; /* call this to get the associated data */
+  _Optional Entity2EstimateMethod *estimate_method; /* call this to get the file type */
+  _Optional Entity2LostMethod     *lost_method; /* call this when the claimant is usurped */
+  void *client_handle; /* this is passed to the above functions */
 }
 Entity2Info;
 
@@ -120,7 +121,7 @@ static int releaseentity_msg_ref;
 static unsigned int data_sent_count, claimentity_count;
 
 static LinkedList request_op_data_list;
-static MessagesFD *desc;
+static _Optional MessagesFD *desc;
 static void (*report_fn)(CONST _kernel_oserror *);
 
 /* -----------------------------------------------------------------------
@@ -139,7 +140,7 @@ static void destroy_op(RequestOpData *const request_op_data)
 static void report_error(CONST _kernel_oserror *const e)
 {
   assert(e != NULL);
-  if (report_fn != NULL)
+  if (report_fn)
   {
     report_fn(e);
   }
@@ -162,14 +163,14 @@ static CONST _kernel_oserror *no_data(unsigned int const entity)
   assert(nout >= 0); /* no formatting error */
   assert((size_t)nout < sizeof(token)); /* no buffer overflow/truncation */
   NOT_USED(nout);
-  return lookup_error(token, NULL);
+  return lookup_error(token, "");
 }
 
 /* ----------------------------------------------------------------------- */
 
 static CONST _kernel_oserror *no_mem(void)
 {
-  return lookup_error("NoMem", NULL);
+  return lookup_error("NoMem", "");
 }
 
 /* ----------------------------------------------------------------------- */
@@ -182,7 +183,7 @@ static void exit_if_pending(void)
 
     entity2_release(owned_entities);
 
-    if (client_exit_method != NULL)
+    if (client_exit_method)
     {
       DEBUGF("Entity2: Calling exit function\n");
       client_exit_method();
@@ -205,7 +206,7 @@ static void send_done(void)
 
 /* ----------------------------------------------------------------------- */
 
-static void send_failed(CONST _kernel_oserror *const e, void *const client_handle)
+static void send_failed(_Optional CONST _kernel_oserror *const e, void *const client_handle)
 {
   /* Data associated with an entity could not be sent to another task. */
   NOT_USED(client_handle);
@@ -222,7 +223,7 @@ static void send_failed(CONST _kernel_oserror *const e, void *const client_handl
 
 /* ----------------------------------------------------------------------- */
 
-static void send_complete(int const file_type, const char *const file_path,
+static void send_complete(int const file_type, _Optional const char *const file_path,
   int const datasave_ref, void *const client_handle)
 {
   /* Data associated with an entity was sent to another task. */
@@ -235,7 +236,7 @@ static void send_complete(int const file_type, const char *const file_path,
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *request_data(
+static _Optional CONST _kernel_oserror *request_data(
   RequestOpData *const request_op_data,
   const WimpDataRequestMessage *const data_request)
 {
@@ -260,7 +261,7 @@ static CONST _kernel_oserror *request_data(
                        offsetof(WimpDataRequestMessage, file_types) +
                        sizeof(drm->file_types[0]) * array_len);
 
-  CONST _kernel_oserror *const e =
+  _Optional CONST _kernel_oserror *const e =
     wimp_send_message(Wimp_EUserMessageRecorded, &message, 0, 0, NULL);
 
   if (e == NULL)
@@ -274,7 +275,7 @@ static CONST _kernel_oserror *request_data(
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *claim_entities(unsigned int const flags)
+static _Optional CONST _kernel_oserror *claim_entities(unsigned int const flags)
 {
   /* Does our task already own the entities to be claimed? */
   unsigned int const to_claim = flags & ~owned_entities;
@@ -321,7 +322,7 @@ static bool load_data(Reader *const reader, int const estimated_size,
   DEBUGF("Entity2: Request %p needs data\n", client_handle);
 
   bool success = false;
-  if (request_op_data->read_method != NULL)
+  if (request_op_data->read_method)
   {
     DEBUGF("Entity2: Calling read function with arg %p\n",
            request_op_data->client_handle);
@@ -341,7 +342,7 @@ static void probe_finished(int const file_type, void *const client_handle)
   assert(request_op_data != NULL);
   DEBUGF("Entity2: Probe %p finished\n", client_handle);
 
-  if (request_op_data->probe_method != NULL)
+  if (request_op_data->probe_method)
   {
     DEBUGF("Entity2: Calling probe function with arg %p\n",
            request_op_data->client_handle);
@@ -353,13 +354,13 @@ static void probe_finished(int const file_type, void *const client_handle)
 
 /* ----------------------------------------------------------------------- */
 
-static void report_fail(CONST _kernel_oserror *const e, void *const client_handle)
+static void report_fail(_Optional CONST _kernel_oserror *const e, void *const client_handle)
 {
   RequestOpData *const request_op_data = client_handle;
   assert(request_op_data != NULL);
   DEBUGF("Entity2: Request %p failed\n", client_handle);
 
-  if (request_op_data->failed_method != NULL)
+  if (request_op_data->failed_method)
   {
     DEBUGF("Entity2: Calling failed function with arg %p\n",
            request_op_data->client_handle);
@@ -386,13 +387,13 @@ static bool request_has_ref(LinkedList *const list, LinkedListItem *const item,
 
 /* ----------------------------------------------------------------------- */
 
-static RequestOpData *find_data_req(int msg_ref)
+static _Optional RequestOpData *find_data_req(int msg_ref)
 {
   DEBUGF("Entity2: Searching for data request awaiting reply to %d\n", msg_ref);
   if (!msg_ref)
     return NULL;
 
-  RequestOpData *const request_op_data = (RequestOpData *)linkedlist_for_each(
+  _Optional RequestOpData *const request_op_data = (RequestOpData *)linkedlist_for_each(
                     &request_op_data_list, request_has_ref, &msg_ref);
   if (request_op_data == NULL)
   {
@@ -413,7 +414,7 @@ static int get_estimated_size(size_t const entity, int const file_type)
   int estimated_size = DefaultBufferSize;
 
   assert(entity < ARRAY_SIZE(entities_info));
-  if (entities_info[entity].estimate_method != NULL)
+  if (entities_info[entity].estimate_method)
   {
     estimated_size = entities_info[entity].estimate_method(file_type,
       entities_info[entity].client_handle);
@@ -430,28 +431,28 @@ static int get_estimated_size(size_t const entity, int const file_type)
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *request_own(size_t const entity,
+static _Optional CONST _kernel_oserror *request_own(size_t const entity,
   const WimpDataRequestMessage *const data_request,
-  Entity2ReadMethod *const read_method,
-  Entity2FailedMethod *const failed_method, void *const client_handle)
+  _Optional Entity2ReadMethod *const read_method,
+  _Optional Entity2FailedMethod *const failed_method, void *const client_handle)
 {
   DEBUGF("Entity2: bypassing message protocol for entity %zu\n", entity);
   assert(entity < ARRAY_SIZE(entities_info));
   assert(data_request != NULL);
 
-  if (entities_info[entity].write_method == NULL)
+  if (!entities_info[entity].write_method || !entities_info[entity].file_types)
   {
     DEBUGF("Entity2: No data function for entity %zu\n", entity);
     return no_data(entity);
   }
 
   int const file_type = pick_file_type(data_request->file_types,
-    entities_info[entity].file_types);
+    &*entities_info[entity].file_types);
 
   /* It would be better not to have to use an intermediate buffer */
   int const buf_size = get_estimated_size(entity, file_type);
   DEBUGF("Entity2: Allocating local buffer of %d bytes\n", buf_size);
-  void *entity_data = NULL;
+  void *entity_data;
   if (!flex_alloc(&entity_data, buf_size))
   {
     return no_mem();
@@ -468,7 +469,7 @@ static CONST _kernel_oserror *request_own(size_t const entity,
 
   /* Destroying a writer can fail because it flushes buffered output. */
   long int const nbytes = writer_destroy(&writer);
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
   if (success)
   {
     if (nbytes < 0)
@@ -488,7 +489,7 @@ static CONST _kernel_oserror *request_own(size_t const entity,
 
   flex_free(&entity_data);
 
-  if (!success && failed_method != NULL)
+  if (!success && failed_method)
   {
     DEBUGF("Entity2: Calling failed function with arg %p\n", client_handle);
     failed_method(e, client_handle);
@@ -501,19 +502,20 @@ static CONST _kernel_oserror *request_own(size_t const entity,
 
 static void probe_own(size_t const entity,
   const WimpDataRequestMessage *const data_request,
-  Entity2ProbeMethod *const probe_method,
-  Entity2FailedMethod *const failed_method, void *const client_handle)
+  _Optional Entity2ProbeMethod *const probe_method,
+  _Optional Entity2FailedMethod *const failed_method,
+  void *const client_handle)
 {
   assert(entity < ARRAY_SIZE(entities_info));
   assert(data_request != NULL);
   DEBUGF("Entity2: bypassing message protocol for entity %zu\n", entity);
 
-  if (entities_info[entity].write_method != NULL)
+  if (entities_info[entity].write_method && entities_info[entity].file_types)
   {
-    if (probe_method != NULL)
+    if (probe_method)
     {
       int const file_type = pick_file_type(data_request->file_types,
-        entities_info[entity].file_types);
+        &*entities_info[entity].file_types);
 
       DEBUGF("Entity2: Calling probe function with arg %p\n", client_handle);
       probe_method(file_type, client_handle);
@@ -522,7 +524,7 @@ static void probe_own(size_t const entity,
   else
   {
     DEBUGF("Entity2: No data function for entity %zu\n", entity);
-    if (failed_method != NULL)
+    if (failed_method)
     {
       DEBUGF("Entity2: Calling failed function with arg %p\n", client_handle);
       failed_method(no_data(entity), client_handle);
@@ -532,18 +534,19 @@ static void probe_own(size_t const entity,
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *probe_or_request_remote(size_t const entity,
+static _Optional CONST _kernel_oserror *probe_or_request_remote(size_t const entity,
   const WimpDataRequestMessage *const data_request,
-  Entity2ProbeMethod *const probe_method,
-  Entity2ReadMethod *const read_method,
-  Entity2FailedMethod *const failed_method, void *const client_handle)
+  _Optional Entity2ProbeMethod *const probe_method,
+  _Optional Entity2ReadMethod *const read_method,
+  _Optional Entity2FailedMethod *const failed_method,
+  void *const client_handle)
 {
   assert(entity < ARRAY_SIZE(entities_info));
   assert(data_request != NULL);
   DEBUGF("Entity2: Creating a record for a data %s of entity %zu\n",
         !read_method ? "probe" : "import", entity);
 
-  RequestOpData *const request_op_data = malloc(sizeof(*request_op_data));
+  _Optional RequestOpData *const request_op_data = malloc(sizeof(*request_op_data));
   if (request_op_data == NULL)
   {
     return no_mem();
@@ -563,10 +566,10 @@ static CONST _kernel_oserror *probe_or_request_remote(size_t const entity,
   linkedlist_insert(&request_op_data_list, NULL, &request_op_data->list_item);
   DEBUGF("Entity2: New record is at %p\n", (void *)request_op_data);
 
-  CONST _kernel_oserror *const e = request_data(request_op_data, data_request);
+  _Optional CONST _kernel_oserror *const e = request_data(&*request_op_data, data_request);
   if (e != NULL)
   {
-    destroy_op(request_op_data);
+    destroy_op(&*request_op_data);
   }
   return e;
 }
@@ -620,7 +623,7 @@ static void releaseentity_bounce(int const my_ref)
 
 static void datarequest_bounce(int const my_ref)
 {
-  RequestOpData *const request_op_data = find_data_req(my_ref);
+  _Optional RequestOpData *const request_op_data = find_data_req(my_ref);
 
   if (request_op_data == NULL)
   {
@@ -629,7 +632,7 @@ static void datarequest_bounce(int const my_ref)
   }
 
   DEBUGF("Entity2: It's our DataRequest message\n");
-  report_fail(no_data(request_op_data->entity), request_op_data);
+  report_fail(no_data(request_op_data->entity), &*request_op_data);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -643,7 +646,7 @@ static void release_own(size_t const entity)
   free(entities_info[entity].file_types);
 #endif
 
-  if (entities_info[entity].lost_method != NULL) {
+  if (entities_info[entity].lost_method) {
     DEBUGF("Entity2: Calling release function with arg %p for entity %zu\n",
           entities_info[entity].client_handle, entity);
 
@@ -652,7 +655,7 @@ static void release_own(size_t const entity)
     DEBUGF("Entity2: No release function for entity %zu\n", entity);
   }
 
-  entities_info[entity] = (Entity2Info){NULL};
+  entities_info[entity] = (Entity2Info){.write_method = (Saver2WriteMethod *)NULL};
 }
 
 /* -----------------------------------------------------------------------
@@ -705,7 +708,7 @@ static int datasave_handler(WimpMessage *const message, void *const handle)
   DEBUGF("Entity2: Received a DataSave message (ref. %d in reply to %d)\n",
         message->hdr.my_ref, message->hdr.your_ref);
 
-  RequestOpData *const request_op_data = find_data_req(message->hdr.your_ref);
+  _Optional RequestOpData *const request_op_data = find_data_req(message->hdr.your_ref);
   if (request_op_data == NULL)
   {
     DEBUGF("Entity2: Unknown your_ref value\n");
@@ -713,11 +716,11 @@ static int datasave_handler(WimpMessage *const message, void *const handle)
   }
   DEBUGF("Entity2: It's a reply to our DataRequest\n");
 
-  if (request_op_data->read_method == NULL)
+  if (!request_op_data->read_method)
   {
     /* We were just probing for data */
     DEBUGF("Entity2: We are just probing for data\n");
-    probe_finished(message->data.data_save.file_type, request_op_data);
+    probe_finished(message->data.data_save.file_type, &*request_op_data);
   }
   else
   {
@@ -725,12 +728,12 @@ static int datasave_handler(WimpMessage *const message, void *const handle)
     DEBUGF("Entity2: Will load data associated with entity\n");
     request_op_data->data_request_ref = 0; /* prevent future matches */
 
-    CONST _kernel_oserror *const e = loader3_receive_data(message, load_data,
-      report_fail, request_op_data);
+    _Optional CONST _kernel_oserror *const e = loader3_receive_data(message, load_data,
+      report_fail, &*request_op_data);
 
     if (e != NULL)
     {
-      report_fail(e, request_op_data);
+      report_fail(e, &*request_op_data);
     }
   }
 
@@ -771,10 +774,10 @@ static int datarequest_handler(WimpMessage *const message, void *const handle)
         !TEST_BITS(owned_entities, 1u<<entity))
       continue; /* we don't own this entity, or data not requested */
 
-    if (entities_info[entity].write_method != NULL)
+    if (entities_info[entity].write_method && entities_info[entity].file_types)
     {
       int const file_type = pick_file_type(data_request->file_types,
-        entities_info[entity].file_types);
+        &*entities_info[entity].file_types);
 
       WimpMessage ds;
       ds.hdr.your_ref = message->hdr.my_ref;
@@ -789,13 +792,13 @@ static int datarequest_handler(WimpMessage *const message, void *const handle)
       ds.data.data_save.file_type = file_type;
       STRCPY_SAFE(ds.data.data_save.leaf_name, "EntityData");
 
-      CONST _kernel_oserror *const e = saver2_send_data(message->hdr.sender,
+      _Optional CONST _kernel_oserror *const e = saver2_send_data(message->hdr.sender,
         &ds, entities_info[entity].write_method, send_complete, send_failed,
         entities_info[entity].client_handle);
 
       if (e != NULL)
       {
-        report_error(e);
+        report_error(&*e);
       }
       else
       {
@@ -867,9 +870,9 @@ static int msg_bounce_handler(int const event_code, WimpPollBlock *const event,
                          Public library functions
 */
 
-CONST _kernel_oserror *entity2_initialise(
-  MessagesFD  *const mfd,
-  void       (*const error_method)(CONST _kernel_oserror *))
+_Optional CONST _kernel_oserror *entity2_initialise(
+  _Optional MessagesFD *const mfd,
+  void (*const error_method)(CONST _kernel_oserror *))
 {
   assert(!initialised);
 
@@ -887,14 +890,14 @@ CONST _kernel_oserror *entity2_initialise(
   {
     ON_ERR_RTN_E(event_register_message_handler(msg_handlers[i].msg_no,
                                                 msg_handlers[i].handler,
-                                                NULL));
+                                                (void *)NULL));
   }
 
   /* Register handler for messages that return to us as wimp event 19 */
   ON_ERR_RTN_E(event_register_wimp_handler(-1,
                                            Wimp_EUserMessageAcknowledge,
                                            msg_bounce_handler,
-                                           NULL));
+                                           (void *)NULL));
 
   /* Zero initialisation (only required for re-init) */
   memset(claimentity_msg_ref, 0, sizeof(claimentity_msg_ref));
@@ -913,24 +916,24 @@ CONST _kernel_oserror *entity2_initialise(
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *entity2_claim(unsigned int const flags,
-  const int *file_types, Entity2EstimateMethod *const estimate_method,
-  Saver2WriteMethod *const write_method, Entity2LostMethod *const lost_method,
+_Optional CONST _kernel_oserror *entity2_claim(unsigned int const flags,
+  _Optional const int *file_types, _Optional Entity2EstimateMethod *const estimate_method,
+  _Optional Saver2WriteMethod *const write_method, _Optional Entity2LostMethod *const lost_method,
   void *const client_handle)
 {
   DEBUGF("Entity2: Request to claim flags %u (handle:%p)\n",
     flags, client_handle);
 
   assert(initialised);
-  assert(file_types != NULL || write_method == NULL);
+  assert(file_types != NULL || !write_method);
 
   if (!flags)
     return NULL;
 
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
 
 #ifdef COPY_ARRAY_ARGS
-  int *file_types_copy[NEntities];
+  _Optional int *file_types_copy[NEntities];
   for (size_t entity = 0; entity < ARRAY_SIZE(entities_info); entity++)
   {
     if (!TEST_BITS(flags, 1u<<entity))
@@ -943,7 +946,7 @@ CONST _kernel_oserror *entity2_claim(unsigned int const flags,
     }
 
     /* make a private copy of the array of file types (+1 for terminator) */
-    size_t const array_len = count_file_types(file_types) + 1;
+    size_t const array_len = count_file_types(&*file_types) + 1;
     file_types_copy[entity] = malloc(array_len * sizeof(file_types[0]));
     if (file_types_copy[entity] == NULL)
     {
@@ -952,7 +955,7 @@ CONST _kernel_oserror *entity2_claim(unsigned int const flags,
       continue;
     }
 
-    (void)copy_file_types(file_types_copy[entity], file_types, array_len - 1);
+    (void)copy_file_types(&*file_types_copy[entity], &*file_types, array_len - 1);
   }
 #endif
 
@@ -974,6 +977,13 @@ CONST _kernel_oserror *entity2_claim(unsigned int const flags,
 #endif
       continue;
     }
+
+#ifdef COPY_ARRAY_ARGS
+    if (!file_types_copy[entity])
+    {
+      continue;
+    }
+#endif
 
     release_own(entity);
 
@@ -997,10 +1007,11 @@ CONST _kernel_oserror *entity2_claim(unsigned int const flags,
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *entity2_request_data(
+_Optional CONST _kernel_oserror *entity2_request_data(
   const WimpDataRequestMessage *const data_request,
-  Entity2ReadMethod *const read_method,
-  Entity2FailedMethod *const failed_method, void *const client_handle)
+  _Optional Entity2ReadMethod *const read_method,
+  _Optional Entity2FailedMethod *const failed_method,
+  void *const client_handle)
 {
   assert(data_request != NULL);
   DEBUGF("Entity2: Data request for flags 0x%x to coords %d,%d in window %d "
@@ -1027,7 +1038,7 @@ CONST _kernel_oserror *entity2_request_data(
     {
       /* We don't own this entity, so we must request the associated data
          from its owner. */
-      ON_ERR_RTN_E(probe_or_request_remote(entity, data_request, NULL,
+      ON_ERR_RTN_E(probe_or_request_remote(entity, data_request, (Entity2ProbeMethod *)NULL,
         read_method, failed_method, client_handle));
     }
   }
@@ -1037,10 +1048,11 @@ CONST _kernel_oserror *entity2_request_data(
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *entity2_probe_data(
+_Optional CONST _kernel_oserror *entity2_probe_data(
   const WimpDataRequestMessage *const data_request,
-  Entity2ProbeMethod *const probe_method,
-  Entity2FailedMethod *const failed_method, void *const client_handle)
+  _Optional Entity2ProbeMethod *const probe_method,
+  _Optional Entity2FailedMethod *const failed_method,
+  void *const client_handle)
 {
   assert(data_request != NULL);
   DEBUGF("Entity2: Data probe for flags 0x%x to coords %d,%d in window %d "
@@ -1068,7 +1080,7 @@ CONST _kernel_oserror *entity2_probe_data(
       /* We don't own this entity, so we must request the associated data
          from its owner. */
       ON_ERR_RTN_E(probe_or_request_remote(entity, data_request, probe_method,
-        NULL, failed_method, client_handle));
+        (Entity2ReadMethod *)NULL, failed_method, client_handle));
     }
   }
 
@@ -1117,9 +1129,9 @@ void entity2_release(unsigned int const flags)
 /* ----------------------------------------------------------------------- */
 
 #ifdef INCLUDE_FINALISATION_CODE
-CONST _kernel_oserror *entity2_finalise(void)
+_Optional CONST _kernel_oserror *entity2_finalise(void)
 {
-  CONST _kernel_oserror *return_error = NULL;
+  _Optional CONST _kernel_oserror *return_error = NULL;
 
   assert(initialised);
   initialised = false;
@@ -1128,7 +1140,7 @@ CONST _kernel_oserror *entity2_finalise(void)
   entity2_release(owned_entities);
 
   DEBUGF("Entity2: Cancelling outstanding operations\n");
-  linkedlist_for_each(&request_op_data_list, cancel_matching_request, NULL);
+  linkedlist_for_each(&request_op_data_list, cancel_matching_request, (void *)NULL);
 
   /* Deregister Wimp message handlers */
   for (size_t i = 0; i < ARRAY_SIZE(msg_handlers); i++)
@@ -1136,7 +1148,7 @@ CONST _kernel_oserror *entity2_finalise(void)
     MERGE_ERR(return_error,
               event_deregister_message_handler(msg_handlers[i].msg_no,
                                                msg_handlers[i].handler,
-                                               NULL));
+                                               (void *)NULL));
   }
 
   /* Deregister handler for messages that return to us as wimp event 19 */
@@ -1144,7 +1156,7 @@ CONST _kernel_oserror *entity2_finalise(void)
             event_deregister_wimp_handler(-1,
                                           Wimp_EUserMessageAcknowledge,
                                           msg_bounce_handler,
-                                          NULL));
+                                          (void *)NULL));
 
   return return_error;
 }
@@ -1152,7 +1164,7 @@ CONST _kernel_oserror *entity2_finalise(void)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *entity2_dispose_all(Entity2ExitMethod *const exit_method)
+_Optional CONST _kernel_oserror *entity2_dispose_all(Entity2ExitMethod *const exit_method)
 {
   bool data_found;
 
@@ -1167,7 +1179,7 @@ CONST _kernel_oserror *entity2_dispose_all(Entity2ExitMethod *const exit_method)
     for (size_t entity = 0; entity < ARRAY_SIZE(entities_info); entity++)
     {
       if (!TEST_BITS(owned_entities, 1u<<entity) ||
-          entities_info[entity].write_method == NULL)
+          !entities_info[entity].write_method)
         continue;
 
       DEBUGF("Entity2: Found data function for entity %zu\n", entity);
@@ -1202,7 +1214,7 @@ CONST _kernel_oserror *entity2_dispose_all(Entity2ExitMethod *const exit_method)
   else
   {
     DEBUGF("Entity2: We don't own any entities with associated data\n");
-    if (exit_method != NULL)
+    if (exit_method)
       exit_method();
   }
 

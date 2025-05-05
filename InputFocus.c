@@ -32,6 +32,7 @@
   CJB: 23-Dec-14: Apply Fortify to Toolbox, Event & Wimp library function calls.
   CJB: 02-Jan-15: Got rid of goto statements.
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -43,13 +44,13 @@
 #include "event.h"
 #include "window.h"
 #include "menu.h"
-#include "DCS.h"
-#include "Quit.h"
+#include "dcs.h"
+#include "quit.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "InputFocus.h"
 #include "Err.h"
+#include "Internal/CBMisc.h"
 
 /* N.B. there can be only one transient dbox open at a time */
 static WimpCaret caret_store;
@@ -63,11 +64,11 @@ static WimpMessageHandler menus_deleted_handler;
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *InputFocus_initialise(void)
+_Optional CONST _kernel_oserror *InputFocus_initialise(void)
 {
   return event_register_message_handler(Wimp_MMenusDeleted,
                                         menus_deleted_handler,
-                                        NULL);
+                                        (void *)NULL);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -79,7 +80,7 @@ int InputFocus_recordcaretpos(int event_code, ToolboxEvent *event, IdBlock *id_b
   common structure */
   ObjectClass parent_class;
   ObjectId window_id = NULL_ObjectId;
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
   int wh;
 
   NOT_USED(wh);
@@ -148,7 +149,7 @@ int InputFocus_recordcaretpos(int event_code, ToolboxEvent *event, IdBlock *id_b
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *InputFocus_restorecaret(void)
+_Optional CONST _kernel_oserror *InputFocus_restorecaret(void)
 {
   /* Find current caret position */
   WimpGetCaretPositionBlock now_pos;

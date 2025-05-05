@@ -29,6 +29,7 @@
   CJB: 21-Oct-09: Updated debugging output.
   CJB: 23-Dec-14: Apply Fortify to Event library function calls.
   CJB: 18-Apr-15: Assertions are now provided by debug.h.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -37,8 +38,8 @@
 #include "event.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "NullPoll.h"
+#include "Internal/CBMisc.h"
 
 static int num_null_pollers;
 

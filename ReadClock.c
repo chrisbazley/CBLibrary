@@ -27,6 +27,7 @@
   CJB: 18-Apr-15: Assertions are now provided by debug.h.
   CJB: 01-Nov-18: Reimplemented using the os_word_read_real_time function
                   from CBOSLib.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* Acorn C/C++ library headers */
@@ -36,13 +37,13 @@
 #include "OSWord.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "DateStamp.h"
+#include "Internal/CBMisc.h"
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *get_current_time(OS_DateAndTime *utc)
+_Optional CONST _kernel_oserror *get_current_time(OS_DateAndTime *utc)
 {
   return os_word_read_real_time(utc);
 }

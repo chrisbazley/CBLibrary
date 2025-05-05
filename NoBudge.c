@@ -27,6 +27,7 @@
   CJB: 01-Nov-18: Replaced DEBUG_VERBOSE macro usage with DEBUG_VERBOSEF.
   CJB: 13-Apr-19: nobudge_register() no longer tries to allocate memory if
                   flex budge is already disabled or 0 bytes were requested.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 /* ISO library headers */
@@ -37,8 +38,8 @@
 #include "flex.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "NoBudge.h"
+#include "Internal/CBMisc.h"
 
 static int default_state;
 static unsigned int num_no_budge;

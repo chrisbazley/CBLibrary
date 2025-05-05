@@ -1,7 +1,7 @@
 # CBLibrary
 (C) 2003 Christopher Bazley
 
-Release 64 (05 May 2025)
+Release 64 (09 May 2025)
 
 Preamble
 --------
@@ -565,10 +565,11 @@ Release 63 (17 Jun 2023)
 - Use size_t rather than unsigned int for the number of substitution
   parameters passed to msg functions.
 
-Release 64 (05 May 2025)
+Release 64 (09 May 2025)
 - Fix #include filename case.
 - Fix pedantic warnings about format specifying type void *.
 - Changed the pathtail depth count type from int to size_t.
+- Dogfooding the _Optional qualifier.
 
 Contact details
 ---------------

@@ -26,6 +26,7 @@ History:
   CJB: 11-Dec-14: Created this header file.
   CJB: 27-Dec-14: Added userdata_destroy function to the public interface.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef userdata_h
@@ -37,6 +38,10 @@ History:
 /* CBUtilLib headers */
 #include "StringBuff.h"
 #include "LinkedList.h"
+
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
 
 struct UserData;
 
@@ -59,8 +64,8 @@ typedef struct UserData
 {
   LinkedListItem list_item;
   StringBuffer file_name;
-  UserDataIsSafeFn *is_safe;
-  UserDataDestroyFn *destroy;
+  _Optional UserDataIsSafeFn *is_safe;
+  _Optional UserDataDestroyFn *destroy;
 }
 UserData;
    /*
@@ -75,9 +80,9 @@ void userdata_init(void);
     */
 
 bool userdata_add_to_list(UserData *data,
-                                 UserDataIsSafeFn *is_safe,
-                                 UserDataDestroyFn *destroy,
-                                 const char *file_name);
+                          _Optional UserDataIsSafeFn *is_safe,
+                          _Optional UserDataDestroyFn *destroy,
+                          const char *file_name);
    /*
     * Adds a user data item to a global per-task list. Storage allocation
     * for the item is the caller's responsibility. If 'is_safe' is NULL then
@@ -122,7 +127,7 @@ size_t userdata_get_file_name_length(const UserData *data);
     * with a given user data item, not including nul terminator.
     */
 
-UserData *userdata_find_by_file_name(const char *file_name);
+_Optional UserData *userdata_find_by_file_name(const char *file_name);
    /*
     * Finds a user data item matching the given file path. The comparison
     * is case-insensitive like RISC OS file names.
@@ -149,7 +154,7 @@ typedef bool UserDataCallbackFn(UserData *data, void *arg);
     * Returns: true to stop iterating over the list, otherwise false.
     */
 
-UserData *userdata_for_each(UserDataCallbackFn *callback, void *arg);
+_Optional UserData *userdata_for_each(UserDataCallbackFn *callback, void *arg);
    /*
     * Calls a given function for each user data item in the global list.
     * The value of 'arg' will be passed to the 'callback' function with the

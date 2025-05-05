@@ -42,6 +42,7 @@ History:
   CJB: 11-Dec-14: Deleted redundant brackets from function type definitions.
   CJB: 12-Oct-15: Corrected parameter name in DragFinishedHandler description.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef Drag_h
@@ -58,6 +59,10 @@ History:
 /* Local headers */
 #include "Macros.h"
 
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
 /* ---------------- Client-supplied participation routines ------------------ */
 
 typedef enum
@@ -68,11 +73,11 @@ typedef enum
 }
 DragBoxOp;
 
-typedef CONST _kernel_oserror *DragBoxHandler (DragBoxOp /*action*/,
-                                               bool   /*solid_drags*/,
-                                               int    /*mouse_x*/,
-                                               int    /*mouse_y*/,
-                                               void * /*client_handle*/);
+typedef _Optional CONST _kernel_oserror *DragBoxHandler (DragBoxOp /*action*/,
+                                                         bool   /*solid_drags*/,
+                                                         int    /*mouse_x*/,
+                                                         int    /*mouse_y*/,
+                                                         void * /*client_handle*/);
 /*
  * This function is called to start, hide, or cancel a Wimp drag operation
  * (as indicated by the DragBoxOp code). Typically Wimp_DragBox with drag
@@ -110,12 +115,12 @@ typedef bool DragFinishedHandler (bool   /*shift_held*/,
 
 /* --------------------------- Library functions ---------------------------- */
 
-CONST _kernel_oserror *drag_initialise(
+_Optional CONST _kernel_oserror *drag_initialise(
 #ifdef CBLIB_OBSOLETE
                        void
 #else
-                       MessagesFD  */*mfd*/,
-                       void       (*/*report_error*/)(CONST _kernel_oserror *)
+                       _Optional MessagesFD */*mfd*/,
+                       void (*/*report_error*/)(CONST _kernel_oserror *)
 #endif
 );
    /*
@@ -131,7 +136,7 @@ CONST _kernel_oserror *drag_initialise(
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *drag_abort(void);
+_Optional CONST _kernel_oserror *drag_abort(void);
    /*
     * Forces termination of any drag currently in progress (for use when the
     * user presses the Escape key or the source data becomes invalid). The
@@ -142,7 +147,7 @@ CONST _kernel_oserror *drag_abort(void);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *drag_finalise(void);
+_Optional CONST _kernel_oserror *drag_finalise(void);
    /*
     * Deregisters the Drag component's event handlers and releases all memory
     * claimed by this library component. A drag in progress will be aborted as
@@ -152,11 +157,11 @@ CONST _kernel_oserror *drag_finalise(void);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *drag_start(const int       * /*file_types*/,
-                                  const BBox            * /*data_bbox*/,
-                                  DragBoxHandler        * /*drag_box_method*/,
-                                  DragFinishedHandler   * /*drop_method*/,
-                                  void                  * /*client_handle*/);
+_Optional CONST _kernel_oserror *drag_start(const int                     * /*file_types*/,
+                                            _Optional const BBox          * /*data_bbox*/,
+                                            DragBoxHandler                * /*drag_box_method*/,
+                                            _Optional DragFinishedHandler * /*drop_method*/,
+                                            void                          * /*client_handle*/);
    /*
     * Starts a drag operation. Whilst mouse button(s) are held down, a
     * representation of the dragged data will follow the pointer around the

@@ -35,6 +35,7 @@ History:
   CJB: 10-Nov-19: Added a declaration of the get_file_size function.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
   CJB: 31-May-21: Added a declaration of the get_file_type function.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef FileUtils_h
@@ -46,7 +47,11 @@ History:
 /* Local headers */
 #include "Macros.h"
 
-CONST _kernel_oserror *canonicalise(char ** /*b*/, const char * /*pv*/, const char * /*ps*/, const char * /*f*/);
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
+_Optional CONST _kernel_oserror *canonicalise(_Optional char ** /*b*/, _Optional const char * /*pv*/, _Optional const char * /*ps*/, const char * /*f*/);
    /*
     * Wrapper for os_fscontrol_canonicalise which uses malloc to allocate a
     * buffer of the right size for the canonicalised path and writes a pointer
@@ -56,27 +61,27 @@ CONST _kernel_oserror *canonicalise(char ** /*b*/, const char * /*pv*/, const ch
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *set_file_type(const char */*f*/, int /*type*/);
+_Optional CONST _kernel_oserror *set_file_type(const char */*f*/, int /*type*/);
    /*
     * Sets the type of a specified file to indicate its contents (e.g. 0xfff
     * means text, whereas 0xfaf means HTML).
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *get_file_type(const char */*f*/, int * /*type*/);
+_Optional CONST _kernel_oserror *get_file_type(const char */*f*/, int * /*type*/);
    /*
     * Gets the type of a specified file.
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *get_file_size(const char */*f*/, int * /*size*/);
+_Optional CONST _kernel_oserror *get_file_size(const char */*f*/, int * /*size*/);
    /*
     * Gets the size of a specified file, in bytes. Returns an error if the
     * object doesn't exist or is not a file.
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *make_path(char * /*f*/, size_t /*offset*/);
+_Optional CONST _kernel_oserror *make_path(char * /*f*/, size_t /*offset*/);
    /*
     * Searches forwards through the path string pointed to by 'f', starting at
     * the given 'offset'. Whenever a file path separator character (in RISC OS

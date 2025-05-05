@@ -42,6 +42,7 @@ History:
                   upon CBLIB_OBSOLETE.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
   CJB: 28-May-22: Allow initialisation with a 'const' palette array.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef Pal256_h
@@ -56,6 +57,10 @@ History:
 
 /* Local headers */
 #include "Macros.h"
+
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
 
 /****************************************************************************
  * Pal256 Toolbox Events                                                    *
@@ -79,12 +84,12 @@ Pal256ColourSelectedEvent;
  * Pal256 Functional Interface                                              *
  ****************************************************************************/
 
-CONST _kernel_oserror *Pal256_initialise(
-                     ObjectId       /*object*/,
-                     PaletteEntry const  /*palette*/[]
+_Optional CONST _kernel_oserror *Pal256_initialise(
+                     ObjectId               /*object*/,
+                     PaletteEntry const     /*palette*/[]
 #ifndef CBLIB_OBSOLETE
-                    ,MessagesFD    */*mfd*/,
-                     void         (*/*report_error*/)(CONST _kernel_oserror *)
+                    ,_Optional MessagesFD * /*mfd*/,
+                     void                (* /*report_error*/ )(CONST _kernel_oserror *)
 #endif
 );
    /*
@@ -101,7 +106,7 @@ CONST _kernel_oserror *Pal256_initialise(
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *Pal256_set_colour(ObjectId /*object*/, unsigned int /*c*/);
+_Optional CONST _kernel_oserror *Pal256_set_colour(ObjectId /*object*/, unsigned int /*c*/);
    /*
     * Causes colour number 'c' (0-255) to be displayed by the specified Pal256
     * dialogue box 'object'. This is also the colour that will be restored if

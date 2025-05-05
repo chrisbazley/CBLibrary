@@ -185,7 +185,7 @@ static void osfile(int op, const char *name, _kernel_osfile_block *inout)
   const int err = _kernel_osfile(op, name, inout);
   if (err == _kernel_ERROR)
   {
-    const _kernel_oserror * const e = _kernel_last_oserror();
+    _Optional const _kernel_oserror * const e = _kernel_last_oserror();
     assert(e != NULL);
     printf("Error 0x%x %s\n", e->errnum, e->errmess);
     exit(EXIT_FAILURE);
@@ -246,7 +246,7 @@ static int date_and_time_to_string(OSDateAndTime *utc,
                                    size_t buff_size)
 {
   _kernel_swi_regs regs;
-  _kernel_oserror *e;
+  _Optional _kernel_oserror *e;
   /* This SWI doesn't tell you the required buffer size on
      buffer overflow, but luckily it is entirely predictable. */
   int nchars = sizeof("00:00:00 01 Jan 1900")-1;
@@ -322,7 +322,7 @@ static void validate_object(const DirIterator *it, size_t i)
   assert(expected != NULL);
   ++expected;
 
-  size_t n = diriterator_get_object_leaf_name(it, buffer, sizeof(buffer));
+  size_t n = diriterator_get_object_leaf_name(&*it, buffer, sizeof(buffer));
   assert(n == strlen(expected));
   puts(buffer);
   assert(strcmp(buffer, expected) == 0);
@@ -330,19 +330,19 @@ static void validate_object(const DirIterator *it, size_t i)
   assert(strlen(test_objects[i].name) > strlen(test_objects[0].name) + 1);
   expected = test_objects[i].name + strlen(test_objects[0].name) + 1;
 
-  n = diriterator_get_object_sub_path_name(it, buffer, sizeof(buffer));
+  n = diriterator_get_object_sub_path_name(&*it, buffer, sizeof(buffer));
   assert(n == strlen(expected));
   puts(buffer);
   assert(strcmp(buffer, expected) == 0);
 
   expected = test_objects[i].name;
 
-  n = diriterator_get_object_path_name(it, buffer, sizeof(buffer));
+  n = diriterator_get_object_path_name(&*it, buffer, sizeof(buffer));
   assert(n == strlen(expected));
   puts(buffer);
   assert(strcmp(buffer, expected) == 0);
 
-  const int object_type = diriterator_get_object_info(it, &info);
+  const int object_type = diriterator_get_object_info(&*it, &info);
   validate_object_info(&info, object_type, i);
 }
 
@@ -389,7 +389,7 @@ static void check_buffer(char *buffer, size_t buff_size, const char *expected, s
   assert(n == strlen(expected));
 }
 
-static void check_empty(DirIterator *it)
+static void check_empty(_Optional DirIterator *it)
 {
   assert(it);
 
@@ -398,43 +398,43 @@ static void check_empty(DirIterator *it)
     DirIteratorObjectInfo info;
     char buffer[StringBufferSize];
 
-    assert(diriterator_is_empty(it));
+    assert(diriterator_is_empty(&*it));
 
-    assert(diriterator_get_object_info(it, NULL) == ObjectType_NotFound);
-    assert(diriterator_get_object_info(it, &info) == ObjectType_NotFound);
+    assert(diriterator_get_object_info(&*it, NULL) == ObjectType_NotFound);
+    assert(diriterator_get_object_info(&*it, &info) == ObjectType_NotFound);
 
-    assert(diriterator_get_object_path_name(it, NULL, 0) == 0);
+    assert(diriterator_get_object_path_name(&*it, NULL, 0) == 0);
 
     memset(buffer, CHAR_MAX, sizeof(buffer));
-    size_t n = diriterator_get_object_path_name(it, buffer, sizeof(buffer));
+    size_t n = diriterator_get_object_path_name(&*it, buffer, sizeof(buffer));
     check_buffer(buffer, sizeof(buffer), "", n);
 
-    assert(diriterator_get_object_leaf_name(it, NULL, 0) == 0);
+    assert(diriterator_get_object_leaf_name(&*it, NULL, 0) == 0);
 
     memset(buffer, CHAR_MAX, sizeof(buffer));
-    n = diriterator_get_object_leaf_name(it, buffer, sizeof(buffer));
+    n = diriterator_get_object_leaf_name(&*it, buffer, sizeof(buffer));
     check_buffer(buffer, sizeof(buffer), "", n);
 
-    assert(diriterator_get_object_sub_path_name(it, NULL, 0) == 0);
+    assert(diriterator_get_object_sub_path_name(&*it, NULL, 0) == 0);
 
     memset(buffer, CHAR_MAX, sizeof(buffer));
-    n = diriterator_get_object_sub_path_name(it, buffer, sizeof(buffer));
+    n = diriterator_get_object_sub_path_name(&*it, buffer, sizeof(buffer));
     check_buffer(buffer, sizeof(buffer), "", n);
 
     /* Advancing an empty iterator should have no effect */
-    diriterator_advance(it);
+    diriterator_advance(&*it);
   }
 }
 
 static void simple_test(unsigned int flags, const char *pattern)
 {
-  const _kernel_oserror *e;
-  DirIterator *it;
+  _Optional const _kernel_oserror *e;
+  _Optional DirIterator *it;
   size_t i;
 
   for (e = diriterator_make(&it, flags, test_objects[0].name, pattern), i = 1;
-       !diriterator_is_empty(it);
-       e = diriterator_advance(it), ++i)
+       it && !diriterator_is_empty(&*it);
+       e = diriterator_advance(&*it), ++i)
   {
     assert(e == NULL);
 
@@ -443,7 +443,7 @@ static void simple_test(unsigned int flags, const char *pattern)
 
     /* Validate the current object against the array from which the
        directory tree was generated */
-    validate_object(it, i);
+    validate_object(&*it, i);
   }
   assert(e == NULL);
 
@@ -460,11 +460,11 @@ static void simple_test(unsigned int flags, const char *pattern)
 static void test1(void)
 {
   /* Make/destroy */
-  DirIterator *it[NumberOfIterators];
+  _Optional DirIterator *it[NumberOfIterators];
 
   for (size_t i = 0; i < ARRAY_SIZE(it); i++)
   {
-    const _kernel_oserror * const e = diriterator_make(
+    _Optional const _kernel_oserror * const e = diriterator_make(
                                           &it[i],
                                           0,
                                           test_objects[0].name,
@@ -475,7 +475,7 @@ static void test1(void)
   for (size_t i = 0; i < ARRAY_SIZE(it); i++)
   {
     assert(it[i] != NULL);
-    assert(!diriterator_is_empty(it[i]));
+    assert(!diriterator_is_empty(&*it[i]));
   }
 
   for (size_t i = 0; i < ARRAY_SIZE(it); i++)
@@ -509,10 +509,10 @@ static void test5(void)
 static void test6(void)
 {
   /* Make from empty directory without recursion */
-  DirIterator *it;
+  _Optional DirIterator *it;
 
   create_dir(EMPTY_PATH);
-  const _kernel_oserror * const e = diriterator_make(&it, 0, EMPTY_PATH, NULL);
+  _Optional const _kernel_oserror * const e = diriterator_make(&it, 0, EMPTY_PATH, NULL);
   wipe(EMPTY_PATH);
 
   assert(e == NULL);
@@ -524,10 +524,10 @@ static void test6(void)
 static void test7(void)
 {
   /* Make from empty directory with recursion */
-  DirIterator *it;
+  _Optional DirIterator *it;
 
   create_dir(EMPTY_PATH);
-  const _kernel_oserror * const e = diriterator_make(
+  _Optional const _kernel_oserror * const e = diriterator_make(
     &it, DirIterator_RecurseIntoDirectories, EMPTY_PATH, NULL);
   wipe(EMPTY_PATH);
 
@@ -540,8 +540,8 @@ static void test7(void)
 static void test8(void)
 {
   /* Make from missing directory without recursion */
-  DirIterator *it;
-  const _kernel_oserror * const e = diriterator_make(
+  _Optional DirIterator *it;
+  _Optional const _kernel_oserror * const e = diriterator_make(
     &it, 0, "<Wimp$ScrapDir>.DirIterTest.missing", NULL);
   assert(e != NULL);
   assert(e->errnum == ErrorNum_DirectoryDoesNotExist);
@@ -551,8 +551,8 @@ static void test8(void)
 static void test9(void)
 {
   /* Make from missing directory with recursion */
-  DirIterator *it;
-  const _kernel_oserror * const e = diriterator_make(
+  _Optional DirIterator *it;
+  _Optional const _kernel_oserror * const e = diriterator_make(
     &it, DirIterator_RecurseIntoDirectories, "<Wimp$ScrapDir>.DirIterTest.missing", NULL);
   assert(e != NULL);
   assert(e->errnum == ErrorNum_DirectoryDoesNotExist);
@@ -562,15 +562,15 @@ static void test9(void)
 static void test10(void)
 {
   /* Get leaf name */
-  DirIterator *it;
-  const _kernel_oserror *e = diriterator_make(
+  _Optional DirIterator *it;
+  _Optional const _kernel_oserror *e = diriterator_make(
     &it, DirIterator_RecurseIntoDirectories, test_objects[0].name, NULL);
   assert(e == NULL);
   assert(it != NULL);
 
   /* Advance past the first object because we want a sub-path with at least
      two elements */
-  e = diriterator_advance(it);
+  e = diriterator_advance(&*it);
   assert(e == NULL);
 
   /* Find last path separator */
@@ -583,7 +583,7 @@ static void test10(void)
     /* Initialize buffer to known contents */
     memset(buffer, CHAR_MAX, sizeof(buffer));
 
-    const size_t n = diriterator_get_object_leaf_name(it, buffer, buff_size);
+    const size_t n = diriterator_get_object_leaf_name(&*it, buffer, buff_size);
     check_buffer(buffer, buff_size, last_sep + 1, n);
   }
 
@@ -593,15 +593,15 @@ static void test10(void)
 static void test11(void)
 {
   /* Get sub-path name */
-  DirIterator *it;
-  const _kernel_oserror *e = diriterator_make(
+  _Optional DirIterator *it;
+  _Optional const _kernel_oserror *e = diriterator_make(
     &it, DirIterator_RecurseIntoDirectories, test_objects[0].name, NULL);
   assert(e == NULL);
   assert(it != NULL);
 
   /* Advance past the first object because we want a sub-path with at least
      two elements */
-  e = diriterator_advance(it);
+  e = diriterator_advance(&*it);
   assert(e == NULL);
 
   char buffer[StringBufferSize];
@@ -610,7 +610,7 @@ static void test11(void)
     /* Initialize buffer to known contents */
     memset(buffer, CHAR_MAX, sizeof(buffer));
 
-    const size_t n = diriterator_get_object_sub_path_name(it, buffer, buff_size);
+    const size_t n = diriterator_get_object_sub_path_name(&*it, buffer, buff_size);
 
     assert(strlen(test_objects[2].name) > strlen(test_objects[0].name) + 1);
 
@@ -626,15 +626,15 @@ static void test11(void)
 static void test12(void)
 {
   /* Get full path name */
-  DirIterator *it;
-  const _kernel_oserror *e = diriterator_make(
+  _Optional DirIterator *it;
+  _Optional const _kernel_oserror *e = diriterator_make(
     &it, DirIterator_RecurseIntoDirectories, test_objects[0].name, NULL);
   assert(e == NULL);
   assert(it != NULL);
 
   /* Advance past the first object because we want a sub-path with at least
      two elements */
-  e = diriterator_advance(it);
+  e = diriterator_advance(&*it);
   assert(e == NULL);
 
   char buffer[StringBufferSize];
@@ -643,7 +643,7 @@ static void test12(void)
     /* Initialize buffer to known contents */
     memset(buffer, CHAR_MAX, sizeof(buffer));
 
-    const size_t n = diriterator_get_object_path_name(it, buffer, buff_size);
+    const size_t n = diriterator_get_object_path_name(&*it, buffer, buff_size);
     check_buffer(buffer, buff_size, test_objects[2].name, n);
   }
 
@@ -653,10 +653,10 @@ static void test12(void)
 static void test13(void)
 {
   /* Get object info */
-  DirIterator *it;
+  _Optional DirIterator *it;
   DirIteratorObjectInfo info[2];
 
-  const _kernel_oserror *e = diriterator_make(
+  _Optional const _kernel_oserror *e = diriterator_make(
     &it, DirIterator_RecurseIntoDirectories, test_objects[0].name, NULL);
   assert(e == NULL);
   assert(it != NULL);
@@ -664,7 +664,7 @@ static void test13(void)
   /* Initialize buffer to known contents */
   memset(&info, CHAR_MAX, sizeof(info));
 
-  const int object_type = diriterator_get_object_info(it, &info[0]);
+  const int object_type = diriterator_get_object_info(&*it, &info[0]);
   validate_object_info(&info[0], object_type, 1);
 
   /* Check that free bytes following the info are untouched */
@@ -678,22 +678,22 @@ static void test13(void)
 static void test14(void)
 {
   /* Get leaf name with null buffer */
-  DirIterator *it;
-  const _kernel_oserror *e = diriterator_make(
+  _Optional DirIterator *it;
+  _Optional const _kernel_oserror *e = diriterator_make(
     &it, DirIterator_RecurseIntoDirectories, test_objects[0].name, NULL);
   assert(e == NULL);
   assert(it != NULL);
 
   /* Advance past the first object because we want a sub-path with at least
      two elements */
-  e = diriterator_advance(it);
+  e = diriterator_advance(&*it);
   assert(e == NULL);
 
   /* Find last path separator */
   const char * const last_sep = strrchr(test_objects[2].name, '.');
   assert(last_sep != NULL);
 
-  const size_t n = diriterator_get_object_leaf_name(it, NULL, 0);
+  const size_t n = diriterator_get_object_leaf_name(&*it, NULL, 0);
   assert(n == strlen(last_sep + 1));
 
   diriterator_destroy(it);
@@ -702,18 +702,18 @@ static void test14(void)
 static void test15(void)
 {
   /* Get sub-path name with null buffer */
-  DirIterator *it;
-  const _kernel_oserror *e = diriterator_make(
+  _Optional DirIterator *it;
+  _Optional const _kernel_oserror *e = diriterator_make(
     &it, DirIterator_RecurseIntoDirectories, test_objects[0].name, NULL);
   assert(e == NULL);
   assert(it != NULL);
 
   /* Advance past the first object because we want a sub-path with at least
      two elements */
-  e = diriterator_advance(it);
+  e = diriterator_advance(&*it);
   assert(e == NULL);
 
-  const size_t n = diriterator_get_object_sub_path_name(it, NULL, 0);
+  const size_t n = diriterator_get_object_sub_path_name(&*it, NULL, 0);
   assert(strlen(test_objects[2].name) > strlen(test_objects[0].name) + 1);
   assert(n == strlen(test_objects[2].name) - strlen(test_objects[0].name) - 1);
 
@@ -723,18 +723,18 @@ static void test15(void)
 static void test16(void)
 {
   /* Get full path name with null buffer */
-  DirIterator *it;
-  const _kernel_oserror *e = diriterator_make(
+  _Optional DirIterator *it;
+  _Optional const _kernel_oserror *e = diriterator_make(
     &it, DirIterator_RecurseIntoDirectories, test_objects[0].name, NULL);
   assert(e == NULL);
   assert(it != NULL);
 
   /* Advance past the first object because we want a sub-path with at least
      two elements */
-  e = diriterator_advance(it);
+  e = diriterator_advance(&*it);
   assert(e == NULL);
 
-  const size_t n = diriterator_get_object_path_name(it, NULL, 0);
+  const size_t n = diriterator_get_object_path_name(&*it, NULL, 0);
   assert(n == strlen(test_objects[2].name));
 
   diriterator_destroy(it);
@@ -743,13 +743,13 @@ static void test16(void)
 static void test17(void)
 {
   /* Get object info with null buffer */
-  DirIterator *it;
-  const _kernel_oserror * const e = diriterator_make(
+  _Optional DirIterator *it;
+  _Optional const _kernel_oserror * const e = diriterator_make(
     &it, 0, test_objects[0].name, NULL);
   assert(e == NULL);
   assert(it != NULL);
 
-  const int object_type = diriterator_get_object_info(it, NULL);
+  const int object_type = diriterator_get_object_info(&*it, NULL);
   validate_object_info(NULL, object_type, 1);
 
   diriterator_destroy(it);
@@ -758,13 +758,13 @@ static void test17(void)
 static void test18(void)
 {
   /* Make fail recovery */
-  DirIterator *it;
+  _Optional DirIterator *it;
   unsigned long limit;
 
   for (limit = 0; limit < FortifyAllocationLimit; ++limit)
   {
     Fortify_SetNumAllocationsLimit(limit);
-    const _kernel_oserror *e = diriterator_make(
+    _Optional const _kernel_oserror *e = diriterator_make(
       &it, 0, test_objects[0].name, "#*");
     Fortify_SetNumAllocationsLimit(ULONG_MAX);
 
@@ -776,10 +776,10 @@ static void test18(void)
   assert(limit != FortifyAllocationLimit);
 
   assert(it != NULL);
-  assert(!diriterator_is_empty(it));
+  assert(!diriterator_is_empty(&*it));
 
   char buffer[StringBufferSize];
-  const size_t n = diriterator_get_object_path_name(it, buffer, sizeof(buffer));
+  const size_t n = diriterator_get_object_path_name(&*it, buffer, sizeof(buffer));
   assert(n == strlen(test_objects[1].name));
   assert(strcmp(buffer, test_objects[1].name) == 0);
 
@@ -789,25 +789,25 @@ static void test18(void)
 static void test19(void)
 {
   /* Advance fail recovery */
-  DirIterator *it;
+  _Optional DirIterator *it;
   size_t i;
-  const _kernel_oserror *e = diriterator_make(
+  _Optional const _kernel_oserror *e = diriterator_make(
     &it, DirIterator_RecurseIntoDirectories, test_objects[0].name, NULL);
   assert(e == NULL);
   assert(it != NULL);
 
-  for (i = 1; !diriterator_is_empty(it); ++i)
+  for (i = 1; !diriterator_is_empty(&*it); ++i)
   {
     unsigned long limit;
 
     /* Validate the current object against the array from which the
        directory tree was generated */
-    validate_object(it, i);
+    validate_object(&*it, i);
 
     for (limit = 0; limit < FortifyAllocationLimit; ++limit)
     {
       Fortify_SetNumAllocationsLimit(limit);
-      e = diriterator_advance(it);
+      e = diriterator_advance(&*it);
       Fortify_SetNumAllocationsLimit(ULONG_MAX);
 
       if (e == NULL)
@@ -828,31 +828,31 @@ static void test19(void)
 static void test20(void)
 {
   /* Reset */
-  DirIterator *it;
-  const _kernel_oserror *e = diriterator_make(
+  _Optional DirIterator *it;
+  _Optional const _kernel_oserror *e = diriterator_make(
     &it, DirIterator_RecurseIntoDirectories, test_objects[0].name, NULL);
   assert(e == NULL);
   assert(it != NULL);
 
   /* Gradually increase the number of advances between resets */
-  for (size_t j = 1; !diriterator_is_empty(it); ++j)
+  for (size_t j = 1; !diriterator_is_empty(&*it); ++j)
   {
     size_t i;
 
-    for (e = diriterator_reset(it), i = 1;
-         !diriterator_is_empty(it) && i <= j;
-         e = diriterator_advance(it), ++i)
+    for (e = diriterator_reset(&*it), i = 1;
+         !diriterator_is_empty(&*it) && i <= j;
+         e = diriterator_advance(&*it), ++i)
     {
       assert(e == NULL);
 
       /* Validate the current object against the array from which the
          directory tree was generated */
-      validate_object(it, i);
+      validate_object(&*it, i);
     }
     assert(e == NULL);
 
     /* Check that the iterator didn't become empty too early */
-    if (diriterator_is_empty(it))
+    if (diriterator_is_empty(&*it))
     {
       assert(i >= ARRAY_SIZE(test_objects));
     }
@@ -869,8 +869,8 @@ static void test21(void)
   for (limit = 0; limit < FortifyAllocationLimit; ++limit)
   {
     size_t i;
-    DirIterator *it;
-    const _kernel_oserror *e = diriterator_make(
+    _Optional DirIterator *it;
+    _Optional const _kernel_oserror *e = diriterator_make(
       &it, DirIterator_RecurseIntoDirectories, test_objects[0].name, NULL);
     assert(e == NULL);
     assert(it != NULL);
@@ -878,12 +878,12 @@ static void test21(void)
     /* Advance to an interesting state distinct from post-reset */
     for (i = 1; i <= ARRAY_SIZE(test_objects)/2; ++i)
     {
-      e = diriterator_advance(it);
+      e = diriterator_advance(&*it);
       assert(e == NULL);
     }
 
     Fortify_SetNumAllocationsLimit(limit);
-    e = diriterator_reset(it);
+    e = diriterator_reset(&*it);
     Fortify_SetNumAllocationsLimit(ULONG_MAX);
 
     if (e == NULL)
@@ -894,13 +894,13 @@ static void test21(void)
 
     /* Check that the state of the iterator is unchanged on error,
        or that the reset was successful if no error was returned. */
-    for (; !diriterator_is_empty(it); ++i)
+    for (; !diriterator_is_empty(&*it); ++i)
     {
       /* Validate the current object against the array from which the
          directory tree was generated */
-      validate_object(it, i);
+      validate_object(&*it, i);
 
-      e = diriterator_advance(it);
+      e = diriterator_advance(&*it);
       assert(e == NULL);
     }
 

@@ -27,6 +27,7 @@ History:
   CJB: 02-Jul-05: Created this header.
   CJB: 13-Oct-06: Qualified returned _kernel_oserror pointers as 'const'.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef DeIconise_h
@@ -39,7 +40,11 @@ History:
 /* Local headers */
 #include "Macros.h"
 
-CONST _kernel_oserror *DeIconise_hide_object(unsigned int /*flags*/, ObjectId /*id*/);
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
+_Optional CONST _kernel_oserror *DeIconise_hide_object(unsigned int /*flags*/, ObjectId /*id*/);
    /*
     * If Toolbox object 'id' is currently showing then this function hides it
     * and broadcasts message &400CB to signal that any iconised representation
@@ -49,7 +54,9 @@ CONST _kernel_oserror *DeIconise_hide_object(unsigned int /*flags*/, ObjectId /*
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *DeIconise_show_object(unsigned int /*flags*/, ObjectId /*id*/, int /*show_type*/, void */*type*/, ObjectId /*parent*/, ComponentId /*parent_component*/);
+_Optional CONST _kernel_oserror *DeIconise_show_object(unsigned int /*flags*/,
+     ObjectId /*id*/, int /*show_type*/, _Optional void */*type*/,
+     ObjectId /*parent*/, ComponentId /*parent_component*/);
    /*
     * Shows Toolbox object 'id' before broadcasting message &400CB to signal
     * that any iconised representation of that window should be removed. The

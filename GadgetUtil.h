@@ -24,6 +24,7 @@ Message tokens: None.
 History:
   CJB: 23-Aug-09: Created this header file from scratch.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef GadgetUtil_h
@@ -39,9 +40,13 @@ History:
 /* Local headers */
 #include "Macros.h"
 
-CONST _kernel_oserror *set_gadget_hidden(ObjectId    window,
-                                         ComponentId gadget,
-                                         bool        hide);
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
+_Optional CONST _kernel_oserror *set_gadget_hidden(ObjectId    window,
+                                                   ComponentId gadget,
+                                                   bool        hide);
    /*
     * Show or hide a specified gadget in a given window by moving it below or
     * above the upper extent of the window's work area, unless it is already in
@@ -49,9 +54,9 @@ CONST _kernel_oserror *set_gadget_hidden(ObjectId    window,
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *set_gadget_faded(ObjectId    window,
-                                        ComponentId gadget,
-                                        bool        fade);
+_Optional CONST _kernel_oserror *set_gadget_faded(ObjectId    window,
+                                                  ComponentId gadget,
+                                                  bool        fade);
    /*
     * Fade or unfade a specified gadget in a given window, unless it is already
     * in the requested state.

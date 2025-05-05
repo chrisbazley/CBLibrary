@@ -77,6 +77,7 @@
                   to share instead of duplicate error suppression/recording.
                   Rewrote fancy_error() to use an internal buffer allocated
                   by messagetrans_error_lookup() instead of by its caller.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 /* ISO library headers */
@@ -96,11 +97,11 @@
 #include "WimpExtra.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Err.h"
 #ifdef CBLIB_OBSOLETE
 #include "msgtrans.h"
 #endif /* CBLIB_OBSOLETE */
+#include "Internal/CBMisc.h"
 
 /* Constant numeric values */
 enum
@@ -115,7 +116,7 @@ static _kernel_oserror recorded_error;
 #endif
 static bool riscos_350 = false;
 static char err_taskname[MaxTaskNameLen + 1] = "application";
-static MessagesFD *desc;
+static _Optional MessagesFD *desc;
 static char err_buttons[MaxButtonsLen + 1];
 
 /* ----------------------------------------------------------------------- */
@@ -224,7 +225,7 @@ void err_suppress_errors(void)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *err_dump_suppressed(void)
+_Optional CONST _kernel_oserror *err_dump_suppressed(void)
 {
   suppress_errors = false;
   if (recorded_error.errmess[0] == '\0')
@@ -242,8 +243,8 @@ CONST _kernel_oserror *err_dump_suppressed(void)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *err_initialise(const char *const name, bool const new_errs,
-  MessagesFD *const mfd)
+_Optional CONST _kernel_oserror *err_initialise(const char *const name, bool const new_errs,
+  _Optional MessagesFD *const mfd)
 {
   DEBUGF("Err: Initialising for task '%s', new errors %s, "
          "messages file descriptor %p\n",

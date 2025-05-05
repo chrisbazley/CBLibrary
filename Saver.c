@@ -68,6 +68,7 @@
                   trap before writing to file in _svr_save_as_file().
   CJB: 03-May-25: Fix #include filename case.
   CJB: 05-May-25: Fix pedantic warnings about format specifying type void *.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 /* ISO library headers */
@@ -94,7 +95,6 @@
 #include "WimpExtra.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Saver.h"
 #include "NoBudge.h"
 #include "FileUtils.h"
@@ -105,11 +105,12 @@
 #include "scheduler.h"
 #endif
 #include "FOpenCount.h"
+#include "Internal/CBMisc.h"
 
 typedef struct
 {
-  SaverFinishedHandler *funct; /* may be NULL */
-  void                 *arg;
+  _Optional SaverFinishedHandler *funct; /* may be NULL */
+  void                           *arg;
 }
 SaveOpCallback;
 
@@ -123,7 +124,7 @@ typedef struct
   flex_ptr              client_data;
   unsigned int          start_offset;
   unsigned int          end_offset;
-  SaverFileHandler     *saver_funct;
+  _Optional SaverFileHandler *saver_funct;
   SaveOpCallback        callback;
 #ifdef SLOW_TEST
   WimpMessage           delayed_message;
@@ -148,8 +149,8 @@ enum
 
 static WimpMessageHandler _svr_datasaveack_msg_handler, _svr_dataloadack_msg_handler, _svr_ramfetch_msg_handler;
 static WimpEventHandler _svr_msg_bounce_handler;
-static void _svr_finished(SaveOpData *save_op_data, bool success, CONST _kernel_oserror *e, const char *file_path);
-static SaveOpData *_svr_find_record(int msg_ref);
+static void _svr_finished(SaveOpData *save_op_data, bool success, _Optional CONST _kernel_oserror *e, _Optional const char *file_path);
+static _Optional SaveOpData *_svr_find_record(int msg_ref);
 static void _svr_destroy_op(SaveOpData *save_op_data);
 #ifdef SLOW_TEST
 static SchedulerIdleFunction _svr_send_dataload;
@@ -185,13 +186,13 @@ msg_handlers[] =
     _svr_ramfetch_msg_handler
   }
 };
-static MessagesFD *desc;
+static _Optional MessagesFD *desc;
 
 /* -----------------------------------------------------------------------
                          Public library functions
 */
 
-CONST _kernel_oserror *saver_initialise(int task_handle, MessagesFD *mfd)
+_Optional CONST _kernel_oserror *saver_initialise(int task_handle, _Optional MessagesFD *mfd)
 {
   unsigned int mask;
 
@@ -210,14 +211,14 @@ CONST _kernel_oserror *saver_initialise(int task_handle, MessagesFD *mfd)
   {
     ON_ERR_RTN_E(event_register_message_handler(msg_handlers[i].msg_no,
                                                 msg_handlers[i].handler,
-                                                NULL));
+                                                (void *)NULL));
   }
 
   /* Register handler for messages that return to us as wimp event 19 */
   ON_ERR_RTN_E(event_register_wimp_handler(-1,
                                            Wimp_EUserMessageAcknowledge,
                                            _svr_msg_bounce_handler,
-                                           NULL));
+                                           (void *)NULL));
 
   /* Ensure that messages are not masked */
   event_get_mask(&mask);
@@ -239,16 +240,16 @@ CONST _kernel_oserror *saver_initialise(int task_handle, MessagesFD *mfd)
 /* ----------------------------------------------------------------------- */
 
 #ifdef INCLUDE_FINALISATION_CODE
-CONST _kernel_oserror *saver_finalise(void)
+_Optional CONST _kernel_oserror *saver_finalise(void)
 {
-  CONST _kernel_oserror *return_error = NULL;
+  _Optional CONST _kernel_oserror *return_error = NULL;
 
   assert(initialised);
   initialised = false;
 
   /* Cancel any outstanding save operations */
   DEBUGF("Saver: Cancelling outstanding operations\n");
-  linkedlist_for_each(&save_op_data_list, _svr_cancel_matching_op, NULL);
+  linkedlist_for_each(&save_op_data_list, _svr_cancel_matching_op, (void *)NULL);
 
   /* Deregister Wimp message handlers for data transfer protocol */
   for (size_t i = 0; i < ARRAY_SIZE(msg_handlers); i++)
@@ -256,7 +257,7 @@ CONST _kernel_oserror *saver_finalise(void)
     MERGE_ERR(return_error,
               event_deregister_message_handler(msg_handlers[i].msg_no,
                                                msg_handlers[i].handler,
-                                               NULL));
+                                               (void *)NULL));
   }
 
   /* Deregister handler for messages that return to us as wimp event 19 */
@@ -264,7 +265,7 @@ CONST _kernel_oserror *saver_finalise(void)
             event_deregister_wimp_handler(-1,
                                           Wimp_EUserMessageAcknowledge,
                                           _svr_msg_bounce_handler,
-                                          NULL));
+                                          (void *)NULL));
 
   return return_error;
 }
@@ -272,9 +273,9 @@ CONST _kernel_oserror *saver_finalise(void)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *saver_send_data(int task_handle, WimpMessage *message, flex_ptr data, unsigned int start_offset, unsigned int end_offset, SaverFileHandler *save_method, SaverFinishedHandler *finished_method, void *client_handle)
+_Optional CONST _kernel_oserror *saver_send_data(int task_handle, WimpMessage *message, flex_ptr data, unsigned int start_offset, unsigned int end_offset, _Optional SaverFileHandler *save_method, _Optional SaverFinishedHandler *finished_method, void *client_handle)
 {
-  SaveOpData *save_op_data;
+  _Optional SaveOpData *save_op_data;
 
   DEBUGF("Saver: Request to send bytes %u-%u of block anchored at %p (%p) "
         "to task %d\n", start_offset, end_offset, (void *)data, *data, task_handle);
@@ -296,7 +297,7 @@ CONST _kernel_oserror *saver_send_data(int task_handle, WimpMessage *message, fl
   DEBUGF("Saver: Creating a record for a new save operation\n");
   save_op_data = malloc(sizeof(*save_op_data));
   if (save_op_data == NULL)
-    return lookup_error("NoMem", NULL); /* Memory couldn't be claimed */
+    return lookup_error("NoMem", ""); /* Memory couldn't be claimed */
 
   /* Initialise record for a new save operation */
   save_op_data->destination_safe = false; /* not yet known */
@@ -312,7 +313,7 @@ CONST _kernel_oserror *saver_send_data(int task_handle, WimpMessage *message, fl
   DEBUGF("Saver: New record is at %p\n", (void *)save_op_data);
 
   {
-    _kernel_oserror *e;
+    _Optional _kernel_oserror *e;
 
     /* Populate a few fields of the DataSave message automatically */
     message->hdr.size = WORD_ALIGN(sizeof(message->hdr) +
@@ -332,7 +333,7 @@ CONST _kernel_oserror *saver_send_data(int task_handle, WimpMessage *message, fl
                           NULL);
     if (e != NULL)
     {
-      _svr_destroy_op(save_op_data);
+      _svr_destroy_op(&*save_op_data);
       return e;
     }
     DEBUGF("Saver: sent DataSave message (ref. %d in reply to %d)\n",
@@ -364,7 +365,7 @@ void saver_cancel_sends(flex_ptr data)
 static int _svr_datasaveack_msg_handler(WimpMessage *message, void *handle)
 {
   /* This is a handler for DataSaveAck messages */
-  SaveOpData *save_op_data;
+  _Optional SaveOpData *save_op_data;
 
   assert(message != NULL);
   NOT_USED(handle);
@@ -393,11 +394,11 @@ static int _svr_datasaveack_msg_handler(WimpMessage *message, void *handle)
 #ifdef SLOW_TEST
   save_op_data->delayed_message = *message;
   if (scheduler_register_delay(_svr_send_dataload,
-                               save_op_data,
+                               &*save_op_data,
                                DataLoadDelay,
                                SchedulerPriority_Min) != NULL)
 #endif /* SLOW_TEST */
-    _svr_save_as_file(save_op_data, message);
+    _svr_save_as_file(&*save_op_data, message);
 
   return 1; /* claim message */
 }
@@ -407,7 +408,7 @@ static int _svr_datasaveack_msg_handler(WimpMessage *message, void *handle)
 static int _svr_dataloadack_msg_handler(WimpMessage *message, void *handle)
 {
   /* This is a handler for DataLoadAck messages */
-  SaveOpData *save_op_data;
+  _Optional SaveOpData *save_op_data;
 
   assert(message != NULL);
   NOT_USED(handle);
@@ -426,7 +427,7 @@ static int _svr_dataloadack_msg_handler(WimpMessage *message, void *handle)
         message->data.data_load_ack.leaf_name,
         message->data.data_load_ack.file_type);
 
-  _svr_finished(save_op_data,
+  _svr_finished(&*save_op_data,
                 true,
                 NULL,
                 save_op_data->destination_safe ?
@@ -441,8 +442,8 @@ static int _svr_ramfetch_msg_handler(WimpMessage *message, void *handle)
 {
   /* This is a handler for RAMFetch messages */
   int transfer_size, bytes_remaining, event_code;
-  SaveOpData *save_op_data;
-  _kernel_oserror *err;
+  _Optional SaveOpData *save_op_data;
+  _Optional _kernel_oserror *err;
 
   assert(message != NULL);
   NOT_USED(handle);
@@ -461,7 +462,7 @@ static int _svr_ramfetch_msg_handler(WimpMessage *message, void *handle)
         message->data.ram_fetch.buffer_size, message->data.ram_fetch.buffer);
 
   /* We can't use RAM transfer if the client has supplied a save function */
-  if (save_op_data->saver_funct != NULL)
+  if (save_op_data->saver_funct)
   {
     DEBUGF("Saver: Awaiting DataSaveAck (client save function)\n");
     return 0; /* ignore message */
@@ -504,7 +505,7 @@ static int _svr_ramfetch_msg_handler(WimpMessage *message, void *handle)
 
   if (err != NULL)
   {
-    _svr_finished(save_op_data, false, err, NULL);
+    _svr_finished(&*save_op_data, false, err, NULL);
     return 1; /* claim message */
   }
   save_op_data->start_offset += transfer_size;
@@ -517,7 +518,7 @@ static int _svr_ramfetch_msg_handler(WimpMessage *message, void *handle)
   err = wimp_send_message(event_code, message, message->hdr.sender, 0, NULL);
   if (err != NULL)
   {
-    _svr_finished(save_op_data, false, err, NULL);
+    _svr_finished(&*save_op_data, false, err, NULL);
     return 1; /* claim message */
   }
   DEBUGF("Saver: Sent RAMTransmit message (ref. %d in reply to %d)\n",
@@ -530,7 +531,7 @@ static int _svr_ramfetch_msg_handler(WimpMessage *message, void *handle)
   else
   {
     /* All data has been successfully transferred */
-    _svr_finished(save_op_data, true, NULL, NULL);
+    _svr_finished(&*save_op_data, true, NULL, NULL);
   }
 
   return 1; /* claim message */
@@ -543,7 +544,7 @@ static int _svr_ramfetch_msg_handler(WimpMessage *message, void *handle)
 static int _svr_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBlock *id_block, void *handle)
 {
   /* This is a handler for bounced messages */
-  SaveOpData *save_op_data;
+  _Optional SaveOpData *save_op_data;
 
   NOT_USED(event_code);
   assert(event != NULL);
@@ -571,17 +572,17 @@ static int _svr_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBlock
               event->user_message_acknowledge.data.data_load.leaf_name);
         remove(event->user_message_acknowledge.data.data_load.leaf_name);
       }
-      _svr_finished(save_op_data, false, lookup_error("RecDied", NULL), NULL);
+      _svr_finished(&*save_op_data, false, lookup_error("RecDied", ""), NULL);
       return 1; /* claim event */
 
     case Wimp_MRAMTransmit:
       DEBUGF("Saver: It is a bounced RAMTransmit message\n");
-      _svr_finished(save_op_data, false, lookup_error("RecDied", NULL), NULL);
+      _svr_finished(&*save_op_data, false, lookup_error("RecDied", ""), NULL);
       return 1; /* claim event */
 
     case Wimp_MDataSave:
       DEBUGF("Saver: It is a bounced DataSave message\n");
-      _svr_finished(save_op_data, false, NULL, NULL);
+      _svr_finished(&*save_op_data, false, NULL, NULL);
       return 1; /* claim event */
 
   }
@@ -600,14 +601,14 @@ static CONST _kernel_oserror *lookup_error(const char *token, const char *param)
 
 /* ----------------------------------------------------------------------- */
 
-static void _svr_finished(SaveOpData *save_op_data, bool success, CONST _kernel_oserror *e, const char *file_path)
+static void _svr_finished(SaveOpData *save_op_data, bool success, _Optional CONST _kernel_oserror *e, _Optional const char *file_path)
 {
   /* Call the client-supplied function (if any) to notify it that the save
      operation is complete. */
   assert(save_op_data != NULL);
   assert(!success || e == NULL);
 
-  if (save_op_data->callback.funct != NULL)
+  if (save_op_data->callback.funct)
   {
     DEBUGF("Saver: Save finished, calling client function with arg %p\n",
           save_op_data->callback.arg);
@@ -625,9 +626,9 @@ static void _svr_finished(SaveOpData *save_op_data, bool success, CONST _kernel_
 
 /* ----------------------------------------------------------------------- */
 
-static SaveOpData *_svr_find_record(int msg_ref)
+static _Optional SaveOpData *_svr_find_record(int msg_ref)
 {
-  SaveOpData *save_op_data;
+  _Optional SaveOpData *save_op_data;
 
   DEBUGF("Saver: Searching for operation awaiting reply to %d\n", msg_ref);
   save_op_data = (SaveOpData *)linkedlist_for_each(
@@ -676,7 +677,7 @@ static SchedulerTime _svr_send_dataload(void *handle, SchedulerTime time_now, co
 
 static void _svr_save_as_file(SaveOpData *save_op_data, WimpMessage *message)
 {
-  CONST _kernel_oserror *err;
+  _Optional CONST _kernel_oserror *err;
 
   assert(save_op_data != NULL);
   assert(message != NULL);
@@ -686,7 +687,7 @@ static void _svr_save_as_file(SaveOpData *save_op_data, WimpMessage *message)
         message->hdr.action_code, (void *)save_op_data);
 
   hourglass_on();
-  if (save_op_data->saver_funct != NULL)
+  if (save_op_data->saver_funct)
   {
     /* Use a client-supplied function to save the data */
     err = save_op_data->saver_funct(message->data.data_save_ack.leaf_name,
@@ -708,7 +709,7 @@ static void _svr_save_as_file(SaveOpData *save_op_data, WimpMessage *message)
     _kernel_last_oserror(); /* reset */
 
     size_t n = 0;
-    FILE *f = fopen_inc(message->data.data_save_ack.leaf_name, "wb");
+    _Optional FILE *f = fopen_inc(message->data.data_save_ack.leaf_name, "wb");
     if (f != NULL)
     {
       nobudge_register(PreExpandHeap); /* protect dereference of flex pointer */
@@ -716,11 +717,11 @@ static void _svr_save_as_file(SaveOpData *save_op_data, WimpMessage *message)
       n = fwrite((char *)*save_op_data->client_data + save_op_data->start_offset,
                  save_op_data->end_offset - save_op_data->start_offset,
                  1,
-                 f);
+                 &*f);
 
       nobudge_deregister();
 
-      if (fclose_dec(f))
+      if (fclose_dec(&*f))
       {
         n = 0;
       }

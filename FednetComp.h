@@ -33,6 +33,7 @@ History:
   CJB: 26-Jun-10: Made compilation of this file conditional upon definition of
                   CBLIB_OBSOLETE.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef FednetComp_h
@@ -47,7 +48,11 @@ History:
 /* Local headers */
 #include "Macros.h"
 
-CONST _kernel_oserror *load_compressed(const char * /*file_path*/, flex_ptr /*buffer_anchor*/);
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
+_Optional CONST _kernel_oserror *load_compressed(const char * /*file_path*/, flex_ptr /*buffer_anchor*/);
    /*
     * Allocates a flex block of sufficient size for the compressed data held in
     * file 'file_path' (writing the base address to 'buffer_anchor') and then
@@ -55,7 +60,7 @@ CONST _kernel_oserror *load_compressed(const char * /*file_path*/, flex_ptr /*bu
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *save_compressed(const char * /*file_path*/, int /*file_type*/, flex_ptr /*buffer_anchor*/);
+_Optional CONST _kernel_oserror *save_compressed(const char * /*file_path*/, int /*file_type*/, flex_ptr /*buffer_anchor*/);
    /*
     * Invokes *CSave to save the entire contents of flex block 'buffer_anchor'
     * to the location specified by 'file_path' and then sets the RISC OS file

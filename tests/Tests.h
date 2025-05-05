@@ -42,6 +42,10 @@
 
 #endif /* USE_CBDEBUG */
 
+#ifdef USE_OPTIONAL
+#include "Optional.h"
+#endif
+
 void DecodeLExe_tests(void);
 void DirIter_tests(void);
 void IntVector_tests(void);

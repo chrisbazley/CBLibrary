@@ -22,8 +22,8 @@
 
   Example usage (note that nothing is printed for an empty directory):
 
-  const _kernel_oserror *e;
-  DirIterator *it;
+  _Optional const _kernel_oserror *e;
+  _Optional DirIterator *it;
   for (e = diriterator_make(&it, 0, "ADFS::0.$", NULL);
        e == NULL && !diriterator_is_empty(it);
        e = diriterator_advance(it))
@@ -43,6 +43,7 @@ History:
   CJB: 25-Mar-12: Created this header file.
   CJB: 24-Nov-14: Added reset method.
   CJB: 01-Jun-16: Documented that diriterator_destroy(NULL) has no effect.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 #ifndef DirIter_h
@@ -58,6 +59,10 @@ History:
 /* Local headers */
 #include "Macros.h"
 #include "DateStamp.h"
+
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
 
 typedef struct
 {
@@ -80,10 +85,10 @@ typedef struct DirIterator DirIterator;
 #define DirIterator_RecurseIntoDirectories       (1u << 0)
 #define DirIterator_RecurseIntoImages            (1u << 1)
 
-CONST _kernel_oserror *diriterator_make(DirIterator ** /*iterator*/,
-                                        unsigned int   /*flags*/,
-                                        const char   * /*path_name*/,
-                                        const char   * /*pattern*/);
+_Optional CONST _kernel_oserror *diriterator_make(_Optional DirIterator ** /*iterator*/,
+                                                  unsigned int             /*flags*/,
+                                                  const char             * /*path_name*/,
+                                                  _Optional const char   * /*pattern*/);
    /*
     * Creates an iterator object to allow traversal of the given directory
     * 'path_name' (e.g. "ADFS::0.$" would enumerate objects in the root
@@ -94,7 +99,7 @@ CONST _kernel_oserror *diriterator_make(DirIterator ** /*iterator*/,
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *diriterator_reset(DirIterator * /*iterator*/);
+_Optional CONST _kernel_oserror *diriterator_reset(DirIterator * /*iterator*/);
    /*
     * Reset a directory iterator to its initial state.
     * Returns: a pointer to an OS error block, or else NULL for success.
@@ -162,7 +167,7 @@ size_t diriterator_get_object_leaf_name(const DirIterator * /*iterator*/,
     * diriterator_get_object_path_name in every other respect.
     */
 
-CONST _kernel_oserror *diriterator_advance(DirIterator * /*iterator*/);
+_Optional CONST _kernel_oserror *diriterator_advance(DirIterator * /*iterator*/);
    /*
     * Advances the given iterator to the next object in the directory tree
     * that matches the wildcarded name pattern, or makes the iterator
@@ -174,7 +179,7 @@ CONST _kernel_oserror *diriterator_advance(DirIterator * /*iterator*/);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-void diriterator_destroy(DirIterator * /*iterator*/);
+void diriterator_destroy(_Optional DirIterator * /*iterator*/);
    /*
     * Frees memory that was previously allocated for a directory iterator.
     * Does nothing if called with a null pointer.

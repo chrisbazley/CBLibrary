@@ -72,6 +72,7 @@
   CJB: 31-Oct-21: Fixed debug output of uninitialized bounding box in
                   _drag_send_dragging_msg() when client passed a bounding box.
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 /* ISO library headers */
@@ -94,13 +95,13 @@
 #include "FileTypes.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "scheduler.h"
 #include "Drag.h"
 #ifdef CBLIB_OBSOLETE
 #include "msgtrans.h"
 #include "Err.h"
 #endif /* CBLIB_OBSOLETE */
+#include "Internal/CBMisc.h"
 
 /* Constant numeric values */
 enum
@@ -123,12 +124,12 @@ enum
 static WimpMessageHandler _drag_dragclaim_msg_handler;
 static WimpEventHandler _drag_msg_bounce_handler, _drag_userdrag_handler;
 static SchedulerIdleFunction _drag_null_event_handler;
-static CONST _kernel_oserror *_drag_send_dragging_msg(void);
-static CONST _kernel_oserror *_drag_call_wdb_handler(DragBoxOp action);
+static _Optional CONST _kernel_oserror *_drag_send_dragging_msg(void);
+static _Optional CONST _kernel_oserror *_drag_call_wdb_handler(DragBoxOp action);
 static void _drag_free_mem(void);
-static CONST _kernel_oserror *_drag_get_pointer_info(void);
-static CONST _kernel_oserror *_drag_finished(void);
-static void check_error(CONST _kernel_oserror *e);
+static _Optional CONST _kernel_oserror *_drag_get_pointer_info(void);
+static _Optional CONST _kernel_oserror *_drag_finished(void);
+static void check_error(_Optional CONST _kernel_oserror *e);
 #ifdef COPY_ARRAY_ARGS
 static CONST _kernel_oserror *lookup_error(const char *token);
 #endif
@@ -145,19 +146,19 @@ static bool initialised;
 static unsigned int drag_flags;
 #ifdef COPY_ARRAY_ARGS
 /* The following pointers reference heap blocks, if COPY_ARRAY_ARGS defined */
-static int *client_file_types;
-static BBox *client_data_bbox; /* may be NULL */
+static _Optional int *client_file_types;
+static _Optional BBox *client_data_bbox; /* may be NULL */
 #else
 static const int *client_file_types;
-static const BBox *client_data_bbox; /* may be NULL */
+static _Optional const BBox *client_data_bbox; /* may be NULL */
 #endif
 static void *client_drag_data;
 static DragBoxHandler *client_fn_box;
-static DragFinishedHandler *client_fn_drop;
+static _Optional DragFinishedHandler *client_fn_drop;
 static int dragclaim_msg_ref, dragging_msg_ref;
 static int dragclaim_task;
 static WimpGetPointerInfoBlock pointer;
-static MessagesFD *desc;
+static _Optional MessagesFD *desc;
 #ifndef CBLIB_OBSOLETE
 static void (*report)(CONST _kernel_oserror *);
 #endif
@@ -166,12 +167,12 @@ static void (*report)(CONST _kernel_oserror *);
                          Public library functions
 */
 
-CONST _kernel_oserror *drag_initialise(
+_Optional CONST _kernel_oserror *drag_initialise(
 #ifdef CBLIB_OBSOLETE
                          void
 #else
-                         MessagesFD  *mfd,
-                         void       (*report_error)(CONST _kernel_oserror *)
+                         _Optional MessagesFD *mfd,
+                         void (*report_error)(CONST _kernel_oserror *)
 #endif /* CBLIB_OBSOLETE */
 )
 {
@@ -190,19 +191,19 @@ CONST _kernel_oserror *drag_initialise(
   /* Register a handler for DragClaim messages (received during a drag) */
   ON_ERR_RTN_E(event_register_message_handler(Wimp_MDragClaim,
                                               _drag_dragclaim_msg_handler,
-                                              NULL));
+                                              (void *)NULL));
 
   /* Register a handler for messages that return to us as wimp event 19 */
   ON_ERR_RTN_E(event_register_wimp_handler(-1,
                                            Wimp_EUserMessageAcknowledge,
                                            _drag_msg_bounce_handler,
-                                           NULL));
+                                           (void *)NULL));
 
   /* Register a handler for user drag events (to detect end of a drag) */
   ON_ERR_RTN_E(event_register_wimp_handler(-1,
                                            Wimp_EUserDrag,
                                            _drag_userdrag_handler,
-                                           NULL));
+                                           (void *)NULL));
 
   /* Ensure that messages are not masked */
   event_get_mask(&mask);
@@ -219,9 +220,9 @@ CONST _kernel_oserror *drag_initialise(
 /* ----------------------------------------------------------------------- */
 
 #ifdef INCLUDE_FINALISATION_CODE
-CONST _kernel_oserror *drag_finalise(void)
+_Optional CONST _kernel_oserror *drag_finalise(void)
 {
-  CONST _kernel_oserror *return_error = NULL;
+  _Optional CONST _kernel_oserror *return_error = NULL;
 
   assert(initialised);
   initialised = false;
@@ -236,21 +237,21 @@ CONST _kernel_oserror *drag_finalise(void)
   MERGE_ERR(return_error,
             event_deregister_message_handler(Wimp_MDragClaim,
                                              _drag_dragclaim_msg_handler,
-                                             NULL));
+                                             (void *)NULL));
 
   /* Deregister our handler for messages that return to us as wimp event 19 */
   MERGE_ERR(return_error,
             event_deregister_wimp_handler(-1,
                                           Wimp_EUserMessageAcknowledge,
                                           _drag_msg_bounce_handler,
-                                          NULL));
+                                          (void *)NULL));
 
   /* Deregister our handler for user drag events */
   MERGE_ERR(return_error,
             event_deregister_wimp_handler(-1,
                                           Wimp_EUserDrag,
                                           _drag_userdrag_handler,
-                                          NULL));
+                                          (void *)NULL));
 
   _drag_free_mem();
 
@@ -260,7 +261,7 @@ CONST _kernel_oserror *drag_finalise(void)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *drag_abort(void)
+_Optional CONST _kernel_oserror *drag_abort(void)
 {
   assert(initialised);
   DEBUGF("Drag: Request to abort a drag\n");
@@ -274,14 +275,14 @@ CONST _kernel_oserror *drag_abort(void)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *drag_start(const int *const file_types,
-  const BBox *const data_bbox, DragBoxHandler *const drag_box_method,
-  DragFinishedHandler *const drop_method, void *const handle)
+_Optional CONST _kernel_oserror *drag_start(const int *const file_types,
+  _Optional const BBox *const data_bbox, DragBoxHandler *const drag_box_method,
+  _Optional DragFinishedHandler *const drop_method, void *const handle)
 {
-  CONST _kernel_oserror *e;
+  _Optional CONST _kernel_oserror *e;
 
   assert(initialised);
-  assert(drag_box_method != NULL);
+  assert(drag_box_method);
   assert(file_types[0] != FileType_Null);
 
   /* Check whether Shift key held at start of drag (move or copy?) */
@@ -304,7 +305,7 @@ CONST _kernel_oserror *drag_start(const int *const file_types,
   DEBUGF("Drag: User wants %s drags\n", solid_drags ? "solid" : "outline");
 
   /* We want to receive null events during the drag */
-  ON_ERR_RTN_E(scheduler_register_delay(_drag_null_event_handler, NULL, 0, 3));
+  ON_ERR_RTN_E(scheduler_register_delay(_drag_null_event_handler, handle, 0, 3));
 
   /* Initialise state variables for a new drag */
   dragclaim_task = 0;
@@ -320,10 +321,10 @@ CONST _kernel_oserror *drag_start(const int *const file_types,
   client_file_types = malloc(array_len * sizeof(file_types[0]));
   if (client_file_types == NULL)
   {
-    scheduler_deregister(_drag_null_event_handler, NULL); /* 12-Nov-06 */
+    scheduler_deregister(_drag_null_event_handler, handle); /* 12-Nov-06 */
     return lookup_error("NoMem");
   }
-  (void)copy_file_types(client_file_types, file_types, array_len - 1);
+  (void)copy_file_types(&*client_file_types, file_types, array_len - 1);
 
   /* make a private copy of the data's bounding box */
   if (data_bbox != NULL)
@@ -331,7 +332,7 @@ CONST _kernel_oserror *drag_start(const int *const file_types,
     client_data_bbox = malloc(sizeof(*client_data_bbox));
     if (client_data_bbox == NULL)
     {
-      scheduler_deregister(_drag_null_event_handler, NULL); /* 12-Nov-06 */
+      scheduler_deregister(_drag_null_event_handler, handle); /* 12-Nov-06 */
       _drag_free_mem();
       return lookup_error("NoMem");
     }
@@ -346,7 +347,7 @@ CONST _kernel_oserror *drag_start(const int *const file_types,
   e = _drag_get_pointer_info();
   if (e != NULL)
   {
-    scheduler_deregister(_drag_null_event_handler, NULL);
+    scheduler_deregister(_drag_null_event_handler, handle);
     _drag_free_mem();
     return e;
   }
@@ -356,7 +357,7 @@ CONST _kernel_oserror *drag_start(const int *const file_types,
   e = _drag_call_wdb_handler(DragBoxOp_Start);
   if (e != NULL)
   {
-    scheduler_deregister(_drag_null_event_handler, NULL); /* 12-Nov-06 */
+    scheduler_deregister(_drag_null_event_handler, handle); /* 12-Nov-06 */
     _drag_free_mem();
   }
   else
@@ -418,7 +419,8 @@ static int _drag_dragclaim_msg_handler(WimpMessage *message, void *handle)
        a DataSave message to the drag claimant. */
     if (!drag_aborted &&
         !_drag_call_drop_handler(
-          pick_file_type(dragclaim->file_types, client_file_types)))
+          pick_file_type(dragclaim->file_types,
+            client_file_types ? &*client_file_types : &(int){FileType_Null})))
     {
       /* Tell the claimant to relinquish the drag so that the ghost caret is
          removed and auto-scrolling stopped. */
@@ -527,8 +529,8 @@ static int _drag_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBloc
         {
           if (!drag_aborted)
           {
-            assert(client_file_types != NULL);
-            (void)_drag_call_drop_handler(client_file_types[0]);
+            (void)_drag_call_drop_handler(
+                    client_file_types ? client_file_types[0] : FileType_Null);
           }
           _drag_free_mem();
         }
@@ -561,13 +563,13 @@ static int _drag_userdrag_handler(int event_code, WimpPollBlock *event, IdBlock 
                          Miscellaneous internal functions
 */
 
-static void check_error(CONST _kernel_oserror *e)
+static void check_error(_Optional CONST _kernel_oserror *e)
 {
 #ifdef CBLIB_OBSOLETE
   (void)err_check(e);
 #else
-  if (e != NULL && report != NULL)
-    report(e);
+  if (e != NULL && report)
+    report(&*e);
 #endif
 }
 
@@ -605,9 +607,9 @@ static SchedulerTime _drag_null_event_handler(void *handle,
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *_drag_send_dragging_msg(void)
+static _Optional CONST _kernel_oserror *_drag_send_dragging_msg(void)
 {
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
   WimpMessage message;
   WimpDraggingMessage *dragging = (WimpDraggingMessage *)&message.data;
 
@@ -636,7 +638,8 @@ static CONST _kernel_oserror *_drag_send_dragging_msg(void)
 
   /* Copy list of file types into message body (-1 for terminator) */
   size_t const array_len = copy_file_types(dragging->file_types,
-    client_file_types, ARRAY_SIZE(dragging->file_types) - 1) + 1;
+    client_file_types ? &*client_file_types : &(int){FileType_Null},
+    ARRAY_SIZE(dragging->file_types) - 1) + 1;
 
   message.hdr.size = WORD_ALIGN(sizeof(message.hdr) +
     offsetof(WimpDraggingMessage, file_types) +
@@ -686,7 +689,7 @@ static CONST _kernel_oserror *_drag_send_dragging_msg(void)
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *_drag_call_wdb_handler(DragBoxOp action)
+static _Optional CONST _kernel_oserror *_drag_call_wdb_handler(DragBoxOp action)
 {
   if (action == DragBoxOp_Start)
   {
@@ -702,7 +705,7 @@ static CONST _kernel_oserror *_drag_call_wdb_handler(DragBoxOp action)
     DEBUGF("Drag: Asking client to cancel Wimp drag box\n");
   }
 
-  assert(client_fn_box != NULL);
+  assert(client_fn_box);
   return client_fn_box(action,
                        solid_drags,
                        pointer.x,
@@ -714,7 +717,7 @@ static CONST _kernel_oserror *_drag_call_wdb_handler(DragBoxOp action)
 
 static bool _drag_call_drop_handler(int file_type)
 {
-  if (client_fn_drop == NULL)
+  if (!client_fn_drop)
     return false;
 
   return client_fn_drop(shift_held, pointer.window_handle, pointer.icon_handle,
@@ -745,7 +748,7 @@ static void _drag_free_mem(void)
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *_drag_get_pointer_info(void)
+static _Optional CONST _kernel_oserror *_drag_get_pointer_info(void)
 {
   DEBUGF("Drag: Updating cached mouse pointer info\n");
   return wimp_get_pointer_info(&pointer);
@@ -781,9 +784,9 @@ static bool _drag_delete_claim(void)
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *_drag_finished(void)
+static _Optional CONST _kernel_oserror *_drag_finished(void)
 {
-  CONST _kernel_oserror *return_error = NULL;
+  _Optional CONST _kernel_oserror *return_error = NULL;
 
   /* Is a drag currently in progress? */
   if (drag_finished)
@@ -798,7 +801,7 @@ static CONST _kernel_oserror *_drag_finished(void)
 
   MERGE_ERR(return_error, _drag_call_wdb_handler(DragBoxOp_Cancel));
 
-  scheduler_deregister(_drag_null_event_handler, NULL);
+  scheduler_deregister(_drag_null_event_handler, client_drag_data);
 
   /* Ensure that the drag claimant's representation of our data is
      consistent with the final mouse position */

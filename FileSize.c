@@ -19,6 +19,7 @@
 
 /* History:
   CJB: 10-Nov-19: Created this file.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* Acorn C/C++ library headers */
@@ -28,13 +29,13 @@
 #include "OSFile.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "FileUtils.h"
+#include "Internal/CBMisc.h"
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *get_file_size(const char *const f, int *const size)
+_Optional CONST _kernel_oserror *get_file_size(const char *const f, int *const size)
 {
   assert(f != NULL);
   assert(size != NULL);

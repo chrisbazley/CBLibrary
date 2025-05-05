@@ -45,6 +45,7 @@
   CJB: 03-Apr-16: Added missing WindowShowObjectBlock initializers to avoid
                   GNU C compiler warnings.
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -63,10 +64,10 @@
 #include "OSVDU.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "StackViews.h"
 #include "Err.h"
 #include "ScreenSize.h"
+#include "Internal/CBMisc.h"
 
 /* The height of the gap at the bottom of the screen within which windows
    will not be opened. Should be the same as that left by the Wimp when a
@@ -120,7 +121,7 @@ void StackViews_configure(int xmin, int ymax, int width, int height, int xscroll
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *StackViews_open(ObjectId id, ObjectId parent, ComponentId parent_component)
+_Optional CONST _kernel_oserror *StackViews_open(ObjectId id, ObjectId parent, ComponentId parent_component)
 {
   int width = initial_width, height = initial_height;
   WimpGetWindowStateBlock state;
@@ -178,7 +179,7 @@ CONST _kernel_oserror *StackViews_open(ObjectId id, ObjectId parent, ComponentId
       int info_block[100/sizeof(int)]; /* block must be 100 bytes */
       _kernel_swi_regs regs;
       regs.r[0] = 11;
-      regs.r[1] = (int)info_block;
+      regs.r[1] = (uintptr_t)info_block;
       info_block[0] = state.window_handle; /* window handle */
       ON_ERR_RTN_E(_kernel_swi(Wimp_Extend, &regs, &regs));
       bottom_border = info_block[2];
@@ -268,7 +269,7 @@ CONST _kernel_oserror *StackViews_open(ObjectId id, ObjectId parent, ComponentId
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *StackViews_open_get_bbox(ObjectId id, ObjectId parent, ComponentId parent_component, BBox *bbox)
+_Optional CONST _kernel_oserror *StackViews_open_get_bbox(ObjectId id, ObjectId parent, ComponentId parent_component, BBox *bbox)
 {
   ON_ERR_RTN_E(StackViews_open(id, parent, parent_component));
 

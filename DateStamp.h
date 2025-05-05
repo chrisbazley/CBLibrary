@@ -38,6 +38,7 @@ History:
                   Declared a new function to decode load and exec addresses.
   CJB: 30-Oct-18: Moved definitions of the date type and the decode_load_exec
                   function to CBOSLib.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef DateStamp_h
@@ -55,10 +56,14 @@ History:
 /* Local headers */
 #include "Macros.h"
 
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
 typedef OS_DateAndTime OSDateAndTime;
 
-CONST _kernel_oserror *get_date_stamp(const char * /*f*/,
-                                      OS_DateAndTime * /*utc*/);
+_Optional CONST _kernel_oserror *get_date_stamp(const char * /*f*/,
+                                                OS_DateAndTime * /*utc*/);
    /*
     * Reads the date and time when object 'f' was last changed, in 5 byte UTC
     * time format. On entry 'utc' must point to an object in which to store the
@@ -68,7 +73,7 @@ CONST _kernel_oserror *get_date_stamp(const char * /*f*/,
     *          unstamped file this will be 00:00:00 01-Jan-1900.
     */
 
-CONST _kernel_oserror *get_current_time(OS_DateAndTime * /*utc*/);
+_Optional CONST _kernel_oserror *get_current_time(OS_DateAndTime * /*utc*/);
    /*
     * Reads the current date and time from the CMOS clock in 5 byte UTC time
     * format. On entry 'utc' must point to an object in which to store the date

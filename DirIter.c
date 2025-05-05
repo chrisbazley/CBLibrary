@@ -31,6 +31,7 @@
   CJB: 05-Feb-19: Use stringbuffer_append_all where appropriate.
   CJB: 28-Apr-19: Less verbose debugging output.
   CJB: 05-May-25: Fix pedantic warnings about format specifying type void *.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 /* ISO library headers */
@@ -52,10 +53,10 @@
 #include "OSGBPB.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Platform.h"
 #include "DirIter.h"
 #include "DateStamp.h"
+#include "Internal/CBMisc.h"
 
 
 /* Refilling the buffer early makes it more complex to find the total
@@ -87,9 +88,9 @@ typedef struct DirIteratorLevel
   int gbpb_next; /* Offset of the next next catalogue entry to be read
                     (0 at start of directory, -1 at end). */
   unsigned int nentries; /* Number of catalogue entries in the buffer that the
-                   iterator hasn't yet advanced beyond. */
-  const OS_GBPB_CatalogueInfo *entry; /* Pointer to catalogue entry for current object, or
-                            NULL if none. */
+                            iterator hasn't yet advanced beyond. */
+  _Optional const OS_GBPB_CatalogueInfo *entry; /* Pointer to catalogue entry for
+                                                   current object, or NULL if none. */
   size_t entry_name_len; /* Length of the name of the current object. */
   size_t buffer_size; /* Size of the buffer for catalogue entries, in
                          bytes. */
@@ -105,8 +106,8 @@ struct DirIterator
 {
   unsigned int flags; /* Miscellaneous flags (e.g. whether to recurse into
                          directories and/or image files). */
-  char *pattern; /* Pointer to wildcarded name to match, or NULL to match
-                    all (equivalent to "*"). */
+  _Optional char *pattern; /* Pointer to wildcarded name to match, or NULL to match
+                              all (equivalent to "*"). */
   StringBuffer path_name; /* Path name of current deepest directory. */
   size_t path_name_len; /* Length of the root path, for convenience of
                            diriterator_get_object_sub_path_name. */
@@ -118,13 +119,18 @@ static CONST _kernel_oserror *no_mem(void)
   return messagetrans_error_lookup(NULL, DUMMY_ERRNO, "NoMem", 0);
 }
 
+typedef struct
+{
+  _Optional const LinkedListItem *stop;
+} FreeLevelCtx;
+
 static bool free_level_callback(LinkedList *list, LinkedListItem *item, void *arg)
 {
-  const LinkedListItem * const stop = arg;
+  const FreeLevelCtx * const ctx = arg;
 
   /* If stop is NULL then no item can match it and all will be freed. */
   assert(item != NULL);
-  if (item != stop)
+  if (item != ctx->stop)
   {
     assert(item != NULL);
     DEBUG_VERBOSEF("DirIterator: freeing level %p\n", (void *)item);
@@ -132,21 +138,23 @@ static bool free_level_callback(LinkedList *list, LinkedListItem *item, void *ar
     free(item);
   }
 
-  return item == stop;
+  return item == ctx->stop;
 }
 
-static void free_levels(LinkedList *dir_list, LinkedListItem *stop)
+static void free_levels(LinkedList *dir_list, _Optional LinkedListItem *stop)
 {
-  linkedlist_for_each(dir_list, free_level_callback, stop);
+  FreeLevelCtx ctx = { .stop = stop };
+  linkedlist_for_each(dir_list, free_level_callback, &ctx);
 }
 
-static CONST _kernel_oserror *extend_buffer(DirIterator       *iterator,
-                                            DirIteratorLevel **levelp)
+static _Optional CONST _kernel_oserror *extend_buffer(DirIterator       *iterator,
+                                                      DirIteratorLevel **levelp)
 {
   size_t new_size, entry_offset;
-  DirIteratorLevel *level, *new_level;
-  LinkedListItem *prev;
-  CONST _kernel_oserror *e = NULL;
+  DirIteratorLevel *level;
+  _Optional DirIteratorLevel *new_level;
+  _Optional LinkedListItem *prev;
+  _Optional CONST _kernel_oserror *e = NULL;
 
   assert(levelp != NULL);
   level = *levelp;
@@ -182,7 +190,7 @@ static CONST _kernel_oserror *extend_buffer(DirIterator       *iterator,
        print and use in comparisons */
     DEBUG_VERBOSEF("DirIterator: realloc successful, level %p is now at %p\n",
       (void *)level, (void *)new_level);
-    level = new_level;
+    level = &*new_level;
     level->buffer_size = new_size;
 
     /* Relocate the pointer to the current entry (if any) */
@@ -199,10 +207,10 @@ static CONST _kernel_oserror *extend_buffer(DirIterator       *iterator,
   return e;
 }
 
-static CONST _kernel_oserror *refill_buffer(DirIterator       *iterator,
-                                            DirIteratorLevel **levelp)
+static _Optional CONST _kernel_oserror *refill_buffer(DirIterator       *iterator,
+                                                      DirIteratorLevel **levelp)
 {
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
   size_t keep_size = 0;
   DirIteratorLevel *level;
   const char *path_name;
@@ -219,12 +227,12 @@ static CONST _kernel_oserror *refill_buffer(DirIterator       *iterator,
   /* I don't trust _kernel_osgbpb to leave the buffer untouched on error, so
      move any remaining catalogue entries (including the current one) to the
      start of the buffer for safekeeping. */
-  if (level->nentries > 0)
+  if (level->nentries > 0 && level->entry)
   {
     size_t entry_name_size = level->entry_name_len + 1;
 
 #ifdef KEEP_MORE_THAN_ONE_ENTRY
-    const OS_GBPB_CatalogueInfo *entry = level->entry;
+    const OS_GBPB_CatalogueInfo *entry = &*level->entry;
     int nentries = level->nentries;
     for (--nentries; nentries != 0; --nentries)
     {
@@ -243,7 +251,7 @@ static CONST _kernel_oserror *refill_buffer(DirIterator       *iterator,
     DEBUG_VERBOSEF("DirIterator: Moving %d entries (%zu bytes) within buffer %p\n",
       level->nentries, keep_size, (void *)level->buffer);
 
-    memmove(level->buffer, level->entry, keep_size);
+    memmove(level->buffer, &*level->entry, keep_size);
     keep_size = WORD_ALIGN(keep_size); /* align before fresh entries */
   }
   level->entry = (const OS_GBPB_CatalogueInfo *)level->buffer;
@@ -276,10 +284,9 @@ static CONST _kernel_oserror *refill_buffer(DirIterator       *iterator,
     {
       /* If there was previously no 'current' entry then find the length of
          the new 'current' entry */
-      if (level->nentries == 0)
+      if (level->nentries == 0 && level->entry != NULL)
       {
-        assert(level->entry != NULL);
-        level->entry_name_len = strlen(level->entry->name);
+        level->entry_name_len = strlen(&*level->entry->name);
       }
       level->nentries += n;
     }
@@ -302,10 +309,10 @@ static CONST _kernel_oserror *refill_buffer(DirIterator       *iterator,
   return e;
 }
 
-static CONST _kernel_oserror *enter_dir(DirIterator *iterator)
+static _Optional CONST _kernel_oserror *enter_dir(DirIterator *iterator)
 {
-  CONST _kernel_oserror *e = NULL;
-  DirIteratorLevel *level;
+  _Optional CONST _kernel_oserror *e = NULL;
+  _Optional DirIteratorLevel *level;
 
   assert(iterator != NULL);
 
@@ -325,24 +332,27 @@ static CONST _kernel_oserror *enter_dir(DirIterator *iterator)
 
     /* Try to fill the buffer with catalogue entries for this level. */
     {
-      DirIteratorLevel *tmp = level; /* Avoid taking the address of 'level'*/
+      DirIteratorLevel *tmp = &*level; /* Avoid taking the address of 'level'*/
       e = refill_buffer(iterator, &tmp);
       assert(tmp != NULL);
       level = tmp;
     }
 
-    /* Don't bother entering empty directories. */
-    if (e == NULL && level->nentries > 0)
+    if (level != NULL)
     {
-      DEBUG_VERBOSEF("DirIterator: Deepest directory is now %p (path length %zu)\n",
-        (void *)level, level->path_name_len);
-    }
-    else
-    {
-      linkedlist_remove(&iterator->dir_list, &level->list_item);
-      free(level);
-      DEBUGF("DirIterator: Ignoring empty directory '%s'\n",
-             stringbuffer_get_pointer(&iterator->path_name));
+      /* Don't bother entering empty directories. */
+      if (e == NULL && level->nentries > 0)
+      {
+        DEBUG_VERBOSEF("DirIterator: Deepest directory is now %p (path length %zu)\n",
+          (void *)level, level->path_name_len);
+      }
+      else
+      {
+        linkedlist_remove(&iterator->dir_list, &level->list_item);
+        free(level);
+        DEBUGF("DirIterator: Ignoring empty directory '%s'\n",
+              stringbuffer_get_pointer(&iterator->path_name));
+      }
     }
   }
   else
@@ -379,24 +389,24 @@ static bool can_enter_dir(const DirIterator *iterator, const OS_GBPB_CatalogueIn
 
 static void advance(DirIteratorLevel *level)
 {
-  const OS_GBPB_CatalogueInfo *entry;
+  _Optional const OS_GBPB_CatalogueInfo *entry;
 
   DEBUG_VERBOSEF("DirIterator: Advancing to next object on level %p\n",
     (void *)level);
   assert(level != NULL);
   assert(level->nentries > 0);
 
-  if (--level->nentries > 0)
+  if (--level->nentries > 0 && level->entry != NULL)
   {
     /* Calculate the address of the next catalogue entry in the buffer */
     const size_t name_size = WORD_ALIGN(level->entry_name_len + 1);
 
     entry = level->entry;
     assert(entry != NULL);
-    entry = (const OS_GBPB_CatalogueInfo *)(entry->name + name_size);
+    entry = (const OS_GBPB_CatalogueInfo *)(&*entry->name + name_size);
 
     /* Cache the length of the object name, for future use */
-    level->entry_name_len = strlen(entry->name);
+    level->entry_name_len = entry ? strlen(&*entry->name) : 0;
   }
   else
   {
@@ -405,15 +415,15 @@ static void advance(DirIteratorLevel *level)
   }
 
   DEBUGF("DirIterator: Next entry is %p ('%s'), %d entries remain\n",
-         (void *)entry, entry == NULL ? "" : entry->name, level->nentries);
+         (void *)entry, entry == NULL ? "" : &*entry->name, level->nentries);
 
   level->entry = entry;
 }
 
-static CONST _kernel_oserror *leave_dir(DirIterator *iterator)
+static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
 {
   DirIteratorLevel *ancestor, *deepest_dir;
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
 
   assert(iterator != NULL);
   deepest_dir = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
@@ -483,7 +493,7 @@ static size_t get_name(const DirIterator *iterator,
 
   assert(iterator != NULL);
   level = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
-  if (level == NULL)
+  if (level == NULL || level->entry == NULL)
   {
     /* Output an empty string because the iterator is empty */
     DEBUGF("DirIterator: Iterator %p is empty\n", (void *)iterator);
@@ -498,9 +508,11 @@ static size_t get_name(const DirIterator *iterator,
   {
     DEBUG_VERBOSEF("DirIterator: Deepest directory is %p (path name length %zu)\n",
       (void *)level, level->path_name_len);
+
     assert(level->nentries > 0);
-    assert(level->entry != NULL);
-    assert(strlen(level->entry->name) == level->entry_name_len);
+    const OS_GBPB_CatalogueInfo *const entry = &*level->entry;
+
+    assert(strlen(entry->name) == level->entry_name_len);
     assert(level->path_name_len ==
            stringbuffer_get_length(&iterator->path_name));
 
@@ -536,7 +548,7 @@ static size_t get_name(const DirIterator *iterator,
       /* Concatenate as much of the leaf name as will fit in the remaining
          space */
       nbytes = LOWEST(level->entry_name_len, bytes_free);
-      memcpy(write, level->entry->name, nbytes);
+      memcpy(write, entry->name, nbytes);
       write += nbytes;
       bytes_free -= nbytes;
 
@@ -561,13 +573,13 @@ static size_t get_name(const DirIterator *iterator,
   return nchars;
 }
 
-CONST _kernel_oserror *diriterator_make(DirIterator  **iterator,
-                                        unsigned int   flags,
-                                        const char    *path_name,
-                                        const char    *pattern)
+_Optional CONST _kernel_oserror *diriterator_make(_Optional DirIterator  **iterator,
+                                                  unsigned int             flags,
+                                                  const char              *path_name,
+                                                  _Optional const char    *pattern)
 {
-  CONST _kernel_oserror *e = NULL;
-  DirIterator *it = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
+  _Optional DirIterator *it = NULL;
 
   assert(iterator != NULL);
   assert(path_name != NULL);
@@ -577,7 +589,7 @@ CONST _kernel_oserror *diriterator_make(DirIterator  **iterator,
   it = malloc(sizeof(*it));
   if (it != NULL)
   {
-    if (pattern == NULL || strcmp(pattern, "*") == 0)
+    if (pattern == NULL || strcmp(&*pattern, "*") == 0)
     {
       /* Match any object name. */
       it->pattern = NULL;
@@ -585,9 +597,11 @@ CONST _kernel_oserror *diriterator_make(DirIterator  **iterator,
     else
     {
       /* Duplicate the wildcarded object name to be matched. */
-      it->pattern = strdup(pattern);
-      if (it->pattern == NULL)
+      _Optional char *p = strdup(&*pattern);
+      if (p == NULL)
         e = no_mem();
+      else
+        it->pattern = &*p;
     }
 
     if (e == NULL)
@@ -599,7 +613,7 @@ CONST _kernel_oserror *diriterator_make(DirIterator  **iterator,
         linkedlist_init(&it->dir_list);
         it->path_name_len = stringbuffer_get_length(&it->path_name);
 
-        e = enter_dir(it);
+        e = enter_dir(&*it);
         if (e != NULL)
           stringbuffer_destroy(&it->path_name);
       }
@@ -627,9 +641,9 @@ CONST _kernel_oserror *diriterator_make(DirIterator  **iterator,
   return e;
 }
 
-CONST _kernel_oserror *diriterator_reset(DirIterator *iterator)
+_Optional CONST _kernel_oserror *diriterator_reset(DirIterator *iterator)
 {
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
   LinkedList old_dir_list;
 
   DEBUGF("DirIterator: Resetting iterator %p\n", (void *)iterator);
@@ -679,18 +693,15 @@ int diriterator_get_object_info(const DirIterator     *iterator,
 
   assert(iterator != NULL);
   level = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
-  if (level == NULL)
+  if (level == NULL || level->entry == NULL)
   {
     /* No current object because the iterator is empty */
     object_type = ObjectType_NotFound;
   }
   else
   {
-    const OS_GBPB_CatalogueInfo *entry;
-
     assert(level->nentries > 0);
-    entry = level->entry;
-    assert(entry != NULL);
+    const OS_GBPB_CatalogueInfo *const entry = &*level->entry;
 
     if (info != NULL)
     {
@@ -757,15 +768,15 @@ size_t diriterator_get_object_leaf_name(const DirIterator *iterator,
   return get_name(iterator, buffer, buff_size, SIZE_MAX);
 }
 
-CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
+_Optional CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
 {
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
   DirIteratorLevel *level;
   DEBUG_VERBOSEF("DirIterator: Advancing iterator %p\n", (void *)iterator);
 
   assert(iterator != NULL);
   level = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
-  if (level == NULL)
+  if (level == NULL || level->entry == NULL)
   {
     DEBUGF("DirIterator: Empty\n");
   }
@@ -774,10 +785,12 @@ CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
     bool entered = false;
 
     assert(level->nentries > 0);
-    if (can_enter_dir(iterator, level->entry))
+    const OS_GBPB_CatalogueInfo *const entry = &*level->entry;
+
+    if (can_enter_dir(iterator, entry))
     {
       if (stringbuffer_append_separated(&iterator->path_name,
-                                        PATH_SEPARATOR, level->entry->name))
+                                        PATH_SEPARATOR, entry->name))
       {
         e = enter_dir(iterator);
         if (e == NULL &&
@@ -844,7 +857,7 @@ CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
   return e;
 }
 
-void diriterator_destroy(DirIterator *iterator)
+void diriterator_destroy(_Optional DirIterator *iterator)
 {
   DEBUGF("DirIterator: Destroying iterator %p\n", (void *)iterator);
   if (iterator != NULL)

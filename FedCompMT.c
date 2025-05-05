@@ -61,6 +61,7 @@
   CJB: 29-Sep-20: Fixed missing/misplaced casts in assertions.
                   Made debugging output less verbose by default.
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 /* ISO library headers */
@@ -87,8 +88,7 @@
 #include "MessTrans.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
-#include "FopenCount.h"
+#include "FOpenCount.h"
 #include "FedCompMT.h"
 #include "FileUtils.h"
 #ifdef CBLIB_OBSOLETE
@@ -96,6 +96,7 @@
 #endif /* CBLIB_OBSOLETE */
 #include "NoBudge.h"
 #include "Internal/FOpPrivate.h"
+#include "Internal/CBMisc.h"
 
 enum
 {
@@ -118,7 +119,7 @@ typedef struct
 }
 comp_state;
 
-static MessagesFD *desc;
+static _Optional MessagesFD *desc;
 
 /* ----------------------------------------------------------------------- */
 /*                         Private functions                               */
@@ -171,7 +172,7 @@ static DestroyResult destroy_common(fileop_common *const common)
   {
     result = DESTROY_WRITE_FAIL;
   }
-  if (fclose_dec(common->f) && result == DESTROY_OK)
+  if (common->f && fclose_dec(&*common->f) && result == DESTROY_OK)
   {
     result = DESTROY_FCLOSE_FAIL;
   }
@@ -181,7 +182,7 @@ static DestroyResult destroy_common(fileop_common *const common)
 
 /* ----------------------------------------------------------------------- */
 
-static const char *destroy_decomp(decomp_state *const decomp)
+static _Optional const char *destroy_decomp(decomp_state *const decomp)
 {
   assert(decomp != NULL);
   return destroy_common(&decomp->common) == DESTROY_WRITE_FAIL ? "NoMem" : NULL;
@@ -189,7 +190,7 @@ static const char *destroy_decomp(decomp_state *const decomp)
 
 /* ----------------------------------------------------------------------- */
 
-static const char *destroy_comp(comp_state *const comp)
+static _Optional const char *destroy_comp(comp_state *const comp)
 {
   assert(comp != NULL);
   return destroy_common(&comp->common) != DESTROY_OK ? "WriteFail" : NULL;
@@ -204,11 +205,11 @@ static void destroy_cb(void *const fop)
 
 /* ----------------------------------------------------------------------- */
 
-static decomp_state *make_decomp(const char *const file_path,
-  flex_ptr buffer_anchor, const char **const e_token)
+static _Optional decomp_state *make_decomp(const char *const file_path,
+  flex_ptr buffer_anchor, _Optional const char **const e_token)
 {
-  const char *token = NULL;
-  decomp_state *state = malloc(sizeof(*state));
+  _Optional const char *token = NULL;
+  _Optional decomp_state *state = malloc(sizeof(*state));
   if (state == NULL)
   {
     token = "NoMem";
@@ -227,8 +228,8 @@ static decomp_state *make_decomp(const char *const file_path,
     {
       /* Get size of decompressed data */
       long int len;
-      if (!fread_int32le(&len, state->common.f) ||
-          fseek(state->common.f, 0, SEEK_SET))
+      if (!fread_int32le(&len, &*state->common.f) ||
+          fseek(&*state->common.f, 0, SEEK_SET))
       {
         DEBUGF("fread_int32le or fseek failed\n");
         token = "ReadFail";
@@ -243,7 +244,7 @@ static decomp_state *make_decomp(const char *const file_path,
       {
         state->common.len = len;
         if (!reader_gkey_init(&state->common.reader, FednetHistoryLog2,
-          state->common.f))
+          &*state->common.f))
         {
           DEBUGF("reader_gkey_init failed\n");
           token = "NoMem";
@@ -254,9 +255,9 @@ static decomp_state *make_decomp(const char *const file_path,
           writer_flex_init(&state->common.writer, buffer_anchor);
         }
       }
-      if (token)
+      if (token && state->common.f)
       {
-        fclose_dec(state->common.f);
+        fclose_dec(&*state->common.f);
       }
     }
     if (token)
@@ -271,12 +272,12 @@ static decomp_state *make_decomp(const char *const file_path,
 
 /* ----------------------------------------------------------------------- */
 
-static comp_state *make_comp(const char *const file_path,
+static _Optional comp_state *make_comp(const char *const file_path,
   flex_ptr buffer_anchor, unsigned int const start_offset,
-  unsigned int const end_offset, const char **const e_token)
+  unsigned int const end_offset, _Optional const char **const e_token)
 {
-  const char *token = NULL;
-  comp_state *state = malloc(sizeof(*state));
+  _Optional const char *token = NULL;
+  _Optional comp_state *state = malloc(sizeof(*state));
   if (state == NULL)
   {
     token = "NoMem";
@@ -300,7 +301,7 @@ static comp_state *make_comp(const char *const file_path,
     else
     {
       if (!writer_gkey_init(&state->common.writer,
-        FednetHistoryLog2, len, state->common.f))
+        FednetHistoryLog2, len, &*state->common.f))
       {
         DEBUGF("writer_gkey_init failed\n");
         token = "NoMem";
@@ -309,9 +310,9 @@ static comp_state *make_comp(const char *const file_path,
       {
         reader_flex_init(&state->common.reader, buffer_anchor);
       }
-      if (token)
+      if (token && state->common.f)
       {
-        fclose_dec(state->common.f);
+        fclose_dec(&*state->common.f);
       }
     }
     if (token)
@@ -327,7 +328,7 @@ static comp_state *make_comp(const char *const file_path,
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *compress_initialise(MessagesFD *const mfd)
+_Optional CONST _kernel_oserror *compress_initialise(_Optional MessagesFD *const mfd)
 {
   /* Store pointer to messages file descriptor */
   desc = mfd;
@@ -336,7 +337,7 @@ CONST _kernel_oserror *compress_initialise(MessagesFD *const mfd)
 
 /* ----------------------------------------------------------------------- */
 
-unsigned int get_decomp_perc(FILE ***const handle)
+unsigned int get_decomp_perc(FILE *_Optional **const handle)
 {
   assert(handle != NULL);
   const decomp_state *const state = (decomp_state *)*handle;
@@ -350,7 +351,7 @@ unsigned int get_decomp_perc(FILE ***const handle)
 
 /* ----------------------------------------------------------------------- */
 
-unsigned int get_comp_perc(FILE ***const handle)
+unsigned int get_comp_perc(FILE *_Optional **const handle)
 {
   assert(handle != NULL);
   const comp_state *const state = (comp_state *)*handle;
@@ -368,15 +369,15 @@ unsigned int get_comp_perc(FILE ***const handle)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *load_compressedM(const char *const file_path,
+_Optional CONST _kernel_oserror *load_compressedM(const char *const file_path,
   flex_ptr buffer_anchor, const volatile bool *const time_up,
-  FILE ***const handle)
+  FILE *_Optional **const handle)
 {
   assert(file_path != NULL);
   assert(buffer_anchor != NULL);
   assert(handle != NULL);
-  const char *e_token = NULL;
-  decomp_state *state = (decomp_state *)*handle;
+  _Optional const char *e_token = NULL;
+  _Optional decomp_state *state = (decomp_state *)*handle;
 
   if (state == NULL)
   {
@@ -420,7 +421,7 @@ CONST _kernel_oserror *load_compressedM(const char *const file_path,
       DEBUGF("Decompression complete or error\n");
       if (state)
       {
-        const char *const e = destroy_decomp(state);
+        _Optional const char *const e = destroy_decomp(&*state);
         if (e_token == NULL)
         {
           e_token = e;
@@ -435,23 +436,23 @@ CONST _kernel_oserror *load_compressedM(const char *const file_path,
   }
 
   *handle = (FILE **)state; /* write back pointer to state */
-  return e_token != NULL ? lookup_error(e_token, file_path) : NULL;
+  return e_token != NULL ? lookup_error(&*e_token, file_path) : NULL;
 }
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *save_compressedM2(const char *const file_path,
+_Optional CONST _kernel_oserror *save_compressedM2(const char *const file_path,
   flex_ptr buffer_anchor, const volatile bool *const time_up,
   unsigned int const start_offset, unsigned int const end_offset,
-  FILE ***const handle)
+  FILE *_Optional **const handle)
 {
   assert(file_path != NULL);
   assert(buffer_anchor != NULL);
   assert(end_offset >= start_offset);
   assert(end_offset <= (unsigned)flex_size(buffer_anchor));
   assert(handle != NULL);
-  comp_state *state = (comp_state *)*handle;
-  const char *e_token = NULL;
+  _Optional comp_state *state = (comp_state *)*handle;
+  _Optional const char *e_token = NULL;
 
   if (state == NULL)
   {
@@ -513,7 +514,7 @@ CONST _kernel_oserror *save_compressedM2(const char *const file_path,
     if (e_token != NULL || truncated || reader_feof(&state->common.reader))
     {
       DEBUGF("Compression complete or error\n");
-      const char *const e = destroy_comp(state);
+      _Optional const char *const e = destroy_comp(&*state);
       if (e_token == NULL)
       {
          e_token = e;
@@ -527,14 +528,15 @@ CONST _kernel_oserror *save_compressedM2(const char *const file_path,
   }
 
   *handle = (FILE **)state; /* write back pointer to state */
-  return e_token != NULL ? lookup_error(e_token, file_path) : NULL;
+  return e_token != NULL ? lookup_error(&*e_token, file_path) : NULL;
 }
 
 /* ----------------------------------------------------------------------- */
 
 #ifdef CBLIB_OBSOLETE
 /* The following function is deprecated; use save_compressedM2(). */
-CONST _kernel_oserror *save_compressedM(const char *file_path, int file_type, flex_ptr buffer_anchor, const volatile bool *time_up, FILE ***handle)
+_Optional CONST _kernel_oserror *save_compressedM(const char *file_path, int file_type,
+  flex_ptr buffer_anchor, const volatile bool *time_up, FILE *_Optional **handle)
 {
   ON_ERR_RTN_E(save_compressedM2(file_path, buffer_anchor, time_up, 0,
                                  flex_size(buffer_anchor), handle));

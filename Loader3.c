@@ -31,6 +31,7 @@
   CJB: 07-Nov-20: Added the loader3_load_file function to allow DataOpen and
                   DataLoad handlers to reuse existing code.
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 /* ISO library headers */
@@ -58,12 +59,12 @@
 #include "MessTrans.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Loader3.h"
 #include "NoBudge.h"
 #include "scheduler.h"
 #include "FOpenCount.h"
 #include "FileUtils.h"
+#include "Internal/CBMisc.h"
 
 /* The following structure holds all the state for a given load operation */
 typedef struct
@@ -72,12 +73,13 @@ typedef struct
   int   last_message_ref;
   int   last_message_type;
   int   bytes_received;
-  bool  RAM_capable;
-  bool  idle_function;
-  bool  no_flex_budge;
-  void *RAM_buffer;
-  Loader3ReadMethod   *read_method;
-  Loader3FailedMethod *failed_method;
+  bool  RAM_capable:1;
+  bool  idle_function:1;
+  bool  no_flex_budge:1;
+  bool  have_RAM_buffer:1;
+  void *RAM_buffer; // flex pointer
+  _Optional Loader3ReadMethod   *read_method;
+  _Optional Loader3FailedMethod *failed_method;
   void                *client_handle;
   WimpMessage datasave_msg;
 }
@@ -103,7 +105,7 @@ enum
 
 static bool initialised;
 static LinkedList load_op_data_list;
-static MessagesFD *desc;
+static _Optional MessagesFD *desc;
 
 /* -----------------------------------------------------------------------
                          Miscellaneous internal functions
@@ -120,7 +122,7 @@ static CONST _kernel_oserror *lookup_error(const char *const token,
 
 static CONST _kernel_oserror *no_mem(void)
 {
-  return lookup_error("NoMem", NULL);
+  return lookup_error("NoMem", "");
 }
 
 /* ----------------------------------------------------------------------- */
@@ -138,7 +140,7 @@ static void destroy_op(LoadOpData *const load_op_data)
   if (load_op_data->idle_function)
     scheduler_deregister(time_out, load_op_data);
 
-  if (load_op_data->RAM_buffer != NULL)
+  if (load_op_data->have_RAM_buffer)
     flex_free(&load_op_data->RAM_buffer);
 
   linkedlist_remove(&load_op_data_list, &load_op_data->list_item);
@@ -148,7 +150,7 @@ static void destroy_op(LoadOpData *const load_op_data)
 /* ----------------------------------------------------------------------- */
 
 static void report_fail(LoadOpData *const load_op_data,
-  CONST _kernel_oserror *const e)
+  _Optional CONST _kernel_oserror *const e)
 {
   assert(load_op_data != NULL);
 
@@ -157,7 +159,7 @@ static void report_fail(LoadOpData *const load_op_data,
     DEBUGF("Loader3: Error 0x%x, %s\n", e->errnum, e->errmess);
   }
 
-  if (load_op_data->failed_method != NULL)
+  if (load_op_data->failed_method)
   {
     DEBUGF("Loader3: calling failed function with arg %p\n",
            load_op_data->client_handle);
@@ -203,13 +205,13 @@ static bool op_has_ref(LinkedList *const list,
 
 /* ----------------------------------------------------------------------- */
 
-static LoadOpData *find_record(int msg_ref)
+static _Optional LoadOpData *find_record(int msg_ref)
 {
   DEBUGF("Loader3: Searching for operation awaiting reply to %d\n", msg_ref);
   if (!msg_ref)
     return NULL;
 
-  LoadOpData *const load_op_data = (LoadOpData *)linkedlist_for_each(
+  _Optional LoadOpData *const load_op_data = (LoadOpData *)linkedlist_for_each(
     &load_op_data_list, op_has_ref, &msg_ref);
 
   if (load_op_data == NULL)
@@ -245,7 +247,7 @@ static bool cancel_matching_op(LinkedList *const list,
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *send_msg(LoadOpData *const load_op_data,
+static _Optional CONST _kernel_oserror *send_msg(LoadOpData *const load_op_data,
   int const code, WimpMessage *const msg, int const handle)
 {
   assert(load_op_data != NULL);
@@ -271,7 +273,7 @@ static bool read_data(LoadOpData *const load_op_data, Reader *const reader)
   assert(!reader_ferror(reader));
 
   bool success = true;
-  if (load_op_data->read_method != NULL)
+  if (load_op_data->read_method)
   {
     success = load_op_data->read_method(reader,
       load_op_data->bytes_received,
@@ -289,7 +291,7 @@ static bool load_file(LoadOpData *const load_op_data,
 {
   DEBUGF("Loader3: Loading %s\n", file_path);
 
-  CONST _kernel_oserror *const e = get_file_size(file_path,
+  _Optional CONST _kernel_oserror *const e = get_file_size(file_path,
     &load_op_data->bytes_received);
 
   if (e != NULL)
@@ -298,7 +300,7 @@ static bool load_file(LoadOpData *const load_op_data,
     return false;
   }
 
-  FILE *const f = fopen_inc(file_path, "rb"); /* open for reading */
+  _Optional FILE *const f = fopen_inc(file_path, "rb"); /* open for reading */
   if (f == NULL)
   {
     report_fail(load_op_data, lookup_error("OpenInFail", file_path));
@@ -306,17 +308,17 @@ static bool load_file(LoadOpData *const load_op_data,
   }
 
   Reader reader;
-  reader_raw_init(&reader, f);
+  reader_raw_init(&reader, &*f);
   bool const success = read_data(load_op_data, &reader);
   reader_destroy(&reader);
-  fclose_dec(f);
+  fclose_dec(&*f);
 
   return success;
 }
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *send_datasaveack(LoadOpData *const load_op_data)
+static _Optional CONST _kernel_oserror *send_datasaveack(LoadOpData *const load_op_data)
 {
   assert(load_op_data != NULL);
   DEBUGF("Loader3: Replying to DataSave message ref. %d\n",
@@ -327,7 +329,7 @@ static CONST _kernel_oserror *send_datasaveack(LoadOpData *const load_op_data)
                         offsetof(WimpDataSaveAckMessage, leaf_name) +
                         sizeof("<Wimp$Scrap>"));
 
-  WimpMessage *const data_save_ack = malloc(msg_size);
+  _Optional WimpMessage *const data_save_ack = malloc(msg_size);
   if (data_save_ack == NULL)
   {
     return no_mem();
@@ -357,11 +359,11 @@ static CONST _kernel_oserror *send_datasaveack(LoadOpData *const load_op_data)
   data_save_ack->data.data_save_ack.file_type =
     load_op_data->datasave_msg.data.data_save.file_type;
 
-  strcpy(data_save_ack->data.data_save_ack.leaf_name, "<Wimp$Scrap>");
+  strcpy(&*data_save_ack->data.data_save_ack.leaf_name, "<Wimp$Scrap>");
 
   /* Send our reply to the sender of the DataSave message */
-  CONST _kernel_oserror *const e = send_msg(load_op_data, Wimp_EUserMessage,
-    data_save_ack, load_op_data->datasave_msg.hdr.sender);
+  _Optional CONST _kernel_oserror *const e = send_msg(load_op_data, Wimp_EUserMessage,
+    &*data_save_ack, load_op_data->datasave_msg.hdr.sender);
 
   free(data_save_ack);
   return e;
@@ -369,7 +371,7 @@ static CONST _kernel_oserror *send_datasaveack(LoadOpData *const load_op_data)
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *send_dataloadack(LoadOpData *const load_op_data,
+static _Optional CONST _kernel_oserror *send_dataloadack(LoadOpData *const load_op_data,
   WimpMessage *const message)
 {
   assert(load_op_data != NULL);
@@ -385,7 +387,7 @@ static CONST _kernel_oserror *send_dataloadack(LoadOpData *const load_op_data,
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *send_ramfetch(
+static _Optional CONST _kernel_oserror *send_ramfetch(
   LoadOpData *const load_op_data, WimpMessage const *const message)
 {
   assert(load_op_data != NULL);
@@ -397,7 +399,7 @@ static CONST _kernel_oserror *send_ramfetch(
 
   /* Allocate (very) temporary buffer for a RAMFetch message */
   int const msg_size = sizeof(message->hdr) + sizeof(WimpRAMFetchMessage);
-  WimpMessage *const ram_fetch = malloc(msg_size);
+  _Optional WimpMessage *const ram_fetch = malloc(msg_size);
   if (ram_fetch == NULL)
   {
     return no_mem();
@@ -416,7 +418,7 @@ static CONST _kernel_oserror *send_ramfetch(
     load_op_data->no_flex_budge = true;
   }
 
-  assert(load_op_data->RAM_buffer != NULL);
+  assert(load_op_data->have_RAM_buffer);
   ram_fetch->data.ram_fetch.buffer = (char *)load_op_data->RAM_buffer +
     load_op_data->bytes_received;
 
@@ -424,8 +426,8 @@ static CONST _kernel_oserror *send_ramfetch(
     load_op_data->bytes_received;
 
   /* Send our reply to the sender of the RAMTransmit or DataSave message */
-  CONST _kernel_oserror *const err = send_msg(load_op_data,
-    Wimp_EUserMessageRecorded, ram_fetch, message->hdr.sender);
+  _Optional CONST _kernel_oserror *const err = send_msg(load_op_data,
+    Wimp_EUserMessageRecorded, &*ram_fetch, message->hdr.sender);
 
   free(ram_fetch);
   return err;
@@ -433,7 +435,7 @@ static CONST _kernel_oserror *send_ramfetch(
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *receive_ram(LoadOpData *const load_op_data,
+static _Optional CONST _kernel_oserror *receive_ram(LoadOpData *const load_op_data,
   WimpMessage *const message)
 {
   assert(load_op_data != NULL);
@@ -454,7 +456,7 @@ static CONST _kernel_oserror *receive_ram(LoadOpData *const load_op_data,
   if (load_op_data->bytes_received > buf_size)
   {
     DEBUGF("Loader3: RAM transfer buffer overflow (error)\n");
-    return lookup_error("BufOFlo", NULL);
+    return lookup_error("BufOFlo", "");
   }
 
   if (load_op_data->bytes_received < buf_size)
@@ -504,13 +506,14 @@ static void ram_fetch_bounce(LoadOpData *const load_op_data)
 
   /* If RAM transfer broke in the middle then PRM says "No error should be
      generated because the other end will have already reported one." */
-  CONST _kernel_oserror *e = NULL;
+  _Optional CONST _kernel_oserror *e = NULL;
 
   if (!load_op_data->RAM_capable)
   {
     /* Use file transfer instead, by replying to the old DataSave message */
-    if (load_op_data->RAM_buffer)
+    if (load_op_data->have_RAM_buffer)
     {
+      load_op_data->have_RAM_buffer = false;
       flex_free(&load_op_data->RAM_buffer);
     }
 
@@ -540,7 +543,7 @@ static int dataload_handler(WimpMessage *const message,
   DEBUGF("Loader3: Received a DataLoad message (ref. %d in reply to %d)\n",
         message->hdr.my_ref, message->hdr.your_ref);
 
-  LoadOpData *const load_op_data = find_record(message->hdr.your_ref);
+  _Optional LoadOpData *const load_op_data = find_record(message->hdr.your_ref);
   if (load_op_data == NULL)
   {
     DEBUGF("Loader3: Unknown your_ref value\n");
@@ -557,14 +560,14 @@ static int dataload_handler(WimpMessage *const message,
       load_op_data->datasave_msg.data.data_save.file_type)
   {
     DEBUGF("Loader3: file type mismatch\n");
-    report_fail(load_op_data, NULL);
+    report_fail(&*load_op_data, NULL);
   }
   else
   {
-    if (load_file(load_op_data, message->data.data_load.leaf_name))
+    if (load_file(&*load_op_data, message->data.data_load.leaf_name))
     {
       remove(message->data.data_load.leaf_name);
-      CONST _kernel_oserror *const e = send_dataloadack(load_op_data, message);
+      _Optional CONST _kernel_oserror *const e = send_dataloadack(&*load_op_data, message);
       if (e != NULL)
       {
         /* It's too late to report failure because the client has already
@@ -574,7 +577,7 @@ static int dataload_handler(WimpMessage *const message,
       }
     }
   }
-  destroy_op(load_op_data);
+  destroy_op(&*load_op_data);
   return 1; /* claim message */
 }
 
@@ -590,7 +593,7 @@ static int ramtransmit_handler(WimpMessage *const message,
   DEBUGF("Loader3: Received a RAMTransmit message (ref. %d in reply to %d)\n",
         message->hdr.my_ref, message->hdr.your_ref);
 
-  LoadOpData *const load_op_data = find_record(message->hdr.your_ref);
+  _Optional LoadOpData *const load_op_data = find_record(message->hdr.your_ref);
   if (load_op_data == NULL)
   {
     DEBUGF("Loader3: Unknown your_ref value\n");
@@ -606,11 +609,11 @@ static int ramtransmit_handler(WimpMessage *const message,
   DEBUGF("Loader3: %d bytes transferred to buffer at %p\n",
         message->data.ram_transmit.nbytes, message->data.ram_transmit.buffer);
 
-  CONST _kernel_oserror *const e = receive_ram(load_op_data, message);
+  _Optional CONST _kernel_oserror *const e = receive_ram(&*load_op_data, message);
   if (e != NULL)
   {
-    report_fail(load_op_data, e);
-    destroy_op(load_op_data);
+    report_fail(&*load_op_data, e);
+    destroy_op(&*load_op_data);
   }
 
   return 1; /* claim message */
@@ -632,7 +635,7 @@ static int msg_bounce_handler(int const event_code,
   DEBUGF("Loader3: Received a bounced message (ref. %d)\n",
         event->user_message_acknowledge.hdr.my_ref);
 
-  LoadOpData *const load_op_data = find_record(
+  _Optional LoadOpData *const load_op_data = find_record(
     event->user_message_acknowledge.hdr.my_ref);
 
   if (load_op_data == NULL)
@@ -644,7 +647,7 @@ static int msg_bounce_handler(int const event_code,
   switch (event->user_message_acknowledge.hdr.action_code)
   {
     case Wimp_MRAMFetch:
-      ram_fetch_bounce(load_op_data);
+      ram_fetch_bounce(&*load_op_data);
       return 1; /* claim event */
   }
   return 0; /* pass on event */
@@ -654,7 +657,7 @@ static int msg_bounce_handler(int const event_code,
                          Public library functions
 */
 
-CONST _kernel_oserror *loader3_initialise(MessagesFD *const mfd)
+_Optional CONST _kernel_oserror *loader3_initialise(_Optional MessagesFD *const mfd)
 {
   assert(!initialised);
 
@@ -670,17 +673,17 @@ CONST _kernel_oserror *loader3_initialise(MessagesFD *const mfd)
 
   ON_ERR_RTN_E(event_register_message_handler(Wimp_MDataLoad,
                                               dataload_handler,
-                                              NULL));
+                                              (void *)NULL));
 
   ON_ERR_RTN_E(event_register_message_handler(Wimp_MRAMTransmit,
                                               ramtransmit_handler,
-                                              NULL));
+                                              (void *)NULL));
 
   /* Register handler for messages that return to us as wimp event 19 */
   ON_ERR_RTN_E(event_register_wimp_handler(-1,
                                            Wimp_EUserMessageAcknowledge,
                                            msg_bounce_handler,
-                                           NULL));
+                                           (void *)NULL));
 
   /* Ensure that messages are not masked */
   unsigned int mask;
@@ -698,34 +701,34 @@ CONST _kernel_oserror *loader3_initialise(MessagesFD *const mfd)
 /* ----------------------------------------------------------------------- */
 
 #ifdef INCLUDE_FINALISATION_CODE
-CONST _kernel_oserror *loader3_finalise(void)
+_Optional CONST _kernel_oserror *loader3_finalise(void)
 {
-  CONST _kernel_oserror *return_error = NULL;
+  _Optional CONST _kernel_oserror *return_error = NULL;
 
   assert(initialised);
   initialised = false;
 
   DEBUGF("Loader3: Cancelling outstanding operations\n");
-  linkedlist_for_each(&load_op_data_list, cancel_matching_op, NULL);
+  linkedlist_for_each(&load_op_data_list, cancel_matching_op, (void *)NULL);
 
   /* Deregister Wimp message handlers for data transfer protocol */
 
   MERGE_ERR(return_error,
             event_deregister_message_handler(Wimp_MDataLoad,
                                              dataload_handler,
-                                             NULL));
+                                             (void *)NULL));
 
   MERGE_ERR(return_error,
             event_deregister_message_handler(Wimp_MRAMTransmit,
                                              ramtransmit_handler,
-                                             NULL));
+                                             (void *)NULL));
 
   /* Deregister handler for messages that return to us as wimp event 19 */
   MERGE_ERR(return_error,
             event_deregister_wimp_handler(-1,
                                           Wimp_EUserMessageAcknowledge,
                                           msg_bounce_handler,
-                                          NULL));
+                                          (void *)NULL));
 
   return return_error;
 }
@@ -733,9 +736,9 @@ CONST _kernel_oserror *loader3_finalise(void)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *loader3_receive_data(const WimpMessage *const message,
-  Loader3ReadMethod *const read_method,
-  Loader3FailedMethod *const failed_method, void *const client_handle)
+_Optional CONST _kernel_oserror *loader3_receive_data(const WimpMessage *const message,
+  _Optional Loader3ReadMethod *const read_method,
+  _Optional Loader3FailedMethod *const failed_method, void *const client_handle)
 {
   assert(initialised);
   assert(message != NULL);
@@ -756,7 +759,7 @@ CONST _kernel_oserror *loader3_receive_data(const WimpMessage *const message,
 
   /* Allocate memory for a new load operation */
   DEBUGF("Loader3: Creating a record for a new load operation\n");
-  LoadOpData *const load_op_data = malloc(sizeof(*load_op_data));
+  _Optional LoadOpData *const load_op_data = malloc(sizeof(*load_op_data));
   if (load_op_data != NULL)
   {
     /* Initialise record for a new load operation */
@@ -764,7 +767,7 @@ CONST _kernel_oserror *loader3_receive_data(const WimpMessage *const message,
       .RAM_capable = false,
       .idle_function = false,
       .no_flex_budge = false,
-      .RAM_buffer = NULL, /* no flex block here */
+      .have_RAM_buffer = false,
       .bytes_received = 0,
       .read_method = read_method,
       .failed_method = failed_method,
@@ -787,8 +790,8 @@ CONST _kernel_oserror *loader3_receive_data(const WimpMessage *const message,
      DataSaveAck as recorded delivery breaks the SaveAs module, for one.)
      To prevent us leaking memory, we abandon stalled load operations after
      30 seconds. */
-  CONST _kernel_oserror *e = scheduler_register_delay(
-    time_out, load_op_data, DataLoadWaitTime, SchedulerPriority_Min);
+  _Optional CONST _kernel_oserror *e = scheduler_register_delay(
+    time_out, &*load_op_data, DataLoadWaitTime, SchedulerPriority_Min);
 
   if (e == NULL)
   {
@@ -809,13 +812,14 @@ CONST _kernel_oserror *loader3_receive_data(const WimpMessage *const message,
     }
     else
     {
-      e = send_ramfetch(load_op_data, message);
+      load_op_data->have_RAM_buffer = true;
+      e = send_ramfetch(&*load_op_data, message);
     }
   }
 
   if (e != NULL)
   {
-    destroy_op(load_op_data);
+    destroy_op(&*load_op_data);
   }
 
   return e;
@@ -837,8 +841,8 @@ void loader3_cancel_receives(void *const client_handle)
 /* ----------------------------------------------------------------------- */
 
 bool loader3_load_file(const char *const file_name, int const file_type,
-  Loader3ReadMethod *const read_method,
-  Loader3FailedMethod *const failed_method, void *const client_handle)
+  _Optional Loader3ReadMethod *const read_method,
+  _Optional Loader3FailedMethod *const failed_method, void *const client_handle)
 {
   assert(file_name);
   assert(*file_name != '\0');
@@ -848,7 +852,6 @@ bool loader3_load_file(const char *const file_name, int const file_type,
     .RAM_capable = false,
     .idle_function = false,
     .no_flex_budge = false,
-    .RAM_buffer = NULL, /* no flex block here */
     .bytes_received = 0,
     .read_method = read_method,
     .failed_method = failed_method,
@@ -858,7 +861,7 @@ bool loader3_load_file(const char *const file_name, int const file_type,
   if (strlen(file_name) >=
       sizeof(load_op_data.datasave_msg.data.data_save.leaf_name))
   {
-    report_fail(&load_op_data, lookup_error("StrOFlo", NULL));
+    report_fail(&load_op_data, lookup_error("StrOFlo", ""));
   }
   else
   {

@@ -35,6 +35,7 @@ History:
                   should be called to initialise this module.
   CJB: 15-Oct-09: Added "NoMem" to list of required message tokens.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 #ifndef LoadSaveMT_h
@@ -52,7 +53,11 @@ History:
 /* Local headers */
 #include "Macros.h"
 
-CONST _kernel_oserror *loadsave_initialise(MessagesFD */*mfd*/);
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
+_Optional CONST _kernel_oserror *loadsave_initialise(_Optional MessagesFD */*mfd*/);
    /*
     * Initialises the LoadSaveMT module. Unless 'mfd' is a null pointer, the
     * specified messages file will be given priority over the global messages
@@ -60,7 +65,7 @@ CONST _kernel_oserror *loadsave_initialise(MessagesFD */*mfd*/);
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-unsigned int get_loadsave_perc(FILE *** /*handle*/);
+unsigned int get_loadsave_perc(FILE *_Optional ** /*handle*/);
    /*
     * Calculates what proportion of a file operation has been completed and
     * returns this as a percentage value. 'handle' must be the same pointer
@@ -68,7 +73,10 @@ unsigned int get_loadsave_perc(FILE *** /*handle*/);
     * Returns: the percentage done of the specified file operation.
     */
 
-CONST _kernel_oserror *load_fileM2(const char */*file_path*/, flex_ptr /*buffer_anchor*/, const volatile bool */*time_up*/, FILE ***/*handle*/);
+_Optional CONST _kernel_oserror *load_fileM2(const char * /*file_path*/,
+                                             flex_ptr /*buffer_anchor*/,
+                                             const volatile bool * /*time_up*/,
+                                             FILE *_Optional ** /*handle*/);
    /*
     * Loads data from the specified file 'file_path' into a new flex block
     * anchored at 'buffer_anchor', returning when the variable pointed to by
@@ -79,7 +87,10 @@ CONST _kernel_oserror *load_fileM2(const char */*file_path*/, flex_ptr /*buffer_
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *save_fileM2(const char * /*file_path*/, flex_ptr /*buffer_anchor*/, const volatile bool * /*time_up*/, unsigned int /*start_offset*/, unsigned int /*end_offset*/, FILE *** /*handle*/);
+_Optional CONST _kernel_oserror *save_fileM2(const char * /*file_path*/,
+   flex_ptr /*buffer_anchor*/, const volatile bool * /*time_up*/,
+   unsigned int /*start_offset*/, unsigned int /*end_offset*/,
+   FILE *_Optional ** /*handle*/);
    /*
     * Saves an area of flex block 'buffer_anchor' that is delimited by
     * 'start_offset' (inclusive) and 'end_offset' (exclusive). This data is
@@ -91,12 +102,16 @@ CONST _kernel_oserror *save_fileM2(const char * /*file_path*/, flex_ptr /*buffer
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-CONST _kernel_oserror *load_fileM(const char * /*file_path*/, flex_ptr /*buffer_anchor*/, const volatile bool * /*time_up*/, FILE *** /*handle*/, bool /*sprite*/);
+_Optional CONST _kernel_oserror *load_fileM(const char * /*file_path*/,
+   flex_ptr /*buffer_anchor*/, const volatile bool * /*time_up*/,
+   FILE *_Optional ** /*handle*/, bool /*sprite*/);
    /*
     * This function is deprecated - you should use 'load_fileM2' instead.
     */
 
-CONST _kernel_oserror *save_fileM(const char * /*file_path*/, int /*file_type*/, flex_ptr /*buffer_anchor*/, const volatile bool * /*time_up*/, FILE *** /*handle*/, bool /*sprite*/);
+_Optional CONST _kernel_oserror *save_fileM(const char * /*file_path*/,
+   int /*file_type*/, flex_ptr /*buffer_anchor*/, const volatile bool * /*time_up*/,
+   FILE *_Optional ** /*handle*/, bool /*sprite*/);
    /*
     * This function is deprecated - you should use 'save_fileM2' instead.
     */

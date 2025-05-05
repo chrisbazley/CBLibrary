@@ -25,6 +25,7 @@
                   (a StringBuffer pointer was misused as a char pointer).
   CJB: 10-Apr-16: Cast pointer parameters to void * to match %p.
   CJB: 05-Feb-19: Use stringbuffer_append_all where appropriate.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
 */
 
 /* ISO library headers */
@@ -39,8 +40,8 @@
 #include "LinkedList.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "UserData.h"
+#include "Internal/CBMisc.h"
 
 /* Linked list of user data structures */
 static LinkedList user_data_list = { NULL, NULL };
@@ -78,8 +79,8 @@ void userdata_remove_from_list(UserData *data)
 /* ----------------------------------------------------------------------- */
 
 bool userdata_add_to_list(UserData *data,
-                          UserDataIsSafeFn *is_safe,
-                          UserDataDestroyFn *destroy,
+                          _Optional UserDataIsSafeFn *is_safe,
+                          _Optional UserDataDestroyFn *destroy,
                           const char *file_name)
 {
   bool success = true;
@@ -153,9 +154,9 @@ size_t userdata_get_file_name_length(const UserData *data)
 
 /* ----------------------------------------------------------------------- */
 
-UserData *userdata_find_by_file_name(const char *file_name)
+_Optional UserData *userdata_find_by_file_name(const char *file_name)
 {
-  UserData *user_data;
+  _Optional UserData *user_data;
 
   assert(file_name != NULL);
   DEBUGF("UserData: Searching for user data with file name '%s'\n",
@@ -180,7 +181,7 @@ void userdata_destroy(UserData *data)
   DEBUGF("UserData: Destroying user data item %p with file name '%s'\n",
          (void *)data, stringbuffer_get_pointer(&data->file_name));
 
-  if (data->destroy == NULL)
+  if (!data->destroy)
     userdata_remove_from_list(data);
   else
     data->destroy(data);
@@ -191,12 +192,12 @@ void userdata_destroy(UserData *data)
 void userdata_destroy_all(void)
 {
   DEBUGF("UserData: Destroying all user data items\n");
-  userdata_for_each(destroy_user_data, NULL);
+  userdata_for_each(destroy_user_data, (void *)NULL);
 }
 
 /* ----------------------------------------------------------------------- */
 
-UserData *userdata_for_each(UserDataCallbackFn *callback, void *arg)
+_Optional UserData *userdata_for_each(UserDataCallbackFn *callback, void *arg)
 {
   UserDataVisitorCtx visitor_context;
 
@@ -214,13 +215,13 @@ UserData *userdata_for_each(UserDataCallbackFn *callback, void *arg)
 static bool user_data_visitor(LinkedList *list, LinkedListItem *item, void *arg)
 {
   UserData * const data = (UserData *)item;
+  assert(arg);
   const UserDataVisitorCtx * const visitor_context = arg;
 
   assert(data != NULL);
   NOT_USED(list);
   assert(list == &user_data_list);
-  assert(visitor_context != NULL);
-  assert(visitor_context->callback != NULL);
+  assert(visitor_context->callback);
 
   return visitor_context->callback(data, visitor_context->arg);
 }
@@ -244,7 +245,7 @@ static bool count_unsafe_user_data(UserData *data, void *arg)
   assert(data != NULL);
   assert(count != NULL);
 
-  if (data->is_safe != NULL)
+  if (data->is_safe)
   {
     DEBUGF("UserData: Getting safe state of user data item %p\n",
            (void *)data);

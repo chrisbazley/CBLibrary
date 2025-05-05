@@ -19,6 +19,7 @@
 
 /* History:
   CJB: 31-May-21: Created this source file.
+  CJB: 09-May-25: Dogfooding the _Optional qualifier.
  */
 
 /* ISO library headers */
@@ -31,16 +32,16 @@
 #include "OSFile.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "FileUtils.h"
+#include "Internal/CBMisc.h"
 
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-CONST _kernel_oserror *get_file_type(const char *f, int *type)
+_Optional CONST _kernel_oserror *get_file_type(const char *f, int *type)
 {
   OS_File_CatalogueInfo info;
-  CONST _kernel_oserror *e = os_file_read_cat_no_path(f, &info);
+  _Optional CONST _kernel_oserror *e = os_file_read_cat_no_path(f, &info);
   if (!e) {
     *type = decode_load_exec(info.load, info.exec, NULL);
   }

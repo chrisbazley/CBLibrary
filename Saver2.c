@@ -52,13 +52,13 @@
 #include "OSFile.h"
 
 /* Local headers */
-#include "Internal/CBMisc.h"
 #include "Saver2.h"
 #include "NoBudge.h"
 #ifdef SLOW_TEST
 #include "scheduler.h"
 #endif
 #include "FOpenCount.h"
+#include "Internal/CBMisc.h"
 
 /* The following structure holds all the state for a given save operation */
 typedef struct
@@ -66,12 +66,13 @@ typedef struct
   LinkedListItem list_item;
   int   last_message_ref;
   int   bytes_sent;
-  bool  destination_safe;
-  void *RAM_buffer;
-  Saver2WriteMethod    *write_method;
-  Saver2CompleteMethod *complete_method;
-  Saver2FailedMethod   *failed_method;
-  void                 *client_handle;
+  bool  destination_safe:1;
+  bool  have_RAM_buffer:1;
+  void *RAM_buffer; // flex pointer
+  _Optional Saver2WriteMethod    *write_method;
+  _Optional Saver2CompleteMethod *complete_method;
+  _Optional Saver2FailedMethod   *failed_method;
+  void *client_handle;
 #ifdef SLOW_TEST
   WimpMessage datasaveack_msg;
 #endif
@@ -98,7 +99,7 @@ enum
 static bool initialised;
 static int  client_task;
 static LinkedList save_op_data_list;
-static MessagesFD *desc;
+static _Optional MessagesFD *desc;
 
 /* -----------------------------------------------------------------------
                          Miscellaneous internal functions
@@ -115,7 +116,7 @@ static CONST _kernel_oserror *lookup_error(const char *const token,
 
 static CONST _kernel_oserror *no_mem(void)
 {
-  return lookup_error("NoMem", NULL);
+  return lookup_error("NoMem", "");
 }
 
 /* ----------------------------------------------------------------------- */
@@ -135,13 +136,13 @@ static bool op_has_ref(LinkedList *const list,
 
 /* ----------------------------------------------------------------------- */
 
-static SaveOpData *find_record(int msg_ref)
+static _Optional SaveOpData *find_record(int msg_ref)
 {
   DEBUGF("Saver2: Searching for operation awaiting reply to %d\n", msg_ref);
   if (!msg_ref)
     return NULL;
 
-  SaveOpData *const save_op_data = (SaveOpData *)linkedlist_for_each(
+  _Optional SaveOpData *const save_op_data = (SaveOpData *)linkedlist_for_each(
     &save_op_data_list, op_has_ref, &msg_ref);
 
   if (save_op_data == NULL)
@@ -164,7 +165,7 @@ static void destroy_op(SaveOpData *const save_op_data)
   assert(save_op_data != NULL);
 
   linkedlist_remove(&save_op_data_list, &save_op_data->list_item);
-  if (save_op_data->RAM_buffer)
+  if (save_op_data->have_RAM_buffer)
   {
     flex_free(&save_op_data->RAM_buffer);
   }
@@ -174,11 +175,11 @@ static void destroy_op(SaveOpData *const save_op_data)
 /* ----------------------------------------------------------------------- */
 
 static void finished(SaveOpData *const save_op_data,
-  const char *const file_path)
+  _Optional const char *const file_path)
 {
   assert(save_op_data != NULL);
 
-  if (save_op_data->complete_method != NULL)
+  if (save_op_data->complete_method)
   {
     DEBUGF("Saver2: calling complete function with arg %p\n",
           save_op_data->client_handle);
@@ -194,7 +195,7 @@ static void finished(SaveOpData *const save_op_data,
 /* ----------------------------------------------------------------------- */
 
 static void failed(SaveOpData *const save_op_data,
-  CONST _kernel_oserror *const e)
+  _Optional CONST _kernel_oserror *const e)
 {
   assert(save_op_data != NULL);
 
@@ -203,7 +204,7 @@ static void failed(SaveOpData *const save_op_data,
     DEBUGF("Saver2: Error 0x%x, %s\n", e->errnum, e->errmess);
   }
 
-  if (save_op_data->failed_method != NULL)
+  if (save_op_data->failed_method)
   {
     DEBUGF("Saver2: calling failed function with arg %p\n",
            save_op_data->client_handle);
@@ -225,7 +226,7 @@ static bool write_and_destroy(
 
   bool success = true;
 
-  if (save_op_data->write_method != NULL)
+  if (save_op_data->write_method)
   {
     success = save_op_data->write_method(writer,
       save_op_data->datasave_msg.data.data_save.file_type,
@@ -253,7 +254,7 @@ static bool write_and_destroy(
 static bool save_file(SaveOpData *const save_op_data,
   const char *const file_path)
 {
-  FILE *const f = fopen_inc(file_path, "wb");
+  _Optional FILE *const f = fopen_inc(file_path, "wb");
   if (f == NULL)
   {
     failed(save_op_data, lookup_error("OpenOutFail", file_path));
@@ -261,10 +262,10 @@ static bool save_file(SaveOpData *const save_op_data,
   }
 
   Writer writer;
-  writer_raw_init(&writer, f);
+  writer_raw_init(&writer, &*f);
   bool success = write_and_destroy(save_op_data, &writer, file_path);
 
-  if (fclose_dec(f) && success)
+  if (fclose_dec(&*f) && success)
   {
     failed(save_op_data, lookup_error("WriteFail", file_path));
     success = false;
@@ -275,7 +276,7 @@ static bool save_file(SaveOpData *const save_op_data,
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *send_msg(SaveOpData *const save_op_data,
+static _Optional CONST _kernel_oserror *send_msg(SaveOpData *const save_op_data,
   int const code, WimpMessage *const msg, int const handle, int const icon)
 {
   assert(code == Wimp_EUserMessage || code == Wimp_EUserMessageRecorded);
@@ -307,7 +308,7 @@ static bool send_dataload(SaveOpData *const save_op_data,
     return false;
   }
 
-  CONST _kernel_oserror *e =
+  _Optional CONST _kernel_oserror *e =
     os_file_set_type(message->data.data_save_ack.leaf_name,
                      message->data.data_save_ack.file_type);
 
@@ -380,7 +381,7 @@ static bool ram_transmit(SaveOpData *const save_op_data,
   assert(save_op_data != NULL);
   assert(message != NULL);
 
-  if (save_op_data->RAM_buffer == NULL)
+  if (!save_op_data->have_RAM_buffer)
   {
     /* First call to this function fills the buffer. This isn't ideal
        but it avoids concerns about event library reentrancy.
@@ -396,6 +397,8 @@ static bool ram_transmit(SaveOpData *const save_op_data,
       failed(save_op_data, no_mem());
       return false;
     }
+
+    save_op_data->have_RAM_buffer = true;
 
     Writer writer;
     writer_flex_init(&writer, &save_op_data->RAM_buffer);
@@ -434,7 +437,7 @@ static bool ram_transmit(SaveOpData *const save_op_data,
          " in task %d\n", nbytes, sbuf, client_task, dbuf,
          message->hdr.sender);
 
-  CONST _kernel_oserror *e = wimp_transfer_block(client_task, sbuf,
+  _Optional CONST _kernel_oserror *e = wimp_transfer_block(client_task, sbuf,
     message->hdr.sender, dbuf, nbytes);
 
   nobudge_deregister();
@@ -475,7 +478,7 @@ static bool ram_transmit(SaveOpData *const save_op_data,
 static void ramtransmit_bounce(SaveOpData *const save_op_data)
 {
   DEBUGF("Saver2: no reply to RAMTransmit\n");
-  failed(save_op_data, lookup_error("RecDied", NULL));
+  failed(save_op_data, lookup_error("RecDied", ""));
   destroy_op(save_op_data);
 }
 
@@ -503,7 +506,7 @@ static void dataload_bounce(SaveOpData *const save_op_data,
     remove(file_path);
   }
 
-  failed(save_op_data, lookup_error("RecDied", NULL));
+  failed(save_op_data, lookup_error("RecDied", ""));
   destroy_op(save_op_data);
 }
 
@@ -521,7 +524,7 @@ static int datasaveack_handler(WimpMessage *const message,
   DEBUGF("Saver2: Received a DataSaveAck message (ref. %d in reply to %d)\n",
         message->hdr.my_ref, message->hdr.your_ref);
 
-  SaveOpData *const save_op_data = find_record(message->hdr.your_ref);
+  _Optional SaveOpData *const save_op_data = find_record(message->hdr.your_ref);
   if (save_op_data == NULL)
   {
     DEBUGF("Saver2: Bad your_ref value\n");
@@ -548,9 +551,9 @@ static int datasaveack_handler(WimpMessage *const message,
                                SchedulerPriority_Min) != NULL)
 #endif /* SLOW_TEST */
   {
-    if (!send_dataload(save_op_data, message))
+    if (!send_dataload(&*save_op_data, message))
     {
-      destroy_op(save_op_data);
+      destroy_op(&*save_op_data);
     }
   }
 
@@ -569,7 +572,7 @@ static int dataloadack_handler(WimpMessage *const message,
   DEBUGF("Saver2: Received a DataLoadAck message (ref. %d in reply to %d)\n",
         message->hdr.my_ref, message->hdr.your_ref);
 
-  SaveOpData *const save_op_data = find_record(message->hdr.your_ref);
+  _Optional SaveOpData *const save_op_data = find_record(message->hdr.your_ref);
   if (save_op_data == NULL)
   {
     DEBUGF("Saver2: Bad your_ref value\n");
@@ -580,8 +583,8 @@ static int dataloadack_handler(WimpMessage *const message,
         message->data.data_load_ack.leaf_name,
         message->data.data_load_ack.file_type);
 
-  finished(save_op_data, message->data.data_load_ack.leaf_name);
-  destroy_op(save_op_data);
+  finished(&*save_op_data, message->data.data_load_ack.leaf_name);
+  destroy_op(&*save_op_data);
   return 1; /* claim message */
 }
 
@@ -597,7 +600,7 @@ static int ramfetch_handler(WimpMessage *const message,
   DEBUGF("Saver2: Received a RAMFetch message (ref. %d in reply to %d)\n",
         message->hdr.my_ref, message->hdr.your_ref);
 
-  SaveOpData *const save_op_data = find_record(message->hdr.your_ref);
+  _Optional SaveOpData *const save_op_data = find_record(message->hdr.your_ref);
   if (save_op_data == NULL)
   {
     DEBUGF("Saver2: Unknown your_ref value\n");
@@ -607,9 +610,9 @@ static int ramfetch_handler(WimpMessage *const message,
   DEBUGF("Saver2: Request %d bytes be written to buffer at %p\n",
          message->data.ram_fetch.buffer_size, message->data.ram_fetch.buffer);
 
-  if (!ram_transmit(save_op_data, message))
+  if (!ram_transmit(&*save_op_data, message))
   {
-    destroy_op(save_op_data);
+    destroy_op(&*save_op_data);
   }
 
   return 1; /* claim message */
@@ -654,7 +657,7 @@ static int msg_bounce_handler(int const event_code,
   DEBUGF("Saver2: Received a bounced message (ref. %d)\n",
         event->user_message_acknowledge.hdr.my_ref);
 
-  SaveOpData *const save_op_data = find_record(
+  _Optional SaveOpData *const save_op_data = find_record(
     event->user_message_acknowledge.hdr.my_ref);
 
   if (save_op_data == NULL)
@@ -666,16 +669,16 @@ static int msg_bounce_handler(int const event_code,
   switch (event->user_message_acknowledge.hdr.action_code)
   {
     case Wimp_MDataLoad:
-      dataload_bounce(save_op_data,
+      dataload_bounce(&*save_op_data,
         event->user_message_acknowledge.data.data_load.leaf_name);
       return 1; /* claim event */
 
     case Wimp_MRAMTransmit:
-      ramtransmit_bounce(save_op_data);
+      ramtransmit_bounce(&*save_op_data);
       return 1; /* claim event */
 
     case Wimp_MDataSave:
-      datasave_bounce(save_op_data);
+      datasave_bounce(&*save_op_data);
       return 1; /* claim event */
   }
   return 0; /* pass on event */
@@ -685,8 +688,8 @@ static int msg_bounce_handler(int const event_code,
                          Public library functions
 */
 
-CONST _kernel_oserror *saver2_initialise(int const task_handle,
-  MessagesFD *const mfd)
+_Optional CONST _kernel_oserror *saver2_initialise(int const task_handle,
+  _Optional MessagesFD *const mfd)
 {
   DEBUGF("Saver2: initialising with task handle 0x%x and messages file "
          "descriptor %p\n", task_handle, (void *)mfd);
@@ -703,14 +706,14 @@ CONST _kernel_oserror *saver2_initialise(int const task_handle,
   {
     ON_ERR_RTN_E(event_register_message_handler(msg_handlers[i].msg_no,
                                                 msg_handlers[i].handler,
-                                                NULL));
+                                                (void *)NULL));
   }
 
   /* Register handler for messages that return to us as wimp event 19 */
   ON_ERR_RTN_E(event_register_wimp_handler(-1,
                                            Wimp_EUserMessageAcknowledge,
                                            msg_bounce_handler,
-                                           NULL));
+                                           (void *)NULL));
 
   /* Ensure that messages are not masked */
   unsigned int mask;
@@ -728,16 +731,16 @@ CONST _kernel_oserror *saver2_initialise(int const task_handle,
 /* ----------------------------------------------------------------------- */
 
 #ifdef INCLUDE_FINALISATION_CODE
-CONST _kernel_oserror *saver2_finalise(void)
+_Optional CONST _kernel_oserror *saver2_finalise(void)
 {
-  CONST _kernel_oserror *return_error = NULL;
+  _Optional CONST _kernel_oserror *return_error = NULL;
 
   assert(initialised);
   initialised = false;
 
   /* Cancel any outstanding save operations */
   DEBUGF("Saver2: Cancelling outstanding operations\n");
-  linkedlist_for_each(&save_op_data_list, cancel_matching_op, NULL);
+  linkedlist_for_each(&save_op_data_list, cancel_matching_op, (void *)NULL);
 
   /* Deregister Wimp message handlers for data transfer protocol */
   for (size_t i = 0; i < ARRAY_SIZE(msg_handlers); i++)
@@ -745,7 +748,7 @@ CONST _kernel_oserror *saver2_finalise(void)
     MERGE_ERR(return_error,
               event_deregister_message_handler(msg_handlers[i].msg_no,
                                                msg_handlers[i].handler,
-                                               NULL));
+                                               (void *)NULL));
   }
 
   /* Deregister handler for messages that return to us as wimp event 19 */
@@ -753,7 +756,7 @@ CONST _kernel_oserror *saver2_finalise(void)
             event_deregister_wimp_handler(-1,
                                           Wimp_EUserMessageAcknowledge,
                                           msg_bounce_handler,
-                                          NULL));
+                                          (void *)NULL));
 
   return return_error;
 }
@@ -761,10 +764,10 @@ CONST _kernel_oserror *saver2_finalise(void)
 
 /* ----------------------------------------------------------------------- */
 
-CONST _kernel_oserror *saver2_send_data(int const task_handle,
-  WimpMessage *const message, Saver2WriteMethod *const write_method,
-  Saver2CompleteMethod *const complete_method,
-  Saver2FailedMethod *const failed_method, void *const client_handle)
+_Optional CONST _kernel_oserror *saver2_send_data(int const task_handle,
+  WimpMessage *const message, _Optional Saver2WriteMethod *const write_method,
+  _Optional Saver2CompleteMethod *const complete_method,
+  _Optional Saver2FailedMethod *const failed_method, void *const client_handle)
 {
   DEBUGF("Saver2: Request to send data to task %d\n", task_handle);
   DEBUGF("Saver2: File type is &%x\n", message->data.data_save.file_type);
@@ -782,7 +785,7 @@ CONST _kernel_oserror *saver2_send_data(int const task_handle,
 
   /* Allocate data block for new save operation and link it into the list */
   DEBUGF("Saver2: Creating a record for a new save operation\n");
-  SaveOpData *const save_op_data = malloc(sizeof(*save_op_data));
+  _Optional SaveOpData *const save_op_data = malloc(sizeof(*save_op_data));
   if (save_op_data == NULL)
   {
     return no_mem();
@@ -792,7 +795,7 @@ CONST _kernel_oserror *saver2_send_data(int const task_handle,
   *save_op_data = (SaveOpData){
     .datasave_msg = *message,
     .destination_safe = false,
-    .RAM_buffer = NULL,
+    .have_RAM_buffer = false,
     .bytes_sent = 0,
     .write_method = write_method,
     .complete_method = complete_method,
@@ -806,14 +809,14 @@ CONST _kernel_oserror *saver2_send_data(int const task_handle,
 
   /* Send DataSave message to task handle, or if none specified then send
      it to the window handle instead (recorded delivery) */
-  CONST _kernel_oserror *const err = send_msg(save_op_data,
+  _Optional CONST _kernel_oserror *const err = send_msg(&*save_op_data,
     Wimp_EUserMessageRecorded, message,
     task_handle ? task_handle : message->data.data_save.destination_window,
     task_handle ? 0 : message->data.data_save.destination_icon);
 
   if (err != NULL)
   {
-    destroy_op(save_op_data);
+    destroy_op(&*save_op_data);
   }
 
   return err;
