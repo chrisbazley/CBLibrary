@@ -67,6 +67,7 @@
                   and called _kernel_last_oserror() to reset the error
                   trap before writing to file in _svr_save_as_file().
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 05-May-25: Fix pedantic warnings about format specifying type void *.
 */
 
 /* ISO library headers */
@@ -489,8 +490,8 @@ static int _svr_ramfetch_msg_handler(WimpMessage *message, void *handle)
   assert(save_op_data->client_data != NULL);
   nobudge_register(PreExpandHeap); /* protect dereference of pointer to flex block */
   DEBUGF("Saver: transfering %d bytes from address %p in task %d to address %p"
-         " in task %d\n", transfer_size, (char *)*save_op_data->client_data +
-         save_op_data->start_offset, client_task,
+         " in task %d\n", transfer_size, (void *)((char *)*save_op_data->client_data +
+         save_op_data->start_offset), client_task,
          message->data.ram_fetch.buffer, message->hdr.sender);
 
   err = wimp_transfer_block(client_task,

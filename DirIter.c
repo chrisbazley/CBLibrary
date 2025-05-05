@@ -30,6 +30,7 @@
                   stringbuffer_append.
   CJB: 05-Feb-19: Use stringbuffer_append_all where appropriate.
   CJB: 28-Apr-19: Less verbose debugging output.
+  CJB: 05-May-25: Fix pedantic warnings about format specifying type void *.
 */
 
 /* ISO library headers */
@@ -240,7 +241,7 @@ static CONST _kernel_oserror *refill_buffer(DirIterator       *iterator,
     keep_size += offsetof(OS_GBPB_CatalogueInfo, name) + entry_name_size;
 
     DEBUG_VERBOSEF("DirIterator: Moving %d entries (%zu bytes) within buffer %p\n",
-      level->nentries, keep_size, level->buffer);
+      level->nentries, keep_size, (void *)level->buffer);
 
     memmove(level->buffer, level->entry, keep_size);
     keep_size = WORD_ALIGN(keep_size); /* align before fresh entries */
@@ -720,7 +721,7 @@ size_t diriterator_get_object_path_name(const DirIterator *iterator,
                                         size_t             buff_size)
 {
   DEBUGF("DirIterator: Getting path name from iterator %p into "
-         "buffer %p of size %zu\n", (void *)iterator, buffer,
+         "buffer %p of size %zu\n", (void *)iterator, (void *)buffer,
          buff_size);
 
   /* Include all characters of the path name of the current level. */
@@ -732,7 +733,7 @@ size_t diriterator_get_object_sub_path_name(const DirIterator *iterator,
                                             size_t             buff_size)
 {
   DEBUGF("DirIterator: Getting sub-path name from iterator %p into "
-         "buffer %p of size %zu\n", (void *)iterator, buffer,
+         "buffer %p of size %zu\n", (void *)iterator, (void *)buffer,
          buff_size);
 
   /* Skip those characters of the path name of the current level which also
@@ -749,7 +750,7 @@ size_t diriterator_get_object_leaf_name(const DirIterator *iterator,
                                         size_t             buff_size)
 {
   DEBUGF("DirIterator: Getting leaf name from iterator %p into "
-         "buffer %p of size %zu\n", (void *)iterator, buffer,
+         "buffer %p of size %zu\n", (void *)iterator, (void *)buffer,
          buff_size);
 
   /* Skip all characters of the path name of the current level. */

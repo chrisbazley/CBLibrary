@@ -567,6 +567,7 @@ Release 63 (17 Jun 2023)
 
 Release 64 (05 May 2025)
 - Fix #include filename case.
+- Fix pedantic warnings about format specifying type void *.
 
 Contact details
 ---------------
