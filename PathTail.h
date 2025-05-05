@@ -26,12 +26,15 @@ History:
   CJB: 31-Oct-04: Created this header.
   CJB: 04-Nov-04: Added dependency information.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 05-May-25: Changed the depth count type from int to size_t.
  */
 
 #ifndef PathTail_h
 #define PathTail_h
 
-char *pathtail(const char * /*path*/, int /*n*/);
+#include <stddef.h>
+
+char *pathtail(const char * /*path*/, size_t /*n*/);
    /*
     * Searches backwards through the string pointed to by path, stopping when
     * it has found n instances of the file path separator character (in RISC OS

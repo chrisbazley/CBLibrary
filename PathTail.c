@@ -23,6 +23,7 @@
   CJB: 07-Aug-18: Modified to use PATH_SEPARATOR from "Platform.h".
   CJB: 26-Oct-18: Modified to use strtail() from CBUtilLib.
   CJB: 01-Nov-18: Reimplemented using the strtail() function from CBUtilLib.
+  CJB: 05-May-25: Changed the depth count type from int to size_t.
  */
 
 /* CBUtilLib headers */
@@ -36,7 +37,7 @@
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-char *pathtail(const char *path, int n)
+char *pathtail(const char *path, size_t n)
 {
   return strtail(path, PATH_SEPARATOR, n >= 0 ? n : 0);
 }
