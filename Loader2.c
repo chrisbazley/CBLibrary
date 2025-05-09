@@ -259,7 +259,9 @@ _Optional CONST _kernel_oserror *loader2_finalise(void)
 
 /* ----------------------------------------------------------------------- */
 
-_Optional CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message, Loader2FileHandler *load_method, Loader2FinishedHandler *finished_method, void *client_handle)
+_Optional CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message,
+  _Optional Loader2FileHandler *load_method,
+  _Optional Loader2FinishedHandler *finished_method, void *client_handle)
 {
   _Optional LoadOpData *load_op_data;
   _Optional CONST _kernel_oserror *e = NULL;
@@ -425,7 +427,8 @@ _Optional CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message
 
 /* ----------------------------------------------------------------------- */
 
-void loader2_cancel_receives(Loader2FinishedHandler *finished_method, void *client_handle)
+void loader2_cancel_receives(_Optional Loader2FinishedHandler *finished_method,
+	                     void *client_handle)
 {
   /* Cancel any outstanding load operations for the specified client function
      and handle. Use when the destination has become invalid. */

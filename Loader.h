@@ -108,20 +108,20 @@ typedef enum {
    LOADER_PREFILTER_IGNORE then the data transfer request is offered to any
    other registered listeners. Standard error messages ensue if none found. */
 
-typedef loader_pf_result LoaderPreFilter (const char * /*file_path*/,
-                                          int          /*file_type*/,
-                                          bool         /*inside_zone*/,
-                                          void       * /*client_handle*/);
+typedef loader_pf_result LoaderPreFilter (_Optional const char * /*file_path*/,
+                                          int                    /*file_type*/,
+                                          bool                   /*inside_zone*/,
+                                          void                 * /*client_handle*/);
 
 typedef Loader2FileHandler LoaderFileHandler;
 
-typedef void LoaderFinishedHandler (int          /*drop_x*/,
-                                    int          /*drop_y*/,
-                                    const char * /*title*/,
-                                    bool         /*data_saved*/,
-                                    flex_ptr     /*buffer*/,
-                                    int          /*file_type*/,
-                                    void       * /*client_handle*/);
+typedef void LoaderFinishedHandler (int               /*drop_x*/,
+                                    int               /*drop_y*/,
+                                    const char      * /*title*/,
+                                    bool              /*data_saved*/,
+                                    void *_Optional * /*buffer*/,
+                                    int               /*file_type*/,
+                                    void            * /*client_handle*/);
 /*
   If 'data_saved' is set then 'title' will be the full CANONICALISED
   path of the file from which the data was loaded. The case of 'title'
@@ -163,9 +163,9 @@ _Optional CONST _kernel_oserror *loader_register_listener(
                               unsigned int            /*flags*/,
                               int                     /*file_type*/,
                               ObjectId                /*drop_object*/,
-                              const ComponentId     * /*drop_gadgets*/,
-                              LoaderFileHandler     * /*loader_method*/,
-                              LoaderFinishedHandler * /*finished_method*/,
+                              _Optional const ComponentId     * /*drop_gadgets*/,
+                              _Optional LoaderFileHandler     * /*loader_method*/,
+                              _Optional LoaderFinishedHandler * /*finished_method*/,
                               void                  * /*client_handle*/);
    /*
     * Registers an interest in receiving data of type 'file_type' (may also be
@@ -193,9 +193,9 @@ _Optional CONST _kernel_oserror *loader_register_listener(
 #define FILETYPE_ALL         -1
 
 _Optional CONST _kernel_oserror *loader_deregister_listener(
-                                          int           /*file_type*/,
-                                          ObjectId      /*drop_object*/,
-                                          const ComponentId * /*drop_gadgets*/);
+                                int           /*file_type*/,
+                                ObjectId      /*drop_object*/,
+                                _Optional const ComponentId * /*drop_gadgets*/);
    /*
     * Removes a previously registered listener. The three parameters must
     * exactly match those passed to the registration function (together, they
@@ -222,7 +222,7 @@ _Optional CONST _kernel_oserror *loader_buffer_file(const char * /*file_path*/,
     * instead.
     */
 
-_Optional CONST _kernel_oserror *loader_canonicalise(char **      /*buffer*/,
+_Optional CONST _kernel_oserror *loader_canonicalise(_Optional char      ** /*buffer*/,
                                                      _Optional const char * /*path_var*/,
                                                      _Optional const char * /*path_string*/,
                                                      const char * /*file_path*/);

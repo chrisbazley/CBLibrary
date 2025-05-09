@@ -89,9 +89,9 @@ _Optional CONST _kernel_oserror *load_compressed(const char *file_path, flex_ptr
 
   {
     int buffer_size, err, nout;
-    FILE *read_file;
+    _Optional FILE *read_file;
     const size_t command_size = CLoadCmdSize + strlen(file_path);
-    char *command;
+    _Optional char *command;
 
     _kernel_last_oserror(); /* reset SCL's error recording */
 
@@ -103,13 +103,13 @@ _Optional CONST _kernel_oserror *load_compressed(const char *file_path, flex_ptr
       return msgs_errorsubn(DUMMY_ERRNO, "OpenInFail", 1, file_path);
     }
 
-    if (fread(&buffer_size, sizeof(buffer_size), 1, read_file) != 1)
+    if (fread(&buffer_size, sizeof(buffer_size), 1, &*read_file) != 1)
     {
-      fclose(read_file);
+      fclose(&*read_file);
       ON_ERR_RTN_E(_kernel_last_oserror()); /* return any OS error */
       return msgs_errorsubn(DUMMY_ERRNO, "ReadFail", 1, file_path);
     }
-    fclose(read_file);
+    fclose(&*read_file);
 
     /* Allocate buffer for data */
     if (!flex_alloc(buffer_anchor, buffer_size))
@@ -125,7 +125,7 @@ _Optional CONST _kernel_oserror *load_compressed(const char *file_path, flex_ptr
 
     nobudge_register(PreExpandHeap); /* prevent budge */
 
-    nout = sprintf(command,
+    nout = sprintf(&*command,
             "Cload %s &%X", file_path, (int)*buffer_anchor);
     assert(nout >= 0); /* no formatting error */
     assert(nout < command_size); /* no buffer overflow/truncation */
@@ -133,7 +133,7 @@ _Optional CONST _kernel_oserror *load_compressed(const char *file_path, flex_ptr
 
     /* Decompress file */
     hourglass_on();
-    err = _kernel_oscli(command);
+    err = _kernel_oscli(&*command);
     hourglass_off();
 
     free(command);
@@ -160,7 +160,7 @@ _Optional CONST _kernel_oserror *save_compressed(const char *file_path, int file
   {
     int err, nout;
     const size_t command_size = CSaveCmdSize + strlen(file_path);
-    char *command;
+    _Optional char *command;
 
     command = malloc(command_size);
     if (command == NULL)
@@ -169,7 +169,7 @@ _Optional CONST _kernel_oserror *save_compressed(const char *file_path, int file
     nobudge_register(PreExpandHeap); /* prevent budge */
 
     /* Construct CLI command */
-    nout = sprintf(command,
+    nout = sprintf(&*command,
             "CSave %s &%X &%X", file_path, (int)*buffer_anchor,
             ((int)*buffer_anchor + flex_size(buffer_anchor)));
 
@@ -179,7 +179,7 @@ _Optional CONST _kernel_oserror *save_compressed(const char *file_path, int file
 
     /* Compress file */
     hourglass_on();
-    err = _kernel_oscli(command);
+    err = _kernel_oscli(&*command);
     hourglass_off();
 
     free(command);

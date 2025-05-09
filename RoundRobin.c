@@ -78,7 +78,7 @@ typedef struct
 RoundRobinRecord;
 
 static int suspended;
-static RoundRobinRecord *threads_array;
+static _Optional RoundRobinRecord *threads_array;
 static size_t threads_array_len, thread_to_call, num_threads;
 static unsigned int maxtime;
 static volatile bool time_up = true;
@@ -97,7 +97,7 @@ _Optional CONST _kernel_oserror *RoundRobin_initialise(unsigned int time)
   ON_ERR_RTN_E(event_register_wimp_handler(-1,
                                            Wimp_ENull,
                                            null_event_handler,
-                                           NULL));
+                                           (void *)NULL));
   thread_to_call = 0;
   threads_array_len = 0;
   threads_array = NULL;
@@ -117,7 +117,7 @@ _Optional CONST _kernel_oserror *RoundRobin_finalise(void)
   return_error = event_deregister_wimp_handler(-1,
                                                Wimp_ENull,
                                                null_event_handler,
-                                               NULL);
+                                               (void *)NULL);
   free(threads_array);
   threads_array_len = 0;
   if (num_threads > 0 && suspended != 0)
@@ -132,19 +132,19 @@ _Optional CONST _kernel_oserror *RoundRobin_finalise(void)
 _Optional CONST _kernel_oserror *RoundRobin_register(RoundRobinHandler *handler, void *handle)
 {
   /* Add record to threads data */
-  RoundRobinRecord *write_data = NULL;
+  _Optional RoundRobinRecord *write_data = NULL;
 
   if (threads_array != NULL) {
     /* Search for a free RoundRobinRecord block in array */
     for (size_t i = 0; i < threads_array_len && write_data == NULL; i++) {
-      if (threads_array[i].handler == NULL)
+      if (!threads_array[i].handler)
         write_data = &(threads_array[i]); /* found one */
     }
   }
 
   if (write_data == NULL) {
     /* Create/Extend array of RoundRobinRecord blocks */
-    RoundRobinRecord *new_data;
+    _Optional RoundRobinRecord *new_data;
 
     new_data = realloc(threads_array,
                        sizeof(*new_data) * (threads_array_len + 1));
@@ -154,7 +154,7 @@ _Optional CONST _kernel_oserror *RoundRobin_register(RoundRobinHandler *handler,
     threads_array = new_data;
     write_data = &(threads_array[threads_array_len]);
     threads_array_len++;
-    write_data->handler = NULL; /* mark new (end) block as free */
+    write_data->handler = (RoundRobinHandler *)NULL; /* mark new (end) block as free */
   }
 
   if (num_threads == 0 && suspended == 0)
@@ -172,12 +172,14 @@ _Optional CONST _kernel_oserror *RoundRobin_register(RoundRobinHandler *handler,
 
 _Optional CONST _kernel_oserror *RoundRobin_deregister(RoundRobinHandler *handler, void *handle)
 {
-  RoundRobinRecord *write_data = NULL;
+  _Optional RoundRobinRecord *write_data = NULL;
 
-  /* Search for the specified thread data */
-  for (size_t i = 0; i < threads_array_len && write_data == NULL; i++) {
-    if (threads_array[i].handler == handler && threads_array[i].handle == handle)
-      write_data = &(threads_array[i]); /* found it */
+  if (threads_array != NULL) {
+    /* Search for the specified thread data */
+    for (size_t i = 0; i < threads_array_len && write_data == NULL; i++) {
+      if (threads_array[i].handler == handler && threads_array[i].handle == handle)
+        write_data = &(threads_array[i]); /* found it */
+    }
   }
 
   assert(write_data != NULL);
@@ -188,7 +190,7 @@ _Optional CONST _kernel_oserror *RoundRobin_deregister(RoundRobinHandler *handle
     nullpoll_deregister(); /* We have run out of clients */
   num_threads--;
 
-  write_data->handler = NULL; /* mark slot as free */
+  write_data->handler = (RoundRobinHandler *)NULL; /* mark slot as free */
 
   return NULL;
 }
@@ -241,7 +243,7 @@ static int null_event_handler(int event_code, WimpPollBlock *event, IdBlock *id_
     err = timer_register(&time_up, maxtime);
     if (err != NULL) {
       time_up = true; /* could not set up timer event */
-      err_check_rep(err);
+      err_check_rep(&*err);
     }
   }
 
@@ -253,10 +255,14 @@ static int null_event_handler(int event_code, WimpPollBlock *event, IdBlock *id_
     if (thread_to_call >= threads_array_len)
       thread_to_call = 0;
 
+    if (!threads_array) {
+      break;
+    }
+
     block = &threads_array[thread_to_call];
     DEBUGF("Thread record %zu at %p\n", thread_to_call, (void *)block);
 
-    if (block->handler != NULL) {
+    if (block->handler) {
       DEBUGF("Calling handler with handle %p\n", block->handle);
       num_this_poll++;
       block->handler(block->handle, &time_up);

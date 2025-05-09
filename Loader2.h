@@ -116,10 +116,10 @@ _Optional CONST _kernel_oserror *loader2_finalise(void);
     */
 
 _Optional CONST _kernel_oserror *loader2_receive_data(
-                                const WimpMessage         * /*data_save*/,
-                                Loader2FileHandler        * /*load_method*/,
-                                Loader2FinishedHandler    * /*finished_method*/,
-                                void                      * /*client_handle*/);
+                      const WimpMessage                   * /*data_save*/,
+                      _Optional Loader2FileHandler        * /*load_method*/,
+                      _Optional Loader2FinishedHandler    * /*finished_method*/,
+                      void                                * /*client_handle*/);
    /*
     * Sends a RAMFetch or DataSaveAck message in reply to the specified
     * DataSave message. If the second argument is NULL then the default
@@ -132,8 +132,8 @@ _Optional CONST _kernel_oserror *loader2_receive_data(
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-void loader2_cancel_receives(Loader2FinishedHandler * /*finished_method*/,
-                             void                   * /*client_handle*/);
+void loader2_cancel_receives(_Optional Loader2FinishedHandler * /*finished_method*/,
+                             void                             * /*client_handle*/);
    /*
     * Cancels any outstanding load operations to the specified client function
     * and handle. Use when the destination has become invalid, e.g. because a

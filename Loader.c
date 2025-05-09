@@ -218,7 +218,7 @@ typedef struct
   }
   pre_filter;
   ObjectId                  object;
-  const ComponentId        *gadgets; /* malloc'd if COPY_ARRAY_ARGS defined */
+  _Optional const ComponentId *gadgets; /* malloc'd if COPY_ARRAY_ARGS defined */
 }
 LoaderListenerCriteria;
 
@@ -228,8 +228,8 @@ typedef struct LoaderListenerBlk
   int                       flags;
   LoaderListenerCriteria    criteria;
   /* Client participation */
-  LoaderFileHandler        *loader_method;   /* optional */
-  LoaderFinishedHandler    *finished_method; /* compulsary */
+  _Optional LoaderFileHandler        *loader_method;
+  _Optional LoaderFinishedHandler    *finished_method;
   void                     *client_handle; /* passed to finished_method */
 }
 LoaderListenerBlk;
@@ -253,12 +253,19 @@ ExtraOpData;
 static WimpMessageHandler _ldr_datasave_msg_handler,
                           _ldr_dataloadopen_msg_handler;
 static void _ldr_kill_listener(LoaderListenerBlk *kill_listener);
-static LoaderListenerBlk *_ldr_find_broadcast_listener(const char *file_path, int file_type);
-static LoaderListenerBlk *_ldr_find_listener(LoaderListenerCriteria *criteria);
-static LoaderListenerBlk *_ldr_find_suitable_listener(const char *perma_file_path, int window, int icon, int file_type);
+static _Optional LoaderListenerBlk *_ldr_find_broadcast_listener(
+  const char *file_path, int file_type);
+
+static _Optional LoaderListenerBlk *_ldr_find_listener(
+  LoaderListenerCriteria *criteria);
+
+static _Optional LoaderListenerBlk *_ldr_find_suitable_listener(
+  _Optional const char *perma_file_path, int window, int icon, int file_type);
+
 static Loader2FinishedHandler _ldr_finished;
 static void _ldr_destroy_extra_op(ExtraOpData *extra_op_data);
-static _Optional CONST _kernel_oserror *_ldr_abs_to_work_area(int window_handle, int *x, int *y);
+static _Optional CONST _kernel_oserror *_ldr_abs_to_work_area(int window_handle,
+  _Optional int *x, _Optional int *y);
 static LinkedListCallbackFn _ldr_cancel_matching_op, _ldr_kill_listener_for_object, _ldr_listener_is_match;
 
 /* -----------------------------------------------------------------------
@@ -315,7 +322,7 @@ _Optional CONST _kernel_oserror *loader_initialise(unsigned int flags)
 
     ON_ERR_RTN_E(event_register_message_handler(msg_handlers[i].msg_no,
                                                 msg_handlers[i].handler,
-                                                NULL));
+                                                (void *)NULL));
   }
 
   /* Ensure that messages are not masked */
@@ -339,19 +346,19 @@ _Optional CONST _kernel_oserror *loader_finalise(void)
   initialised = false;
 
   /* Kill all listeners  */
-  linkedlist_for_each(&listener_list, _ldr_kill_listener_for_object, NULL);
+  linkedlist_for_each(&listener_list, _ldr_kill_listener_for_object, (void *)NULL);
 
   /* Deregister Wimp message handlers for data transfer protocol */
   for (size_t i = 0; i < ARRAY_SIZE(msg_handlers); i++)
   {
-    if (msg_handlers[i].msgs_no == Wimp_MDataOpen &&
+    if (msg_handlers[i].msg_no == Wimp_MDataOpen &&
         TEST_BITS(control_flags, LOADER_IGNOREBCASTS))
       continue; /* skip this one */
 
     MERGE_ERR(return_error,
-              event_deregister_message_handler(msg_handlers[i].msgs_no,
+              event_deregister_message_handler(msg_handlers[i].msg_no,
                                                msg_handlers[i].handler,
-                                               NULL));
+                                               (void *)NULL));
   }
 
   return return_error;
@@ -360,9 +367,13 @@ _Optional CONST _kernel_oserror *loader_finalise(void)
 
 /* ----------------------------------------------------------------------- */
 
-_Optional CONST _kernel_oserror *loader_register_listener(unsigned int flags, int file_type, ObjectId drop_object, const ComponentId *drop_gadgets, LoaderFileHandler *loader_method, LoaderFinishedHandler *finished_method, void *client_handle)
+_Optional CONST _kernel_oserror *loader_register_listener(unsigned int flags,
+  int file_type, ObjectId drop_object,
+  _Optional const ComponentId *drop_gadgets,
+  _Optional LoaderFileHandler *loader_method,
+  _Optional LoaderFinishedHandler *finished_method, void *client_handle)
 {
-  LoaderListenerBlk *newlistener;
+  _Optional LoaderListenerBlk *newlistener;
   LoaderListenerCriteria criteria;
 
   assert(initialised);
@@ -395,7 +406,7 @@ _Optional CONST _kernel_oserror *loader_register_listener(unsigned int flags, in
   */
   if (drop_gadgets != NULL) {
     /* count number of gadgets in array */
-    ComponentId *gadgets_copy;
+    _Optional ComponentId *gadgets_copy;
     size_t array_len = 0;
     do {
       assert(array_len < 16); /* not certain but suggests a bug */
@@ -410,8 +421,8 @@ _Optional CONST _kernel_oserror *loader_register_listener(unsigned int flags, in
       free(newlistener);
       return msgs_error(DUMMY_ERRNO, "NoMem");
     }
-    memcpy(gadgets_copy,
-           drop_gadgets,
+    memcpy(&*gadgets_copy,
+           &*drop_gadgets,
            array_len * sizeof(*criteria.gadgets));
     criteria.gadgets = gadgets_copy;
   }
@@ -446,10 +457,11 @@ _Optional CONST _kernel_oserror *loader_deregister_listeners_for_object(ObjectId
 
 /* ----------------------------------------------------------------------- */
 
-_Optional CONST _kernel_oserror *loader_deregister_listener(int file_type, ObjectId drop_object, const ComponentId *drop_gadgets)
+_Optional CONST _kernel_oserror *loader_deregister_listener(int file_type,
+  ObjectId drop_object, _Optional const ComponentId *drop_gadgets)
 {
   /* Kill a specified listener */
-  LoaderListenerBlk *find_it;
+  _Optional LoaderListenerBlk *find_it;
   LoaderListenerCriteria criteria;
 
   assert(initialised);
@@ -461,7 +473,7 @@ _Optional CONST _kernel_oserror *loader_deregister_listener(int file_type, Objec
   find_it = _ldr_find_listener(&criteria);
   assert(find_it != NULL);
   if (find_it != NULL)
-    _ldr_kill_listener(find_it); /* remove the stinking thing */
+    _ldr_kill_listener(&*find_it); /* remove the stinking thing */
 
   return NULL; /* success */
 }
@@ -509,8 +521,8 @@ static int _ldr_datasave_msg_handler(WimpMessage *message, void *handle)
      else it will intercept messages intended for the Loader2 or Entity library
      components). */
   _Optional CONST _kernel_oserror *e;
-  LoaderListenerBlk *listener;
-  ExtraOpData *extra_op_data;
+  _Optional LoaderListenerBlk *listener;
+  _Optional ExtraOpData *extra_op_data;
   NOT_USED(handle);
 
   /* Are any listeners interested?
@@ -534,13 +546,14 @@ static int _ldr_datasave_msg_handler(WimpMessage *message, void *handle)
   }
 
   /* Initialise record for a new save operation */
-  extra_op_data->listener = listener;
-  extra_op_data->leaf_name = strdup(message->data.data_save.leaf_name);
-  if (extra_op_data->leaf_name == NULL) {
+  extra_op_data->listener = &*listener;
+  _Optional char *const leaf_name = strdup(message->data.data_save.leaf_name);
+  if (leaf_name == NULL) {
     WARN_GLOB("NoMem");
     free(extra_op_data);
     return 1; /* claim message */
   }
+  extra_op_data->leaf_name = &*leaf_name;
   extra_op_data->drop_x = message->data.data_save.destination_x;
   extra_op_data->drop_y = message->data.data_save.destination_y;
 
@@ -560,10 +573,10 @@ static int _ldr_datasave_msg_handler(WimpMessage *message, void *handle)
   e = loader2_receive_data(message,
                            listener->loader_method,
                            _ldr_finished,
-                           extra_op_data);
+                           &*extra_op_data);
   if (e != NULL) {
-    _ldr_destroy_extra_op(extra_op_data);
-    err_check_rep(e);
+    _ldr_destroy_extra_op(&*extra_op_data);
+    err_check_rep(&*e);
   }
 
   return 1; /* claim message */
@@ -578,7 +591,7 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
      Loader2 or Entity library components). */
   _Optional CONST _kernel_oserror *e;
   _Optional char *full_path = NULL;
-  LoaderListenerBlk *found_listener;
+  _Optional LoaderListenerBlk *found_listener;
   int file_type, drop_x, drop_y;
   NOT_USED(handle);
 
@@ -590,11 +603,14 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
     /* It's a DataOpen message (broadcast when the user double-clicks a file) */
     ON_ERR_RPT_RTN_V(canonicalise(&full_path, NULL, NULL,
                                   message->data.data_open.path_name), 0);
+    if (!full_path) {
+      return 0;
+    }
 
     file_type = message->data.data_open.file_type;
     drop_x = drop_y = -1; /* file not received via drag and drop */
 
-    found_listener = _ldr_find_broadcast_listener(full_path, file_type);
+    found_listener = _ldr_find_broadcast_listener(&*full_path, file_type);
   }
   else {
     /* It's a DataLoad message (sent to request us to load a file) */
@@ -602,6 +618,9 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
 
     ON_ERR_RPT_RTN_V(canonicalise(&full_path, NULL, NULL,
                                   message->data.data_load.leaf_name), 0);
+    if (!full_path) {
+      return 0;
+    }
 
     /* According to the RISC OS 3 PRM a file type value of &ffffffff in a
        DataSave message (and by extension DataLoad) means file is untyped */
@@ -611,7 +630,7 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
     drop_x = message->data.data_load.destination_x;
     drop_y = message->data.data_load.destination_y;
 
-    found_listener = _ldr_find_suitable_listener(full_path,
+    found_listener = _ldr_find_suitable_listener(&*full_path,
                      message->data.data_load.destination_window,
                      message->data.data_load.destination_icon, file_type);
   }
@@ -656,18 +675,22 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
         found_listener->flags);
 
   /* Call file loader */
-  void *input_buffer = NULL;
+  void *fbuf;
+  void *_Optional *input_buffer = NULL;
+
   if (message->data.data_load.file_type != FILETYPE_APP &&
   message->data.data_load.file_type != FILETYPE_DIR) {
-    if (found_listener->loader_method == NULL) {
+    input_buffer = &fbuf;
+
+    if (!found_listener->loader_method) {
       /* Use standard file loader */
       DEBUGF("Loader: using standard file loader\n");
-      e = loader2_buffer_file(message->data.data_load.leaf_name, &input_buffer);
+      e = loader2_buffer_file(message->data.data_load.leaf_name, &*input_buffer);
     } else {
       /* Use client's custom file loader */
       DEBUGF("Loader: using client's file loader\n");
       e = found_listener->loader_method(message->data.data_load.leaf_name,
-                                        &input_buffer);
+                                        &*input_buffer);
     }
     if (e != NULL) {
       /* Loading error */
@@ -686,7 +709,7 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
     NULL))) {
       free(full_path);
       if (input_buffer != NULL)
-        flex_free(&input_buffer);
+        flex_free(&*input_buffer);
       return 1; /* claim message */
     }
     DEBUGF("Loader: Have sent DataLoadAck message (ref. %d)\n",
@@ -698,29 +721,29 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
   LISTENER_SPRITEAREAS) && message->data.data_load.file_type == FILETYPE_SPRITE)
   {
     DEBUGF("Loader: Pre-pending sprite area size\n");
-    spriteareaheader **area = (spriteareaheader **)&input_buffer;
-    if (!flex_midextend(&input_buffer, 0, sizeof((*area)->size))) {
+    spriteareaheader **area = (spriteareaheader **)&*input_buffer;
+    if (!flex_midextend(&*input_buffer, 0, sizeof((*area)->size))) {
       /* Failed to extend input buffer at start */
       WARN_GLOB("NoMem");
       free(full_path);
-      flex_free(&input_buffer);
+      flex_free(&*input_buffer);
       return 1; /* claim message */
     }
     /* Write sprite area size as first word */
-    (*area)->size = flex_size(&input_buffer);
+    (*area)->size = flex_size(&*input_buffer);
   }
 
   /* File loaded successfully - call finished handler */
-  if (found_listener->finished_method != NULL) {
+  if (found_listener->finished_method) {
     DEBUGF("Loader: Calling client function with handle %p\n",
           found_listener->client_handle);
-    found_listener->finished_method(drop_x, drop_y, full_path, true,
-                                    &input_buffer, file_type,
+    found_listener->finished_method(drop_x, drop_y, &*full_path, true,
+                                    input_buffer, file_type,
                                     found_listener->client_handle);
   } else {
     DEBUGF("Loader: Listener has no client function\n");
     if (input_buffer != NULL)
-      flex_free(&input_buffer);
+      flex_free(&*input_buffer);
   }
   free(full_path);
   return 1; /* claim message */
@@ -753,7 +776,7 @@ static void _ldr_kill_listener(LoaderListenerBlk *kill_listener)
 
 /* ----------------------------------------------------------------------- */
 
-static LoaderListenerBlk *_ldr_find_broadcast_listener(const char *file_path, int file_type)
+static _Optional LoaderListenerBlk *_ldr_find_broadcast_listener(const char *file_path, int file_type)
 {
   /* Search linked list to find if any Listeners are willing to start a thread
      to load this file type */
@@ -826,7 +849,7 @@ static bool _ldr_listener_is_match(LinkedList *list, LinkedListItem *item, void 
         assert(i < 16); /* not definite but this would suggest a bug */
         DEBUGF("Loader: List item %u is gadget %d\n", i, criteria->gadgets[i]);
         if (criteria->gadgets[i] == NULL_ComponentId) {
-          assert(listener->gadgets[i] == NULL_ComponentId);
+          assert(listener->criteria.gadgets[i] == NULL_ComponentId);
           DEBUGF("Loader: Matched to end of list for listener %p\n", (void *)listener);
           return true;
         }
@@ -843,7 +866,8 @@ static bool _ldr_listener_is_match(LinkedList *list, LinkedListItem *item, void 
 
 /* ----------------------------------------------------------------------- */
 
-static bool _ldr_check_dropzone(ObjectId object, const ComponentId *gadgets, int window_handle, int icon_number)
+static bool _ldr_check_dropzone(ObjectId object,
+  _Optional const ComponentId *gadgets, int window_handle, int icon_number)
 {
   /* Check the dropzone for this listener */
   DEBUGF("Loader: Checking whether window %d and icon %d are within drop zone\n",
@@ -863,7 +887,7 @@ static bool _ldr_check_dropzone(ObjectId object, const ComponentId *gadgets, int
       errptr=toolbox_get_object_class(0, object, &objclass);
       if (errptr != NULL) {
         if (errptr->errnum != ERR_BAD_OBJECT_ID)
-          err_complain(errptr->errnum, errptr->errmess);
+          err_complain(errptr->errnum, &*errptr->errmess);
         return false; /* ignore listener if bad object ID */
       }
     }
@@ -910,18 +934,18 @@ static bool _ldr_check_dropzone(ObjectId object, const ComponentId *gadgets, int
     if (errptr != NULL) {
       /* ignore gadget if bad gadget ID */
       if (errptr->errnum != ERR_BAD_COMPONENT_ID)
-        err_complain(errptr->errnum, errptr->errmess);
+        err_complain(errptr->errnum, &*errptr->errmess);
     }
     else {
       /* allocate buffer for list */
-      int *icons_list = malloc(nbytes);
+      _Optional int *icons_list = malloc(nbytes);
       if (icons_list == NULL) {
         WARN_GLOB("NoMem");
         return false;
       }
 
       /* read icon numbers into buffer */
-      if (E(gadget_get_icon_list(0, object, gadgets[j], icons_list, nbytes,
+      if (E(gadget_get_icon_list(0, object, gadgets[j], &*icons_list, nbytes,
       &nbytes))) {
         free(icons_list);
         return false;
@@ -944,7 +968,8 @@ static bool _ldr_check_dropzone(ObjectId object, const ComponentId *gadgets, int
 
 /* ----------------------------------------------------------------------- */
 
-static LoaderListenerBlk *_ldr_find_suitable_listener(const char *perma_file_path, int window, int icon, int file_type)
+static _Optional LoaderListenerBlk *_ldr_find_suitable_listener(
+  _Optional const char *perma_file_path, int window, int icon, int file_type)
 {
   /* Search linked list to find if any Listeners are willing to start a thread
      to load this drop zone/file type/source. If the incoming data transfer is
@@ -1061,7 +1086,8 @@ static LoaderListenerBlk *_ldr_find_suitable_listener(const char *perma_file_pat
 
 /* ----------------------------------------------------------------------- */
 
-static void _ldr_finished(_Optional CONST _kernel_oserror *load_error, int file_type, flex_ptr buffer, void *client_handle)
+static void _ldr_finished(_Optional CONST _kernel_oserror *load_error,
+  int file_type, void *_Optional *buffer, void *client_handle)
 {
   /* This function is called when a load operation has finished
      (whether successful or not) */
@@ -1077,7 +1103,7 @@ static void _ldr_finished(_Optional CONST _kernel_oserror *load_error, int file_
     DEBUGF("Loader: Current address of flex block is %p\n", *buffer);
 
   if (file_type != -1) {
-    if (parent_listener->finished_method != NULL) {
+    if (parent_listener->finished_method) {
       /* Call the client-supplied function to notify it that the load
          operation is complete. */
       DEBUGF("Loader: Calling client function with handle %p\n",
@@ -1099,7 +1125,7 @@ static void _ldr_finished(_Optional CONST _kernel_oserror *load_error, int file_
                  load_error->errmess));
     }
     if (buffer != NULL)
-      flex_free(buffer);
+      flex_free(&*buffer);
   }
 
   /* Free data block for this request and de-link it from the list*/
@@ -1120,7 +1146,8 @@ static void _ldr_destroy_extra_op(ExtraOpData *extra_op_data)
 
 /* ----------------------------------------------------------------------- */
 
-static _Optional CONST _kernel_oserror *_ldr_abs_to_work_area(int window_handle, int *x, int *y)
+static _Optional CONST _kernel_oserror *_ldr_abs_to_work_area(int window_handle,
+	_Optional int *x, _Optional int *y)
 {
   WimpGetWindowStateBlock state;
   state.window_handle = window_handle;
