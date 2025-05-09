@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
+#include <stdlib.h>
 
 /* Acorn C/C++ library headers */
 #include "kernel.h"
