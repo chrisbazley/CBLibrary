@@ -73,6 +73,7 @@
   CJB: 29-Aug-20: Deleted a redundant static function pre-declaration.
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+                  Allow null 'type' argument for ViewsMenu_show_object().
  */
 
 /* ISO library headers */
@@ -402,7 +403,9 @@ bool ViewsMenu_strcmp_nc(const char *string1, const char *string2)
 
 /* ----------------------------------------------------------------------- */
 
-_Optional CONST _kernel_oserror *ViewsMenu_show_object(unsigned int flags, ObjectId id, int show_type, void *type, ObjectId parent, ComponentId parent_component)
+_Optional CONST _kernel_oserror *ViewsMenu_show_object(unsigned int flags,
+  ObjectId id, int show_type, _Optional void *type, ObjectId parent,
+  ComponentId parent_component)
 {
   return DeIconise_show_object(flags,
                                id,

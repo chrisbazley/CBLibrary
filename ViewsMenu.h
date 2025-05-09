@@ -43,6 +43,7 @@ History:
                   CBLIB_OBSOLETE.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+                  Allow null 'type' argument for ViewsMenu_show_object().
 */
 
 #ifndef ViewsMenu_h
@@ -162,7 +163,11 @@ ObjectId ViewsMenu_getnext(ObjectId /*current*/);
 /* The following functions are deprecated and should not be used in
    new or updated programs. */
 bool ViewsMenu_strcmp_nc(const char * /*string1*/, const char * /*string2*/);
-_Optional CONST _kernel_oserror *ViewsMenu_show_object(unsigned int /*flags*/, ObjectId /*id*/, int /*show_type*/, void * /*type*/, ObjectId /*parent*/, ComponentId /*parent_component*/);
+
+_Optional CONST _kernel_oserror *ViewsMenu_show_object(unsigned int /*flags*/,
+  ObjectId /*id*/, int /*show_type*/, _Optional void * /*type*/,
+  ObjectId /*parent*/, ComponentId /*parent_component*/);
+
 ObjectId ViewMenu_getfirst(void);
 ObjectId ViewMenu_getnext(ObjectId /*current*/);
 
