@@ -59,6 +59,7 @@
   CJB: 10-Nov-19: Modified load_fileM2() to use get_file_size().
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+                  Handle pointer-to-null in get_loadsave_perc().
  */
 
 /* ISO library headers */
@@ -142,10 +143,14 @@ _Optional CONST _kernel_oserror *loadsave_initialise(_Optional MessagesFD *mfd)
 
 unsigned int get_loadsave_perc(FILE *_Optional **handle)
 {
-  fileop_state *state = (fileop_state *)*handle;
+  _Optional fileop_state *state = (fileop_state *)*handle;
   unsigned int bytes_done, total_size, perc_done;
 
   DEBUGF("LoadSaveMT: Request for %% done\n");
+
+  if (!state) {
+    return 0u;
+  }
 
   assert(state->limit >= state->start);
   total_size = state->limit - state->start;

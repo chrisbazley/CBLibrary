@@ -62,6 +62,8 @@
                   Made debugging output less verbose by default.
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+                  Handle pointer-to-null in get_decomp_perc() and
+                  get_comp_perc().
 */
 
 /* ISO library headers */
@@ -340,8 +342,11 @@ _Optional CONST _kernel_oserror *compress_initialise(_Optional MessagesFD *const
 unsigned int get_decomp_perc(FILE *_Optional **const handle)
 {
   assert(handle != NULL);
-  const decomp_state *const state = (decomp_state *)*handle;
-  assert(state != NULL);
+  _Optional const decomp_state *const state = (decomp_state *)*handle;
+
+  if (!state) {
+    return 0u;
+  }
 
   long int const wpos = writer_ftell(&state->common.writer);
   assert(wpos >= 0);
@@ -354,8 +359,11 @@ unsigned int get_decomp_perc(FILE *_Optional **const handle)
 unsigned int get_comp_perc(FILE *_Optional **const handle)
 {
   assert(handle != NULL);
-  const comp_state *const state = (comp_state *)*handle;
-  assert(state != NULL);
+  _Optional const comp_state *const state = (comp_state *)*handle;
+
+  if (!state) {
+    return 0u;
+  }
 
   long int const rpos = reader_ftell(&state->common.reader);
   assert(rpos >= 0);
