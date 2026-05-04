@@ -38,6 +38,10 @@ History:
 #include "Writer.h"
 #include "Reader.h"
 
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
 typedef void fileop_destructor(void *fop);
 
 typedef struct fileop_common

@@ -115,6 +115,10 @@ History:
 #ifndef Macros_h
 #define Macros_h
 
+#if !defined(USE_OPTIONAL) && !defined(_Optional)
+#define _Optional
+#endif
+
 /* I believe that using error number 0 can have unpleasant side-effects */
 enum
 {
