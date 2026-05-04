@@ -20,8 +20,16 @@
 #ifndef Tests_h
 #define Tests_h
 
+#undef NDEBUG
+
 #ifdef FORTIFY
-#include "Fortify.h"
+#include "fortify.h"
+#else
+#define Fortify_SetAllocationLimit(x)
+#define Fortify_SetNumAllocationsLimit(x)
+#define Fortify_EnterScope()
+#define Fortify_LeaveScope()
+#define Fortify_OutputStatistics()
 #endif
 
 #ifdef USE_CBDEBUG
