@@ -44,7 +44,8 @@ target_compile_options(CB PRIVATE
     $<$<CONFIG:Release>:-O3>
 )
 
-target_link_libraries(CB PRIVATE
+# Several header files depend on headers from dependencies
+target_link_libraries(CB PUBLIC
     OptionalAcornC
     Stream
     CBOS
@@ -55,3 +56,9 @@ install(TARGETS CB
     ARCHIVE DESTINATION lib
     PUBLIC_HEADER DESTINATION include
 )
+
+include(CTest)
+
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+  add_subdirectory(tests)
+endif()
