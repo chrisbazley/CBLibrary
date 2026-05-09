@@ -18,6 +18,7 @@
  */
 
 /* ISO library headers */
+#include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -175,7 +176,7 @@ static void wipe(const char *path_name)
   assert(path_name != NULL);
 
   regs.r[0] = OS_FSControl_Wipe;
-  regs.r[1] = (int)path_name;
+  regs.r[1] = (intptr_t)path_name;
   regs.r[3] = OS_FSControl_Flag_Recurse;
   _kernel_swi(OS_FSControl, &regs, &regs);
 }
@@ -252,10 +253,10 @@ static int date_and_time_to_string(OSDateAndTime *utc,
   int nchars = sizeof("00:00:00 01 Jan 1900")-1;
 
   regs.r[0] = Territory_Current;
-  regs.r[1] = (int)utc->bytes;
-  regs.r[2] = (int)buffer;
-  regs.r[3] = (int)buff_size;
-  regs.r[4] = (int)"%24:%MI:%SE %DY %M3 %CE%YR";
+  regs.r[1] = (intptr_t)utc->bytes;
+  regs.r[2] = (intptr_t)buffer;
+  regs.r[3] = (intptr_t)buff_size;
+  regs.r[4] = (intptr_t)"%24:%MI:%SE %DY %M3 %CE%YR";
   e = _kernel_swi(Territory_ConvertDateAndTime, &regs, &regs);
   if (e != NULL && e->errnum != ErrorNum_BufferOverflow)
   {

@@ -18,6 +18,7 @@
  */
 
 /* ISO library headers */
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -56,7 +57,7 @@ static void wipe(const char *path_name)
   assert(path_name != NULL);
 
   regs.r[0] = OS_FSControl_Wipe;
-  regs.r[1] = (int)path_name;
+  regs.r[1] = (intptr_t)path_name;
   regs.r[3] = OS_FSControl_Flag_Recurse;
   _kernel_swi(OS_FSControl, &regs, &regs);
 }
