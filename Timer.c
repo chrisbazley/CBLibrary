@@ -26,6 +26,7 @@
  */
 
 /* ISO library headers */
+#include <stdint.h>
 #include <stdbool.h>
 
 /* Acorn C/C++ library headers */
@@ -43,8 +44,8 @@ _Optional CONST _kernel_oserror *timer_register(volatile bool *timeup_flag, int 
   _kernel_swi_regs regs;
   *timeup_flag = false;
   regs.r[0] = wait_time;
-  regs.r[1] = (int)&timer_set_flag;
-  regs.r[2] = (int)timeup_flag;
+  regs.r[1] = (intptr_t)&timer_set_flag;
+  regs.r[2] = (intptr_t)timeup_flag;
   return _kernel_swi(OS_CallAfter, &regs, &regs);
 }
 
@@ -54,7 +55,7 @@ _Optional CONST _kernel_oserror *timer_register(volatile bool *timeup_flag, int 
 _Optional CONST _kernel_oserror *timer_deregister(volatile bool *timeup_flag)
 {
   _kernel_swi_regs regs;
-  regs.r[0] = (int)&timer_set_flag;
-  regs.r[1] = (int)timeup_flag;
+  regs.r[0] = (intptr_t)&timer_set_flag;
+  regs.r[1] = (intptr_t)timeup_flag;
   return _kernel_swi(OS_RemoveTickerEvent, &regs, &regs);
 }
