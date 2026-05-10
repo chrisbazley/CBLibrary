@@ -46,11 +46,14 @@
   CJB: 04-Nov-18: Got rid of OLD_SCL_STUBS usage (assumed to be always true).
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 10-May-26: Use uintptr_t instead of assuming addresses can safely be
+                  converted to type int.
  */
 
 #ifdef CBLIB_OBSOLETE /* Use c.FedCompMT instead */
 
 /* ISO library headers */
+#include <inttypes.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -126,9 +129,9 @@ _Optional CONST _kernel_oserror *load_compressed(const char *file_path, flex_ptr
     nobudge_register(PreExpandHeap); /* prevent budge */
 
     nout = sprintf(&*command,
-            "Cload %s &%X", file_path, (int)*buffer_anchor);
+            "Cload %s &%" PRIXPTR, file_path, (uintptr_t)*buffer_anchor);
     assert(nout >= 0); /* no formatting error */
-    assert(nout < command_size); /* no buffer overflow/truncation */
+    assert((unsigned)nout < command_size); /* no buffer overflow/truncation */
     NOT_USED(nout);
 
     /* Decompress file */
@@ -170,11 +173,11 @@ _Optional CONST _kernel_oserror *save_compressed(const char *file_path, int file
 
     /* Construct CLI command */
     nout = sprintf(&*command,
-            "CSave %s &%X &%X", file_path, (int)*buffer_anchor,
-            ((int)*buffer_anchor + flex_size(buffer_anchor)));
+            "CSave %s &%" PRIXPTR " &%" PRIXPTR, file_path, (uintptr_t)*buffer_anchor,
+            ((uintptr_t)*buffer_anchor + (unsigned)flex_size(buffer_anchor)));
 
     assert(nout >= 0); /* no formatting error */
-    assert(nout < command_size); /* no buffer overflow/truncation */
+    assert((unsigned)nout < command_size); /* no buffer overflow/truncation */
     NOT_USED(nout);
 
     /* Compress file */
