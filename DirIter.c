@@ -32,9 +32,11 @@
   CJB: 28-Apr-19: Less verbose debugging output.
   CJB: 05-May-25: Fix pedantic warnings about format specifying type void *.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 10-May-26: Use ptrdiff_t in extend_buffer.
 */
 
 /* ISO library headers */
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
@@ -150,7 +152,8 @@ static void free_levels(LinkedList *dir_list, _Optional LinkedListItem *stop)
 static _Optional CONST _kernel_oserror *extend_buffer(DirIterator       *iterator,
                                                       DirIteratorLevel **levelp)
 {
-  size_t new_size, entry_offset;
+  size_t new_size;
+  ptrdiff_t entry_offset;
   DirIteratorLevel *level;
   _Optional DirIteratorLevel *new_level;
   _Optional LinkedListItem *prev;
@@ -166,7 +169,7 @@ static _Optional CONST _kernel_oserror *extend_buffer(DirIterator       *iterato
   if (level->entry != NULL)
     entry_offset = (const char *)level->entry - level->buffer;
   else
-    entry_offset = SIZE_MAX;
+    entry_offset = PTRDIFF_MAX;
 
   /* Try to allocate a larger buffer */
   new_size = level->buffer_size * GrowthFactor;
@@ -194,7 +197,7 @@ static _Optional CONST _kernel_oserror *extend_buffer(DirIterator       *iterato
     level->buffer_size = new_size;
 
     /* Relocate the pointer to the current entry (if any) */
-    if (entry_offset != SIZE_MAX)
+    if (entry_offset != PTRDIFF_MAX)
       level->entry = (const OS_GBPB_CatalogueInfo *)(level->buffer + entry_offset);
 
     *levelp = level;
