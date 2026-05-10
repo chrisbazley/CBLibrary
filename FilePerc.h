@@ -43,6 +43,7 @@ History:
                   conditional upon definition of CBLIB_OBSOLETE.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 10-May-26: Use int instead of unsigned int for file types.
 */
 
 #ifndef FilePerc_h
@@ -86,7 +87,7 @@ _Optional CONST _kernel_oserror *file_perc_load(FilePercOp /*type*/, const char 
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-_Optional CONST _kernel_oserror *file_perc_save(FilePercOp /*type*/, const char */*file_path*/, unsigned int /*file_type*/, flex_ptr /*buffer_anchor*/, unsigned int /*start_offset*/, unsigned int /*end_offset*/);
+_Optional CONST _kernel_oserror *file_perc_save(FilePercOp /*type*/, const char */*file_path*/, int /*file_type*/, flex_ptr /*buffer_anchor*/, unsigned int /*start_offset*/, unsigned int /*end_offset*/);
    /*
     * Does a file output operation specified by the 'type' argument (which must
     * be FilePercOp_Save or FilePercOp_Comp). The contents of flex block
@@ -99,7 +100,7 @@ _Optional CONST _kernel_oserror *file_perc_save(FilePercOp /*type*/, const char 
 /* Obsolete flag for use with perc_operation() */
 #define FILEPERC_SPRITEAREA (1u<<31)
 
-_Optional CONST _kernel_oserror *perc_operation(FilePercOp /*type*/, const char * /*file_path*/, unsigned int /*file_type*/, flex_ptr /*buffer_anchor*/);
+_Optional CONST _kernel_oserror *perc_operation(FilePercOp /*type*/, const char * /*file_path*/, int /*file_type*/, flex_ptr /*buffer_anchor*/);
    /*
     * This function is deprecated - you should use 'file_perc_load' or
     * 'file_perc_save' instead.

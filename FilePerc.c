@@ -49,6 +49,7 @@
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 10-May-26: Use int instead of unsigned int for file types.
  */
 
 /* ISO library headers */
@@ -196,7 +197,7 @@ _Optional CONST _kernel_oserror *file_perc_load(FilePercOp type, const char *fil
 
 /* ----------------------------------------------------------------------- */
 
-_Optional CONST _kernel_oserror *file_perc_save(FilePercOp type, const char *file_path, unsigned int file_type, flex_ptr buffer_anchor, unsigned int start_offset, unsigned int end_offset)
+_Optional CONST _kernel_oserror *file_perc_save(FilePercOp type, const char *file_path, int file_type, flex_ptr buffer_anchor, unsigned int start_offset, unsigned int end_offset)
 {
   FILE *_Optional *handle = NULL;
   _Optional CONST _kernel_oserror *err;
@@ -291,7 +292,7 @@ _Optional CONST _kernel_oserror *file_perc_save(FilePercOp type, const char *fil
 
 #ifdef CBLIB_OBSOLETE
 /* The following function is deprecated; use file_perc_save or file_perc_load */
-_Optional CONST _kernel_oserror *perc_operation(FilePercOp type, const char *file_path, unsigned int file_type, flex_ptr buffer_anchor)
+_Optional CONST _kernel_oserror *perc_operation(FilePercOp type, const char *file_path, int file_type, flex_ptr buffer_anchor)
 {
   if (type == FilePercOp_Save || type == FilePercOp_Comp)
   {
