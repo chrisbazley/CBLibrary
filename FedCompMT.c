@@ -64,7 +64,8 @@
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
                   Handle pointer-to-null in get_decomp_perc() and
                   get_comp_perc().
- CJB: 10-May-26: Use int instead of unsigned int for percentages.
+  CJB: 10-May-26: Use int instead of unsigned int for percentages.
+                  Cast the result of flex_size to suppress a warning.
 */
 
 /* ISO library headers */
@@ -548,7 +549,7 @@ _Optional CONST _kernel_oserror *save_compressedM(const char *file_path, int fil
   flex_ptr buffer_anchor, const volatile bool *time_up, FILE *_Optional **handle)
 {
   ON_ERR_RTN_E(save_compressedM2(file_path, buffer_anchor, time_up, 0,
-                                 flex_size(buffer_anchor), handle));
+                                 (unsigned)flex_size(buffer_anchor), handle));
 
   /* Set file type */
   if (*handle == NULL)
