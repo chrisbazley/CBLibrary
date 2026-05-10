@@ -27,6 +27,7 @@
                   to avoid leaks if the client doesn't call entity2_finalise.
                   Assign a compound literal when releasing an entity.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 10-May-26: Change the parameter type of no_data to size_t.
 */
 
 /* ISO library headers */
@@ -156,10 +157,10 @@ static CONST _kernel_oserror *lookup_error(const char *const token, const char *
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *no_data(unsigned int const entity)
+static CONST _kernel_oserror *no_data(size_t const entity)
 {
   char token[MaxTokenLen + 1];
-  int const nout = sprintf(token, "Entity%uNoData", entity);
+  int const nout = sprintf(token, "Entity%zuNoData", entity);
   assert(nout >= 0); /* no formatting error */
   assert((size_t)nout < sizeof(token)); /* no buffer overflow/truncation */
   NOT_USED(nout);
