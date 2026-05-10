@@ -69,6 +69,7 @@
                   (for the same client) in a SchedulerIdleFunction.
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 10-May-26: Cast the time passed to event_poll_idle to stop a warning.
  */
 
 /* ISO library headers */
@@ -369,7 +370,7 @@ _Optional CONST _kernel_oserror *scheduler_poll(_Optional int *event_code,
 
     ON_ERR_RTN_E(event_poll_idle(event_code,
                                  poll_block,
-                                 earliest.time_now + earliest.best_relative,
+                                 (unsigned)(earliest.time_now + earliest.best_relative),
                                  poll_word));
   }
   else
