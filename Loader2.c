@@ -64,6 +64,7 @@
                   Modified loader2_buffer_file() to use get_file_size().
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 10-May-26: Fix wrong format specifier in loader2_buffer_file.
 */
 
 /* ISO library headers */
@@ -461,7 +462,7 @@ _Optional CONST _kernel_oserror *loader2_buffer_file(const char *file_path, flex
   ON_ERR_RTN_E(get_file_size(file_path, &size));
 
   /* Allocate buffer for data */
-  DEBUGF("Loader2: Allocating %ld bytes\n", size);
+  DEBUGF("Loader2: Allocating %d bytes\n", size);
   if (size < 0 || !flex_alloc(buffer, size))
     return lookup_error("NoMem", "");
 
