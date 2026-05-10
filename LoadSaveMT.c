@@ -61,6 +61,7 @@
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
                   Handle pointer-to-null in get_loadsave_perc().
   CJB: 10-May-26: Use int instead of unsigned int for percentages.
+                  Cast the result of flex_size to unsigned to stop a warning.
 */
 
 /* ISO library headers */
@@ -169,8 +170,9 @@ int get_loadsave_perc(FILE *_Optional **handle)
   }
   perc_done = (bytes_done * 100u) / total_size;
 
-  DEBUGF("LoadSaveMT: %d%% complete\n", perc_done);
-  return perc_done;
+  DEBUGF("LoadSaveMT: %u%% complete\n", perc_done);
+  assert(perc_done <= 100u);
+  return (int)perc_done;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -518,7 +520,7 @@ _Optional CONST _kernel_oserror *save_fileM(const char *file_path, int file_type
 {
   SpriteAreaHeader *dummy = (SpriteAreaHeader *)0;
   ON_ERR_RTN_E(save_fileM2(file_path, buffer_anchor, time_up, sprite ?
-                           sizeof(dummy->size) : 0, flex_size(buffer_anchor),
+                           sizeof(dummy->size) : 0, (unsigned)flex_size(buffer_anchor),
                            handle));
 
   /* Set file type */
