@@ -49,6 +49,7 @@
  */
 
 /* ISO library headers */
+#include <stdint.h>
 #include <limits.h>
 #include <stdbool.h>
 
@@ -179,7 +180,7 @@ _Optional CONST _kernel_oserror *StackViews_open(ObjectId id, ObjectId parent, C
       int info_block[100/sizeof(int)]; /* block must be 100 bytes */
       _kernel_swi_regs regs;
       regs.r[0] = 11;
-      regs.r[1] = (uintptr_t)info_block;
+      regs.r[1] = (intptr_t)info_block;
       info_block[0] = state.window_handle; /* window handle */
       ON_ERR_RTN_E(_kernel_swi(Wimp_Extend, &regs, &regs));
       bottom_border = info_block[2];
