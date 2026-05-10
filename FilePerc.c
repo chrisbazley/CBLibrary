@@ -51,6 +51,8 @@
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-May-26: Use int instead of unsigned int for file types.
                   Use int instead of unsigned int for percentages.
+                  Cast file_type explicitly to unsigned for bit operations.
+                  Cast the result of flex_size to unsigned to stop a warning.
  */
 
 /* ISO library headers */
@@ -300,23 +302,23 @@ _Optional CONST _kernel_oserror *perc_operation(FilePercOp type, const char *fil
     unsigned int start_offset;
     SpriteAreaHeader *fake = (SpriteAreaHeader *)0;
 
-    if (TEST_BITS(file_type, FILEPERC_SPRITEAREA) && type == FilePercOp_Save)
+    if (TEST_BITS((unsigned)file_type, FILEPERC_SPRITEAREA) && type == FilePercOp_Save)
       start_offset = sizeof(fake->size);
     else
       start_offset = 0;
 
     ON_ERR_RTN_E(file_perc_save(type,
                                 file_path,
-                                file_type & ~FILEPERC_SPRITEAREA,
+                                (unsigned)file_type & ~FILEPERC_SPRITEAREA,
                                 buffer_anchor,
                                 start_offset,
-                                flex_size(buffer_anchor)));
+                                (unsigned)flex_size(buffer_anchor)));
   }
   else if (type == FilePercOp_Load || type == FilePercOp_Decomp)
   {
     ON_ERR_RTN_E(file_perc_load(type, file_path, buffer_anchor));
 
-    if (TEST_BITS(file_type, FILEPERC_SPRITEAREA) &&
+    if (TEST_BITS((unsigned)file_type, FILEPERC_SPRITEAREA) &&
         type == FilePercOp_Load &&
         *buffer_anchor != NULL)
     {
