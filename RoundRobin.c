@@ -47,6 +47,7 @@
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 10-May-26: Changed parameter type of RoundRobin_initialise to int.
  */
 
 #ifdef CBLIB_OBSOLETE /* Use c.Scheduler instead */
@@ -80,7 +81,7 @@ RoundRobinRecord;
 static int suspended;
 static _Optional RoundRobinRecord *threads_array;
 static size_t threads_array_len, thread_to_call, num_threads;
-static unsigned int maxtime;
+static int maxtime;
 static volatile bool time_up = true;
 
 /* ----------------------------------------------------------------------- */
@@ -92,7 +93,7 @@ static void ensure_timer_removed(void);
 /* ----------------------------------------------------------------------- */
 /*                         Public functions                                */
 
-_Optional CONST _kernel_oserror *RoundRobin_initialise(unsigned int time)
+_Optional CONST _kernel_oserror *RoundRobin_initialise(int time)
 {
   ON_ERR_RTN_E(event_register_wimp_handler(-1,
                                            Wimp_ENull,

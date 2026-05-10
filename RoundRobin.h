@@ -40,6 +40,7 @@ History:
   CJB: 11-Dec-14: Deleted redundant brackets from function type definitions.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 10-May-26: Changed parameter type of RoundRobin_initialise to int.
 */
 
 #ifndef RoundRobin_h
@@ -70,7 +71,7 @@ typedef void RoundRobinHandler (void                *handle,
     * other RoundRobinHandlers.
     */
 
-_Optional CONST _kernel_oserror *RoundRobin_initialise(unsigned int /*time*/);
+_Optional CONST _kernel_oserror *RoundRobin_initialise(int /*time*/);
    /*
     * Initialises the RoundRobin system and sets up a Wimp event handler for
     * null events. When a null event is delivered to your application, this
