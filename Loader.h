@@ -186,10 +186,10 @@ _Optional CONST _kernel_oserror *loader_register_listener(
     */
 
 /* Client-supplied flags for loader_register_listener() */
-#define LISTENER_CLAIM       1 /* Should we also claim double-clicks */
-#define LISTENER_FILEONLY    2 /* Only load permanent files */
-#define LISTENER_SPRITEAREAS 4 /* Load sprite files as sprite areas */
-#define LISTENER_FILTER      8 /* Use filter function instead of file type */
+#define LISTENER_CLAIM       (1u) /* Should we also claim double-clicks */
+#define LISTENER_FILEONLY    (2u) /* Only load permanent files */
+#define LISTENER_SPRITEAREAS (4u) /* Load sprite files as sprite areas */
+#define LISTENER_FILTER      (8u) /* Use filter function instead of file type */
 #define FILETYPE_ALL         -1
 
 _Optional CONST _kernel_oserror *loader_deregister_listener(

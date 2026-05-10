@@ -225,7 +225,7 @@ LoaderListenerCriteria;
 typedef struct LoaderListenerBlk
 {
   LinkedListItem            list_item;
-  int                       flags;
+  unsigned int              flags;
   LoaderListenerCriteria    criteria;
   /* Client participation */
   _Optional LoaderFileHandler        *loader_method;
@@ -938,7 +938,8 @@ static bool _ldr_check_dropzone(ObjectId object,
     }
     else {
       /* allocate buffer for list */
-      _Optional int *icons_list = malloc(nbytes);
+      assert(nbytes >= 0);
+      _Optional int *icons_list = malloc((unsigned)nbytes);
       if (icons_list == NULL) {
         WARN_GLOB("NoMem");
         return false;
@@ -950,7 +951,7 @@ static bool _ldr_check_dropzone(ObjectId object,
         free(icons_list);
         return false;
       }
-      for (size_t i = 0; i < nbytes / sizeof(icons_list[0]); i++) {
+      for (size_t i = 0; i < (unsigned)nbytes / sizeof(icons_list[0]); i++) {
         DEBUGF("Loader: Icon %zu of gadget %d has handle %d\n", i, gadgets[j],
               icons_list[i]);
         if (icon_number == icons_list[i]) {
