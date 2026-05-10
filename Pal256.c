@@ -76,6 +76,7 @@
   CJB: 28-May-22: Allow initialisation with a 'const' palette array.
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 10-May-26: Use int instead of unsigned int for grid indices.
  */
 
 /* ISO library headers */
@@ -202,11 +203,11 @@ static ToolboxEventHandler key_handler;
 static ToolboxEventHandler numberrange_value_changed;
 #endif /* KEY_CONTROL */
 static WimpEventHandler redraw_window, mouse_click, user_drag;
-static _Optional CONST _kernel_oserror *display_colour(Pal256Data *pal_data, unsigned int col, unsigned int row, bool update_number);
+static _Optional CONST _kernel_oserror *display_colour(Pal256Data *pal_data, int col, int row, bool update_number);
 static _Optional CONST _kernel_oserror *draw_colour(PaletteEntry palette_entry, int left_x, int bottom_y, bool selected);
-static _Optional CONST _kernel_oserror *update_window(const Pal256Data *pal_data, unsigned int col, unsigned int row, bool selected);
+static _Optional CONST _kernel_oserror *update_window(const Pal256Data *pal_data, int col, int row, bool selected);
 static _Optional CONST _kernel_oserror *apply_selection(Pal256Data *pal_data);
-static bool decode_pointer_pos(const WimpGetWindowStateBlock *window_state, int mouse_x, int mouse_y, unsigned int *row, unsigned int *col);
+static bool decode_pointer_pos(const WimpGetWindowStateBlock *window_state, int mouse_x, int mouse_y, int *row, int *col);
 static CONST _kernel_oserror *lookup_error(const char *token);
 
 /*----------------------------------------------------------------------- */
@@ -382,7 +383,7 @@ static SchedulerTime track_pointer(void *handle, SchedulerTime time_now, const v
     else
     {
       WimpGetWindowStateBlock window_state;
-      unsigned int row, col;
+      int row, col;
 
       window_state.window_handle = pal_data->wimp_handle;
       e = wimp_get_window_state(&window_state);
@@ -399,11 +400,11 @@ static SchedulerTime track_pointer(void *handle, SchedulerTime time_now, const v
 
 /* ----------------------------------------------------------------------- */
 
-static _Optional CONST _kernel_oserror *display_colour(Pal256Data *pal_data, unsigned int col, unsigned int row, bool update_number)
+static _Optional CONST _kernel_oserror *display_colour(Pal256Data *pal_data, int col, int row, bool update_number)
 {
   /* Change the displayed colour */
   char validation[MaxValidationLen + 1];
-  unsigned int colour = col + (NumRows - 1 - row) * NumColumns;
+  int colour = col + (NumRows - 1 - row) * NumColumns;
 
   assert(pal_data != NULL);
 #ifdef KEY_CONTROL
@@ -446,7 +447,7 @@ static _Optional CONST _kernel_oserror *display_colour(Pal256Data *pal_data, uns
 static int key_handler(int event_code, ToolboxEvent *event, IdBlock *id_block, void *handle)
 {
   Pal256Data *pal_data = handle;
-  unsigned int col, row;
+  int col, row;
   NOT_USED(id_block);
   NOT_USED(event);
 
@@ -520,7 +521,7 @@ static int numberrange_value_changed(int event_code, ToolboxEvent *event, IdBloc
 {
   Pal256Data *pal_data = handle;
   NumberRangeValueChangedEvent *nrvce = (NumberRangeValueChangedEvent *)event;
-  unsigned int row, col;
+  int row, col;
   NOT_USED(event_code);
 
   assert(nrvce != NULL);
@@ -582,7 +583,7 @@ static int mouse_click(int event_code, WimpPollBlock *event, IdBlock *id_block, 
      we pass mouse click events on rather than claiming them */
   WimpMouseClickEvent *wmce = (WimpMouseClickEvent *)event;
   Pal256Data *pal_data = handle;
-  unsigned int row, col;
+  int row, col;
   _Optional CONST _kernel_oserror *e = NULL;
   WimpGetWindowStateBlock window_state;
 
@@ -619,7 +620,7 @@ static int mouse_click(int event_code, WimpPollBlock *event, IdBlock *id_block, 
         case Wimp_MouseButtonSelect: /* Double click */
           /* Select colour and close dialogue box */
           {
-            unsigned int last_col = pal_data->current_col,
+            int last_col = pal_data->current_col,
                          last_row = pal_data->current_row;
 
             e = display_colour(pal_data, col, row, true);
@@ -742,7 +743,7 @@ static int redraw_window(int event_code, WimpPollBlock *event, IdBlock *id_block
        e == NULL && more != 0;
        e = wimp_get_rectangle(&block, &more))
   {
-    unsigned int min_column, max_column, row, min_row, max_row;
+    int min_column, max_column, row, min_row, max_row;
 
     DEBUGF("Pal256: redraw rectangle xmin:%d ymin:%d xmax:%d ymax:%d\n",
            block.redraw_area.xmin, block.redraw_area.ymin,
@@ -775,7 +776,7 @@ static int redraw_window(int event_code, WimpPollBlock *event, IdBlock *id_block
     if (block.redraw_area.xmin <= colsleft_scrx)
       min_column = 0;
     else
-      min_column = (unsigned)(block.redraw_area.xmin - colsleft_scrx) /
+      min_column = (block.redraw_area.xmin - colsleft_scrx) /
                    CellWidth;
 
     if (block.redraw_area.xmax >= colsleft_scrx + Width)
@@ -785,12 +786,12 @@ static int redraw_window(int event_code, WimpPollBlock *event, IdBlock *id_block
     else
     {
       assert(block.redraw_area.xmax > colsleft_scrx);
-      max_column = (unsigned)(block.redraw_area.xmax - colsleft_scrx) /
+      max_column = (block.redraw_area.xmax - colsleft_scrx) /
                    CellWidth;
       /* xmax is exclusive, so don't draw column that coincides exactly with it
        */
       if (max_column > 0 &&
-          (unsigned)(block.redraw_area.xmax - colsleft_scrx) % CellWidth == 0)
+          (block.redraw_area.xmax - colsleft_scrx) % CellWidth == 0)
       {
         max_column--;
       }
@@ -799,7 +800,7 @@ static int redraw_window(int event_code, WimpPollBlock *event, IdBlock *id_block
     if (block.redraw_area.ymin <= colsbot_scry)
       min_row = 0;
     else
-      min_row = (unsigned)(block.redraw_area.ymin - colsbot_scry) / CellHeight;
+      min_row = (block.redraw_area.ymin - colsbot_scry) / CellHeight;
 
     if (block.redraw_area.ymax >= colsbot_scry + Height)
     {
@@ -808,16 +809,16 @@ static int redraw_window(int event_code, WimpPollBlock *event, IdBlock *id_block
     else
     {
       assert(block.redraw_area.ymax > colsbot_scry);
-      max_row = (unsigned)(block.redraw_area.ymax - colsbot_scry) / CellHeight;
+      max_row = (block.redraw_area.ymax - colsbot_scry) / CellHeight;
       /* ymax is exclusive, so don't draw row that coincides exactly with it */
       if (max_row > 0 &&
-          (unsigned)(block.redraw_area.ymax - colsbot_scry) % CellHeight == 0)
+          (block.redraw_area.ymax - colsbot_scry) % CellHeight == 0)
       {
         max_row--;
       }
     }
 
-    DEBUGF("Pal256: start row:%u end row:%u start col:%u end col:%u\n",
+    DEBUGF("Pal256: start row:%d end row:%d start col:%d end col:%d\n",
           max_row, min_row, min_column, max_column);
 
     /* Draw palette */
@@ -825,8 +826,7 @@ static int redraw_window(int event_code, WimpPollBlock *event, IdBlock *id_block
          e == NULL && row <= max_row;
          row++)
     {
-      unsigned int column,
-                   colour = (NumRows - 1 - row) * NumColumns + min_column;
+      int column, colour = (NumRows - 1 - row) * NumColumns + min_column;
 
       for (column = min_column;
            e == NULL && column <= max_column;
@@ -939,8 +939,8 @@ static int object_deleted(int           event_code,
 /* ----------------------------------------------------------------------- */
 
 static _Optional CONST _kernel_oserror *update_window(const Pal256Data *pal_data,
-                                                      unsigned int      col,
-                                                      unsigned int      row,
+                                                      int      col,
+                                                      int      row,
                                                       bool              selected)
 {
   /* Calculate redraw rectangle in work area (relative) coordinates */
@@ -1013,8 +1013,8 @@ static _Optional CONST _kernel_oserror *apply_selection(Pal256Data *pal_data)
 static bool decode_pointer_pos(const WimpGetWindowStateBlock *window_state,
                                int                            mouse_x,
                                int                            mouse_y,
-                               unsigned int                  *row,
-                               unsigned int                  *col)
+                               int                           *row,
+                               int                           *col)
 {
   /* Decode pointer position relative to palette window. Returns false if the
      pointer is outside the palette area. */
@@ -1031,9 +1031,9 @@ static bool decode_pointer_pos(const WimpGetWindowStateBlock *window_state,
                YOrigin);
     if (mouse_y >= 0 && mouse_y < Height)
     {
-      unsigned int c = (unsigned)mouse_x / CellWidth;
-      unsigned int r = (unsigned)mouse_y / CellHeight;
-      DEBUGF("Pal256: pointer is in column %u of row %u\n", c, r);
+      int c = mouse_x / CellWidth;
+      int r = mouse_y / CellHeight;
+      DEBUGF("Pal256: pointer is in column %d of row %d\n", c, r);
 
       /* Output the row and column numbers, if requested */
       if (row != NULL)
