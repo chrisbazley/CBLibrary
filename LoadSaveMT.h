@@ -36,6 +36,7 @@ History:
   CJB: 15-Oct-09: Added "NoMem" to list of required message tokens.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 10-May-26: Use int instead of unsigned int for percentages.
 */
 
 #ifndef LoadSaveMT_h
@@ -65,7 +66,7 @@ _Optional CONST _kernel_oserror *loadsave_initialise(_Optional MessagesFD */*mfd
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-unsigned int get_loadsave_perc(FILE *_Optional ** /*handle*/);
+int get_loadsave_perc(FILE *_Optional ** /*handle*/);
    /*
     * Calculates what proportion of a file operation has been completed and
     * returns this as a percentage value. 'handle' must be the same pointer

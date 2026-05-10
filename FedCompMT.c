@@ -64,6 +64,7 @@
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
                   Handle pointer-to-null in get_decomp_perc() and
                   get_comp_perc().
+ CJB: 10-May-26: Use int instead of unsigned int for percentages.
 */
 
 /* ISO library headers */
@@ -339,7 +340,7 @@ _Optional CONST _kernel_oserror *compress_initialise(_Optional MessagesFD *const
 
 /* ----------------------------------------------------------------------- */
 
-unsigned int get_decomp_perc(FILE *_Optional **const handle)
+int get_decomp_perc(FILE *_Optional **const handle)
 {
   assert(handle != NULL);
   _Optional const decomp_state *const state = (decomp_state *)*handle;
@@ -356,7 +357,7 @@ unsigned int get_decomp_perc(FILE *_Optional **const handle)
 
 /* ----------------------------------------------------------------------- */
 
-unsigned int get_comp_perc(FILE *_Optional **const handle)
+int get_comp_perc(FILE *_Optional **const handle)
 {
   assert(handle != NULL);
   _Optional const comp_state *const state = (comp_state *)*handle;

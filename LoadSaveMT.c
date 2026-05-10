@@ -60,7 +60,8 @@
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
                   Handle pointer-to-null in get_loadsave_perc().
- */
+  CJB: 10-May-26: Use int instead of unsigned int for percentages.
+*/
 
 /* ISO library headers */
 #include <stdlib.h>
@@ -141,7 +142,7 @@ _Optional CONST _kernel_oserror *loadsave_initialise(_Optional MessagesFD *mfd)
 
 /* ----------------------------------------------------------------------- */
 
-unsigned int get_loadsave_perc(FILE *_Optional **handle)
+int get_loadsave_perc(FILE *_Optional **handle)
 {
   _Optional fileop_state *state = (fileop_state *)*handle;
   unsigned int bytes_done, total_size, perc_done;
@@ -156,7 +157,7 @@ unsigned int get_loadsave_perc(FILE *_Optional **handle)
   total_size = state->limit - state->start;
   if (!total_size) {
     DEBUGF("LoadSaveMT: 0 bytes to transfer!\n");
-    return 100u; /* Guard against divide-by-zero */
+    return 100; /* Guard against divide-by-zero */
   }
 
   /* And overflow on multiply... */
@@ -168,7 +169,7 @@ unsigned int get_loadsave_perc(FILE *_Optional **handle)
   }
   perc_done = (bytes_done * 100u) / total_size;
 
-  DEBUGF("LoadSaveMT: %u%% complete\n", perc_done);
+  DEBUGF("LoadSaveMT: %d%% complete\n", perc_done);
   return perc_done;
 }
 

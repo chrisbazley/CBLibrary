@@ -50,6 +50,7 @@
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-May-26: Use int instead of unsigned int for file types.
+                  Use int instead of unsigned int for percentages.
  */
 
 /* ISO library headers */
@@ -142,7 +143,7 @@ _Optional CONST _kernel_oserror *file_perc_load(FilePercOp type, const char *fil
 
   do
   {
-    unsigned int perc;
+    int perc;
 
     /* Set up a ticker event to set the 'time_up' flag in the background */
     time_up = false;
@@ -217,7 +218,7 @@ _Optional CONST _kernel_oserror *file_perc_save(FilePercOp type, const char *fil
 
   do
   {
-    unsigned int perc;
+    int perc;
 
     /* Set up a ticker event to set the 'time_up' flag in the background */
     time_up = false;
