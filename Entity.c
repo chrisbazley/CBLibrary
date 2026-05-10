@@ -83,6 +83,7 @@
   CJB: 25-Aug-20: Deleted a redundant static function pre-declaration.
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 10-May-26: Use size_t as the type of entity indices.
 */
 
 /* ISO library headers */
@@ -129,7 +130,7 @@ RequestOpCallback;
 typedef struct
 {
   LinkedListItem    list_item;
-  unsigned int      entity;
+  size_t            entity;
   int               data_request_ref;
   bool              probe;
   RequestOpCallback callback;
@@ -155,7 +156,7 @@ static WimpEventHandler _ent_msg_bounce_handler;
 static SaverFinishedHandler _ent_data_sent;
 static Loader2FinishedHandler _ent_load_finished;
 static _Optional RequestOpData *_ent_find_data_req(int msg_ref);
-static CONST _kernel_oserror *_ent_no_data(unsigned int entity);
+static CONST _kernel_oserror *_ent_no_data(size_t entity);
 static _Optional CONST _kernel_oserror *_ent_probe_or_request(unsigned int flags, int window, int icon, int x, int y, const int *file_types, const RequestOpCallback *callback, bool probe);
 static CONST _kernel_oserror *lookup_error(const char *token);
 static bool check_error(_Optional CONST _kernel_oserror *e);
@@ -735,7 +736,7 @@ static int _ent_datarequest_msg_handler(WimpMessage *message, void *handle)
                           &msg,
                           data_to_send,
                           0,
-                          flex_size(data_to_send),
+                          (unsigned)flex_size(data_to_send),
                           (SaverFileHandler *)NULL,
                           _ent_data_sent,
                           &*ctx);
@@ -847,13 +848,13 @@ static bool check_error(_Optional CONST _kernel_oserror *e)
 
 /* ----------------------------------------------------------------------- */
 
-static CONST _kernel_oserror *_ent_no_data(unsigned int entity)
+static CONST _kernel_oserror *_ent_no_data(size_t entity)
 {
   char token[MaxTokenLen + 1];
   int nout;
 
   nout = sprintf(token,
-          "Entity%uNoData",
+          "Entity%zuNoData",
           entity);
   assert(nout >= 0); /* no formatting error */
   assert((size_t)nout < sizeof(token)); /* no buffer overflow/truncation */
