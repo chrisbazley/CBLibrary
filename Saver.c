@@ -69,6 +69,7 @@
   CJB: 03-May-25: Fix #include filename case.
   CJB: 05-May-25: Fix pedantic warnings about format specifying type void *.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 10-May-26: Guard against negative size coming from RAMFetch message.
 */
 
 /* ISO library headers */
@@ -488,6 +489,11 @@ static int _svr_ramfetch_msg_handler(WimpMessage *message, void *handle)
     event_code = Wimp_EUserMessageRecorded;
   }
 
+  if (transfer_size < 0)
+  {
+      transfer_size = 0;
+  }
+
   assert(save_op_data->client_data != NULL);
   nobudge_register(PreExpandHeap); /* protect dereference of pointer to flex block */
   DEBUGF("Saver: transfering %d bytes from address %p in task %d to address %p"
@@ -508,7 +514,7 @@ static int _svr_ramfetch_msg_handler(WimpMessage *message, void *handle)
     _svr_finished(&*save_op_data, false, err, NULL);
     return 1; /* claim message */
   }
-  save_op_data->start_offset += transfer_size;
+  save_op_data->start_offset += (unsigned)transfer_size;
 
   message->hdr.your_ref = message->hdr.my_ref;
   message->hdr.action_code = Wimp_MRAMTransmit;
