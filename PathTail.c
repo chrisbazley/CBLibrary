@@ -25,6 +25,8 @@
   CJB: 01-Nov-18: Reimplemented using the strtail() function from CBUtilLib.
   CJB: 05-May-25: Changed the depth count type from int to size_t.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 10-May-26: Deleted a use of the conditional operator that was redundant
+                  since the depth count changed to an unsigned type.
  */
 
 /* CBUtilLib headers */
@@ -40,5 +42,5 @@
 
 char *pathtail(const char *path, size_t n)
 {
-  return strtail(path, PATH_SEPARATOR, n >= 0 ? n : 0);
+  return strtail(path, PATH_SEPARATOR, n);
 }
