@@ -74,6 +74,7 @@
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
                   Allow null 'type' argument for ViewsMenu_show_object().
+  CJB: 11-May-26: Avoid passing a freed pointer to menu_remove_entry().
  */
 
 /* ISO library headers */
@@ -651,11 +652,12 @@ static _Optional CONST _kernel_oserror *destroy_view(ViewInfo *view_info)
   assert(view_info != NULL);
   DEBUGF("ViewsMenu: Removing view record %p\n", (void *)view_info);
 
+  ON_ERR_RTN_E(menu_remove_entry(0, VM, (ComponentId)(uintptr_t)view_info));
+
   /* Link over record */
   linkedlist_remove(&view_list, &view_info->list_item);
 
   free(view_info->file_path);
   free(view_info);
-
-  return menu_remove_entry(0, VM, (ComponentId)(uintptr_t)view_info);
+  return NULL;
 }
