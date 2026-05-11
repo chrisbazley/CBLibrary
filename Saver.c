@@ -70,6 +70,8 @@
   CJB: 05-May-25: Fix pedantic warnings about format specifying type void *.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-May-26: Guard against negative size coming from RAMFetch message.
+  CJB: 11-May-26: Use int for byte offsets except where it would make existing
+                  callback functions incompatible.
 */
 
 /* ISO library headers */
@@ -123,8 +125,8 @@ typedef struct
   int                   datasave_msg_ref;
   bool                  destination_safe;
   flex_ptr              client_data;
-  unsigned int          start_offset;
-  unsigned int          end_offset;
+  int                   start_offset;
+  int                   end_offset;
   _Optional SaverFileHandler *saver_funct;
   SaveOpCallback        callback;
 #ifdef SLOW_TEST
@@ -274,11 +276,11 @@ _Optional CONST _kernel_oserror *saver_finalise(void)
 
 /* ----------------------------------------------------------------------- */
 
-_Optional CONST _kernel_oserror *saver_send_data(int task_handle, WimpMessage *message, flex_ptr data, unsigned int start_offset, unsigned int end_offset, _Optional SaverFileHandler *save_method, _Optional SaverFinishedHandler *finished_method, void *client_handle)
+_Optional CONST _kernel_oserror *saver_send_data(int task_handle, WimpMessage *message, flex_ptr data, int start_offset, int end_offset, _Optional SaverFileHandler *save_method, _Optional SaverFinishedHandler *finished_method, void *client_handle)
 {
   _Optional SaveOpData *save_op_data;
 
-  DEBUGF("Saver: Request to send bytes %u-%u of block anchored at %p (%p) "
+  DEBUGF("Saver: Request to send bytes %d-%d of block anchored at %p (%p) "
         "to task %d\n", start_offset, end_offset, (void *)data, *data, task_handle);
 
   DEBUGF("Saver: File type is &%x\n", message->data.data_save.file_type);
@@ -292,7 +294,7 @@ _Optional CONST _kernel_oserror *saver_send_data(int task_handle, WimpMessage *m
   assert(start_offset <= end_offset);
   assert(data != NULL && *data != NULL);
   assert(flex_size(data) >= 0);
-  assert(end_offset <= (unsigned int)flex_size(data));
+  assert(end_offset <= flex_size(data));
 
   /* Allocate data block for new save operation and link it into the list */
   DEBUGF("Saver: Creating a record for a new save operation\n");
@@ -514,7 +516,7 @@ static int _svr_ramfetch_msg_handler(WimpMessage *message, void *handle)
     _svr_finished(&*save_op_data, false, err, NULL);
     return 1; /* claim message */
   }
-  save_op_data->start_offset += (unsigned)transfer_size;
+  save_op_data->start_offset += transfer_size;
 
   message->hdr.your_ref = message->hdr.my_ref;
   message->hdr.action_code = Wimp_MRAMTransmit;
