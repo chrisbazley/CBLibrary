@@ -78,6 +78,7 @@
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-May-26: Use int instead of unsigned int for grid indices.
   CJB: 11-May-26: Cast in apply_selection to stop warning about unsigned int.
+                  Assert valid colour number passed to Pal256_set_colour.
  */
 
 /* ISO library headers */
@@ -314,6 +315,8 @@ _Optional CONST _kernel_oserror *Pal256_initialise(
 _Optional CONST _kernel_oserror *Pal256_set_colour(ObjectId object, unsigned int c)
 {
   /* Set the currently selected colour */
+  assert(c < NumRows * NumColumns);
+
   Pal256Data *pal_data;
 
   ON_ERR_RTN_E(toolbox_get_client_handle(0, object, (void **)&pal_data));
