@@ -77,6 +77,7 @@
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-May-26: Use int instead of unsigned int for grid indices.
+  CJB: 11-May-26: Cast in apply_selection to stop warning about unsigned int.
  */
 
 /* ISO library headers */
@@ -993,13 +994,16 @@ static _Optional CONST _kernel_oserror *apply_selection(Pal256Data *pal_data)
   pal_data->orig_col = pal_data->current_col;
   pal_data->orig_row = pal_data->current_row;
 
+  int const colour_number = pal_data->current_col +
+                            (NumRows - 1 - pal_data->current_row) *
+                            NumColumns;
+
   /* Raise event to tell client of colour selection */
   warn_client.hdr.size = sizeof(warn_client);
   warn_client.hdr.event_code = Pal256_ColourSelected;
   warn_client.hdr.flags = 0;
-  warn_client.colour_number = pal_data->current_col +
-                              (NumRows - 1 - pal_data->current_row) *
-                                NumColumns;
+  assert(colour_number >= 0);
+  warn_client.colour_number = (unsigned)colour_number;
   DEBUGF("Pal256: Colour %u selected\n", warn_client.colour_number);
 
   return toolbox_raise_toolbox_event(0,
