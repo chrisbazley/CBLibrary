@@ -291,6 +291,7 @@ _Optional CONST _kernel_oserror *saver_send_data(int task_handle, WimpMessage *m
         message->data.data_save.destination_icon,
         message->data.data_save.destination_window);
 
+  assert(start_offset >= 0);
   assert(start_offset <= end_offset);
   assert(data != NULL && *data != NULL);
   assert(flex_size(data) >= 0);
@@ -700,8 +701,8 @@ static void _svr_save_as_file(SaveOpData *save_op_data, WimpMessage *message)
     /* Use a client-supplied function to save the data */
     err = save_op_data->saver_funct(message->data.data_save_ack.leaf_name,
                                     save_op_data->client_data,
-                                    save_op_data->start_offset,
-                                    save_op_data->end_offset);
+                                    (unsigned)save_op_data->start_offset,
+                                    (unsigned)save_op_data->end_offset);
   }
   else
   {
@@ -723,7 +724,7 @@ static void _svr_save_as_file(SaveOpData *save_op_data, WimpMessage *message)
       nobudge_register(PreExpandHeap); /* protect dereference of flex pointer */
 
       n = fwrite((char *)*save_op_data->client_data + save_op_data->start_offset,
-                 save_op_data->end_offset - save_op_data->start_offset,
+                 (size_t)(save_op_data->end_offset - save_op_data->start_offset),
                  1,
                  &*f);
 
