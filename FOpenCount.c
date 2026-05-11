@@ -27,6 +27,8 @@
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
   CJB: 28-Apr-19: Less verbose debugging output.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 11-May-26: Change debug output to stop printing the FILE pointer
+                  after calling fclose.
  */
 
 /* ISO library headers */
@@ -56,9 +58,13 @@ _Optional FILE *fopen_inc(const char *filename, const char *mode)
 int fclose_dec(FILE *stream)
 {
   /* Close a file, decrementing the counter */
+
+  DEBUGF("FOpenCount: %u files are open; closing %p\n",
+    fopen_count, (void *)stream);
+
   int f = fclose(stream);
   if (f == EOF)
-    DEBUGF("fclose %p failed (errno is %d)\n", (void *)stream, errno);
+    DEBUGF("fclose failed (errno is %d)\n", errno);
 
   /* At least on RISC OS, fclose() seems to return failure if the
      error indicator is set for a stream. Decrement the counter
@@ -68,9 +74,6 @@ int fclose_dec(FILE *stream)
   if (fopen_count > 0) {
     fopen_count--;
   }
-
-  DEBUGF("FOpenCount: Closed %p; %u files are open\n",
-    (void *)stream, fopen_count);
 
   return f;
 }
