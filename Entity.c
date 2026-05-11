@@ -84,6 +84,8 @@
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-May-26: Use size_t as the type of entity indices.
+  CJB: 11-May-26: Assign 0 to signed and unsigned ints separately to stop
+                  warning.
 */
 
 /* ISO library headers */
@@ -266,8 +268,8 @@ _Optional CONST _kernel_oserror *entity_initialise(
 
   memset(entities_info, 0, sizeof(entities_info));
 
-  owned_entities = data_sent_count = releaseentity_msg_ref =
-                   claimentity_count = 0;
+  releaseentity_msg_ref = 0;
+  owned_entities = data_sent_count = claimentity_count = 0u;
 
   linkedlist_init(&request_op_data_list);
 
