@@ -46,6 +46,8 @@ History:
   CJB: 26-Dec-14: Corrected the list of required message tokens.
   CJB: 13-Oct-19: Corrected the description of saver_send_data.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
+  CJB: 11-May-26: Use int for byte offsets except where it would make existing
+                  callback functions incompatible.
 */
 
 #ifndef Saver_h
@@ -128,8 +130,8 @@ _Optional CONST _kernel_oserror *saver_finalise(void);
 _Optional CONST _kernel_oserror *saver_send_data(int /*task_handle*/,
                                                  WimpMessage * /*message*/,
                                                  flex_ptr /*data*/,
-                                                 unsigned int /*start_offset*/,
-                                                 unsigned int /*end_offset*/,
+                                                 int /*start_offset*/,
+                                                 int /*end_offset*/,
                                                  _Optional SaverFileHandler * /*save_method*/,
                                                  _Optional SaverFinishedHandler * /*finished_method*/,
                                                  void * /*client_handle*/);
