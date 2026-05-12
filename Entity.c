@@ -1097,7 +1097,7 @@ static _Optional CONST _kernel_oserror *_ent_probe_or_request(
           {
             nobudge_register(PreExpandHeap); /* protect dereference of
                                                 flex pointer */
-            memcpy((char *)copy_of_data, *data, flex_size(&*data));
+            memcpy((char *)copy_of_data, *data, (size_t)flex_size(&*data));
             nobudge_deregister();
 
             data = &copy_of_data;
