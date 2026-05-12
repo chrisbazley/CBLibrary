@@ -738,7 +738,7 @@ static int _ent_datarequest_msg_handler(WimpMessage *message, void *handle)
                           &msg,
                           data_to_send,
                           0,
-                          (unsigned)flex_size(data_to_send),
+                          flex_size(data_to_send),
                           (SaverFileHandler *)NULL,
                           _ent_data_sent,
                           &*ctx);
