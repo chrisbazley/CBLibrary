@@ -66,6 +66,10 @@
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-May-26: Fix wrong format specifier in loader2_buffer_file.
   CJB: 12-May-26: Cast arguments of malloc and memcpy to type size_t.
+                  Use offsetof(WimpMessage, data.data_save_ack.leaf_name) instead
+				  of relying on the size of the message header being equivalent
+				  to the offset to the message body, to fix strcpy writing outside
+				  allocated memory on 64-bit systems.
 */
 
 /* ISO library headers */
@@ -864,8 +868,7 @@ static _Optional CONST _kernel_oserror *_ldr2_replyto_datasave(const WimpMessage
   DEBUGF("Loader2: Replying to DataSave message ref. %d\n", reply_to->hdr.my_ref);
 
   /* Allocate (very) temporary buffer for a DataSaveAck message */
-  msg_size = WORD_ALIGN(sizeof(reply->hdr) +
-                        offsetof(WimpDataSaveAckMessage, leaf_name) +
+  msg_size = WORD_ALIGN(offsetof(WimpMessage, data.data_save_ack.leaf_name) +
                         sizeof("<Wimp$Scrap>"));
 
   reply = malloc((size_t)msg_size);
