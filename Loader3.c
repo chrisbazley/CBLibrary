@@ -33,6 +33,11 @@
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 12-May-26: Cast argument of malloc to type size_t.
+  CJB: 12-May-26: Cast arguments of malloc and memcpy to type size_t.
+                  Use offsetof(WimpMessage, data.data_save_ack.leaf_name) instead
+                  of relying on the size of the message header being equivalent
+                  to the offset to the message body, to fix strcpy writing outside
+                  allocated memory on 64-bit systems.
 */
 
 /* ISO library headers */
@@ -326,9 +331,8 @@ static _Optional CONST _kernel_oserror *send_datasaveack(LoadOpData *const load_
     load_op_data->datasave_msg.hdr.my_ref);
 
   /* Allocate (very) temporary buffer for a DataSaveAck message */
-  int const msg_size = WORD_ALIGN(sizeof(load_op_data->datasave_msg.hdr) +
-                        offsetof(WimpDataSaveAckMessage, leaf_name) +
-                        sizeof("<Wimp$Scrap>"));
+  int const msg_size = WORD_ALIGN(offsetof(WimpMessage, data.data_save_ack.leaf_name) +
+                                  sizeof("<Wimp$Scrap>"));
 
   _Optional WimpMessage *const data_save_ack = malloc((size_t)msg_size);
   if (data_save_ack == NULL)
