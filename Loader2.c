@@ -65,6 +65,7 @@
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-May-26: Fix wrong format specifier in loader2_buffer_file.
+  CJB: 12-May-26: Cast arguments of malloc and memcpy to type size_t.
 */
 
 /* ISO library headers */
@@ -346,7 +347,7 @@ _Optional CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message
       msg_size = message->hdr.size;
 
     /* Copy incoming DataSave message in case we need to reply to it later */
-    load_op_data->datasave_msg = malloc(msg_size);
+    load_op_data->datasave_msg = malloc((size_t)msg_size);
     if (load_op_data->datasave_msg == NULL)
     {
       /* De-link new record from head of linked list and scrap it */
@@ -357,7 +358,7 @@ _Optional CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message
     DEBUGF("Loader2: Copying DataSave message to %p\n",
           (void *)load_op_data->datasave_msg);
 
-    memcpy(&*load_op_data->datasave_msg, message, msg_size);
+    memcpy(&*load_op_data->datasave_msg, message, (size_t)msg_size);
     load_op_data->datasave_msg->hdr.size = msg_size;
 
     /* Use estimated file size as buffer size unless it is implausible
@@ -867,7 +868,7 @@ static _Optional CONST _kernel_oserror *_ldr2_replyto_datasave(const WimpMessage
                         offsetof(WimpDataSaveAckMessage, leaf_name) +
                         sizeof("<Wimp$Scrap>"));
 
-  reply = malloc(msg_size);
+  reply = malloc((size_t)msg_size);
   if (reply == NULL)
     return lookup_error("NoMem", ""); /* Memory couldn't be claimed */
 
