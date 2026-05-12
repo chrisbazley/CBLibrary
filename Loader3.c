@@ -32,6 +32,7 @@
                   DataLoad handlers to reuse existing code.
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 12-May-26: Cast argument of malloc to type size_t.
 */
 
 /* ISO library headers */
@@ -329,7 +330,7 @@ static _Optional CONST _kernel_oserror *send_datasaveack(LoadOpData *const load_
                         offsetof(WimpDataSaveAckMessage, leaf_name) +
                         sizeof("<Wimp$Scrap>"));
 
-  _Optional WimpMessage *const data_save_ack = malloc(msg_size);
+  _Optional WimpMessage *const data_save_ack = malloc((size_t)msg_size);
   if (data_save_ack == NULL)
   {
     return no_mem();
@@ -399,7 +400,7 @@ static _Optional CONST _kernel_oserror *send_ramfetch(
 
   /* Allocate (very) temporary buffer for a RAMFetch message */
   int const msg_size = sizeof(message->hdr) + sizeof(WimpRAMFetchMessage);
-  _Optional WimpMessage *const ram_fetch = malloc(msg_size);
+  _Optional WimpMessage *const ram_fetch = malloc((size_t)msg_size);
   if (ram_fetch == NULL)
   {
     return no_mem();
