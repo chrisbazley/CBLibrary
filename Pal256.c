@@ -646,7 +646,7 @@ static int mouse_click(int event_code, WimpPollBlock *event, IdBlock *id_block, 
           {
             WimpDragBox drag_box;
             int colsleft_scrx, colsbot_scry;
-            int eigen_factors[VarIndex_LAST];
+            intptr_t eigen_factors[VarIndex_LAST];
 
             e = os_read_vdu_variables(mode_vars, eigen_factors);
             if (e != NULL)
