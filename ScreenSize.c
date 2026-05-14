@@ -25,10 +25,12 @@
                   where returned dimensions were too short by one pixel.
   CJB: 11-Dec-20: Prefer to declare variable with initializer.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 14-May-26: Use intptr_t for VDU variable values.
  */
 
 /* ISO library headers */
 #include <stddef.h>
+#include <stdint.h>
 
 /* Acorn C/C++ library headers */
 #include "kernel.h"
@@ -64,7 +66,7 @@ _Optional CONST _kernel_oserror *get_screen_size(int *width, int *height)
     (VDUVar)ModeVar_YEigFactor,
     VDUVar_EndOfList
   };
-  int var_vals[VarIndex_LAST];
+  intptr_t var_vals[VarIndex_LAST];
 
   _Optional CONST _kernel_oserror *e = os_read_vdu_variables(mode_vars, var_vals);
   if (e == NULL)
