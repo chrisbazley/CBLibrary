@@ -70,6 +70,7 @@
 				  of relying on the size of the message header being equivalent
 				  to the offset to the message body, to fix strcpy writing outside
 				  allocated memory on 64-bit systems.
+  CJB: 15-May-26: As above, but for data.data_save.leaf_name.
 */
 
 /* ISO library headers */
@@ -342,9 +343,8 @@ _Optional CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message
 
     /* Calculate minimum size of the DataSave message, which may be less than
        message->hdr.size depending on the sophistication of its sender */
-    int msg_size = WORD_ALIGN(sizeof(message->hdr) +
-                   offsetof(WimpDataSaveMessage, leaf_name) +
-                   strlen(message->data.data_save.leaf_name) + 1);
+    int msg_size = WORD_ALIGN(offsetof(WimpMessage, data.data_save.leaf_name) +
+                              strlen(message->data.data_save.leaf_name) + 1);
 
     assert(msg_size <= message->hdr.size);
     if (msg_size > message->hdr.size) /* paranoia */
