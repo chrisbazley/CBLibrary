@@ -24,6 +24,10 @@
                   in save_file().
   CJB: 01-Nov-20: Assign a compound literal to initialise a save operation.
   CJB: 03-May-25: Fix #include filename case.
+  CJB: 15-May-26: Use offsetof(WimpMessage, data.data_save.leaf_name)
+                  instead of relying on the size of the header being equal
+                  to the offset to the body, which is not true for 64-bit
+                  system.
 */
 
 /* ISO library headers */
@@ -778,9 +782,8 @@ _Optional CONST _kernel_oserror *saver2_send_data(int const task_handle,
         message->data.data_save.destination_window);
 
   /* Populate a few fields of the DataSave message automatically */
-  message->hdr.size = WORD_ALIGN(sizeof(message->hdr) +
-                      offsetof(WimpDataSaveMessage, leaf_name) +
-                      strlen(message->data.data_save.leaf_name) + 1);
+  message->hdr.size = WORD_ALIGN(offsetof(WimpMessage, data.data_save.leaf_name) +
+                                 strlen(message->data.data_save.leaf_name) + 1);
   message->hdr.action_code = Wimp_MDataSave;
 
   /* Allocate data block for new save operation and link it into the list */
