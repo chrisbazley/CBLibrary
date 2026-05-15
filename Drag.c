@@ -73,6 +73,9 @@
                   _drag_send_dragging_msg() when client passed a bounding box.
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 15-May-26: Use offsetof(WimpMessage, data) instead of offsetof(WimpMessage, data)
+                  because the latter does not give a sufficiently aligned address
+                  offset on 64-bit systems.
 */
 
 /* ISO library headers */
@@ -641,7 +644,7 @@ static _Optional CONST _kernel_oserror *_drag_send_dragging_msg(void)
     client_file_types ? &*client_file_types : &(int){FileType_Null},
     ARRAY_SIZE(dragging->file_types) - 1) + 1;
 
-  message.hdr.size = WORD_ALIGN(sizeof(message.hdr) +
+  message.hdr.size = WORD_ALIGN(offsetof(WimpMessage, data) +
     offsetof(WimpDraggingMessage, file_types) +
     sizeof(dragging->file_types[0]) * array_len);
 
