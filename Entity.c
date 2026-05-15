@@ -86,6 +86,9 @@
   CJB: 10-May-26: Use size_t as the type of entity indices.
   CJB: 11-May-26: Assign 0 to signed and unsigned ints separately to stop
                   warning.
+  CJB: 15-May-26: Use offsetof(WimpMessage, data) instead of sizeof(message.hdr)
+                  because the latter does not give a sufficiently aligned address
+                  offset on 64-bit systems.
 */
 
 /* ISO library headers */
@@ -297,7 +300,8 @@ _Optional CONST _kernel_oserror *entity_claim(unsigned int flags,
     WimpMessage message;
     WimpClaimEntityMessage *cem = (WimpClaimEntityMessage *)&message.data;
 
-    message.hdr.size = sizeof(message.hdr) + sizeof(WimpClaimEntityMessage);
+    /* This relies on alignment of 'data' being sufficient for all possible messages */
+    message.hdr.size = offsetof(WimpMessage, data) + sizeof(WimpClaimEntityMessage);
     message.hdr.your_ref = 0;
     message.hdr.action_code = Wimp_MClaimEntity;
     cem->flags = flags & ~owned_entities;
