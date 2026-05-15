@@ -70,7 +70,7 @@
 				  of relying on the size of the message header being equivalent
 				  to the offset to the message body, to fix strcpy writing outside
 				  allocated memory on 64-bit systems.
-  CJB: 15-May-26: As above, but for data.data_save.leaf_name.
+  CJB: 15-May-26: As above, but for data.data_save.leaf_name and data.ram_fetch.
 */
 
 /* ISO library headers */
@@ -384,7 +384,7 @@ _Optional CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message
     load_op_data->have_RAM_buffer = true;
 
     { /* Allocate (very) temporary buffer for a RAMFetch message */
-      _Optional WimpMessage *reply = malloc(sizeof(message->hdr) +
+      _Optional WimpMessage *reply = malloc(offsetof(WimpMessage, data.ram_fetch) +
                                             sizeof(WimpRAMFetchMessage));
       if (reply == NULL)
       {
@@ -680,7 +680,7 @@ static int _ldr2_ramtransmit_msg_handler(WimpMessage *message, void *handle)
     load_op_data->ram_fetch.buffer_size = BufferExtend;
 
     /* Allocate (very) temporary buffer for a RAMFetch message */
-    reply = malloc(sizeof(message->hdr) + sizeof(WimpRAMFetchMessage));
+    reply = malloc(offsetof(WimpMessage, data.ram_fetch) + sizeof(WimpRAMFetchMessage));
     if (reply == NULL)
     {
       _ldr2_finished(&*load_op_data, false, lookup_error("NoMem", ""));
