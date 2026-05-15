@@ -33,6 +33,9 @@
   CJB: 05-May-25: Fix pedantic warnings about format specifying type void *.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-May-26: Use ptrdiff_t in extend_buffer.
+  CJB: 15-May-26: Use size_t instead of unsigned int for the number of
+                  catalogue entries in the buffer, and pass size_t to
+                  os_gbpb_read_cat_no_path to ensure type compatibility.
 */
 
 /* ISO library headers */
@@ -89,8 +92,8 @@ typedef struct DirIteratorLevel
                            elements to be appended/removed efficiently. */
   int gbpb_next; /* Offset of the next next catalogue entry to be read
                     (0 at start of directory, -1 at end). */
-  unsigned int nentries; /* Number of catalogue entries in the buffer that the
-                            iterator hasn't yet advanced beyond. */
+  size_t nentries; /* Number of catalogue entries in the buffer that the
+                      iterator hasn't yet advanced beyond. */
   _Optional const OS_GBPB_CatalogueInfo *entry; /* Pointer to catalogue entry for
                                                    current object, or NULL if none. */
   size_t entry_name_len; /* Length of the name of the current object. */
@@ -251,7 +254,7 @@ static _Optional CONST _kernel_oserror *refill_buffer(DirIterator       *iterato
 
     keep_size += offsetof(OS_GBPB_CatalogueInfo, name) + entry_name_size;
 
-    DEBUG_VERBOSEF("DirIterator: Moving %d entries (%zu bytes) within buffer %p\n",
+    DEBUG_VERBOSEF("DirIterator: Moving %zu entries (%zu bytes) within buffer %p\n",
       level->nentries, keep_size, (void *)level->buffer);
 
     memmove(level->buffer, &*level->entry, keep_size);
@@ -261,7 +264,7 @@ static _Optional CONST _kernel_oserror *refill_buffer(DirIterator       *iterato
 
   do
   {
-    unsigned int n;
+    size_t n;
     retry = false;
 
     /* The offset to the next item to read is updated by each call to
@@ -417,7 +420,7 @@ static void advance(DirIteratorLevel *level)
     entry = NULL;
   }
 
-  DEBUGF("DirIterator: Next entry is %p ('%s'), %d entries remain\n",
+  DEBUGF("DirIterator: Next entry is %p ('%s'), %zu entries remain\n",
          (void *)entry, entry == NULL ? "" : &*entry->name, level->nentries);
 
   level->entry = entry;
