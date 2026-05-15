@@ -72,6 +72,10 @@
   CJB: 10-May-26: Guard against negative size coming from RAMFetch message.
   CJB: 11-May-26: Use int for byte offsets except where it would make existing
                   callback functions incompatible.
+  CJB: 15-May-26: Use offsetof(WimpMessage, data.data_save.leaf_name)
+                  instead of relying on the size of the header being equal
+                  to the offset to the body, which is not true for 64-bit
+                  system.
 */
 
 /* ISO library headers */
@@ -320,9 +324,8 @@ _Optional CONST _kernel_oserror *saver_send_data(int task_handle, WimpMessage *m
     _Optional _kernel_oserror *e;
 
     /* Populate a few fields of the DataSave message automatically */
-    message->hdr.size = WORD_ALIGN(sizeof(message->hdr) +
-                        offsetof(WimpDataSaveMessage, leaf_name) +
-                        strlen(message->data.data_save.leaf_name) + 1);
+    message->hdr.size = WORD_ALIGN(offsetof(WimpMessage, data.data_save.leaf_name) +
+                                   strlen(message->data.data_save.leaf_name) + 1);
     message->hdr.action_code = Wimp_MDataSave;
     message->data.data_save.estimated_size = end_offset - start_offset;
 
