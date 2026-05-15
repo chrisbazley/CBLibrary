@@ -30,6 +30,9 @@
   CJB: 10-May-26: Change the parameter type of no_data to size_t.
   CJB: 11-May-26: Assign 0 to signed and unsigned ints separately to stop
                   warning.
+  CJB: 15-May-26: Use offsetof(WimpMessage, data) instead of sizeof(message.hdr)
+                  because the latter does not give a sufficiently aligned address
+                  offset on 64-bit systems.
 */
 
 /* ISO library headers */
@@ -260,7 +263,7 @@ static _Optional CONST _kernel_oserror *request_data(
   size_t const array_len = copy_file_types(drm->file_types,
     data_request->file_types, ARRAY_SIZE(drm->file_types) - 1) + 1;
 
-  message.hdr.size = WORD_ALIGN(sizeof(message.hdr) +
+  message.hdr.size = WORD_ALIGN(offsetof(WimpMessage, data) +
                        offsetof(WimpDataRequestMessage, file_types) +
                        sizeof(drm->file_types[0]) * array_len);
 
@@ -291,7 +294,7 @@ static _Optional CONST _kernel_oserror *claim_entities(unsigned int const flags)
   WimpMessage message;
   WimpClaimEntityMessage *const cem = (WimpClaimEntityMessage *)&message.data;
 
-  message.hdr.size = sizeof(message.hdr) + sizeof(WimpClaimEntityMessage);
+  message.hdr.size = offsetof(WimpMessage, data) + sizeof(WimpClaimEntityMessage);
   message.hdr.your_ref = 0;
   message.hdr.action_code = Wimp_MClaimEntity;
   cem->flags = to_claim;
@@ -1196,7 +1199,7 @@ _Optional CONST _kernel_oserror *entity2_dispose_all(Entity2ExitMethod *const ex
     /* Broadcast notification that the holder of some entities is dying */
     WimpMessage message = {
       .hdr = {
-        .size = sizeof(message.hdr) + sizeof(WimpReleaseEntityMessage),
+        .size = offsetof(WimpMessage, data) + sizeof(WimpReleaseEntityMessage),
         .your_ref = 0,
         .action_code = Wimp_MReleaseEntity,
       },
