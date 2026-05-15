@@ -38,6 +38,7 @@
                   of relying on the size of the message header being equivalent
                   to the offset to the message body, to fix strcpy writing outside
                   allocated memory on 64-bit systems.
+  CJB: 15-May-26: As above, but for data.ram_fetch.
 */
 
 /* ISO library headers */
@@ -403,7 +404,7 @@ static _Optional CONST _kernel_oserror *send_ramfetch(
   DEBUGF("Loader3: Replying to message ref. %d\n", message->hdr.my_ref);
 
   /* Allocate (very) temporary buffer for a RAMFetch message */
-  int const msg_size = sizeof(message->hdr) + sizeof(WimpRAMFetchMessage);
+  int const msg_size = offsetof(WimpMessage, data.ram_fetch) + sizeof(WimpRAMFetchMessage);
   _Optional WimpMessage *const ram_fetch = malloc((size_t)msg_size);
   if (ram_fetch == NULL)
   {
