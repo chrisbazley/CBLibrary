@@ -26,11 +26,14 @@
   CJB: 11-Dec-20: Prefer to declare variable with initializer.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 14-May-26: Use intptr_t for VDU variable values.
+  CJB: 17-May-26: Assert VDU variable values are within the valid range
+                  before use. Explicitly convert the final values to type int.
  */
 
 /* ISO library headers */
 #include <stddef.h>
 #include <stdint.h>
+#include <limits.h>
 
 /* Acorn C/C++ library headers */
 #include "kernel.h"
@@ -71,16 +74,30 @@ _Optional CONST _kernel_oserror *get_screen_size(int *width, int *height)
   _Optional CONST _kernel_oserror *e = os_read_vdu_variables(mode_vars, var_vals);
   if (e == NULL)
   {
+    assert(var_vals[VarIndex_XEigFactor] >= 0);
+    assert(var_vals[VarIndex_XEigFactor] < 32);
+
+    assert(var_vals[VarIndex_YEigFactor] >= 0);
+    assert(var_vals[VarIndex_YEigFactor] < 32);
+
+    assert(var_vals[VarIndex_XWindLimit] >= 0);
+    assert(var_vals[VarIndex_XWindLimit] <
+           INT_MAX >> var_vals[VarIndex_XEigFactor]);
+
+    assert(var_vals[VarIndex_YWindLimit] >= 0);
+    assert(var_vals[VarIndex_YWindLimit] <
+           INT_MAX >> var_vals[VarIndex_YEigFactor]);
+
     /* Convert screen dimensions to external graphics units */
     if (width != NULL)
     {
-      *width = (var_vals[VarIndex_XWindLimit] + 1) <<
-                var_vals[VarIndex_XEigFactor];
+      *width = (int)((var_vals[VarIndex_XWindLimit] + 1) <<
+                      var_vals[VarIndex_XEigFactor]);
     }
     if (height != NULL)
     {
-      *height = (var_vals[VarIndex_YWindLimit] + 1) <<
-                 var_vals[VarIndex_YEigFactor];
+      *height = (int)((var_vals[VarIndex_YWindLimit] + 1) <<
+                      var_vals[VarIndex_YEigFactor]);
     }
   }
   return e;
