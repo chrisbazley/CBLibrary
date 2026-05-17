@@ -57,7 +57,10 @@ static void test2(void)
   /* Untyped file */
   int file_type;
   OSDateAndTime utc;
-  static const unsigned char expected[sizeof(utc.bytes)];
+  static const unsigned char expected[sizeof(utc.bytes)] =
+  {
+    0, 0, 0, 0, 0
+  };
   const int load = 0x12345678;
   const int exec = 0x76543210;
 
