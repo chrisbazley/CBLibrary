@@ -113,7 +113,7 @@ set_target_properties(CBExtra PROPERTIES
 
 target_include_directories(CBExtra PUBLIC .)
 
-target_compile_definitions(CBObsolete PRIVATE
+target_compile_definitions(CBExtra PRIVATE
     $<$<CONFIG:Debug>:DEBUG_OUTPUT>
     $<$<CONFIG:Release>:NDEBUG>
 )
