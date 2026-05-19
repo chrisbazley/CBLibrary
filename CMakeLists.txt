@@ -36,7 +36,7 @@ set(DesktopList NoBudge.c Timer.c TimerSet.c NullPoll.c Scheduler.c Err.c Drag.c
 
 set(ObjectList ${OSUtilsList} ${ToolboxList} ${DesktopIOList} ${DesktopList})
 set(XObjectList ErrNotRec.c FPCompOnly.c)
-set(ObsoleteList ${ObjectList} FednetComp.c RoundRobin.c Loader.c
+set(ObsoleteList ${ObjectList} FednetComp.c RoundRobin.c Loader.c)
 
 file(GLOB PUBLIC_HEADERS "*.h")
 
