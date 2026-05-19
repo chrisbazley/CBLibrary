@@ -31,7 +31,7 @@ set(ToolboxList StackViews.c ViewsMenu.c DeIconise.c GadgetHide.c GadgetFade.c
 set(DesktopIOList FilePerc.c AbortFOp.c FedCompMT.c LoadSaveMT.c FOpenCount.c)
 
 # Generic desktop application functionality
-set(DesktopList NoBudge.c Timer.c TimerSet.c NullPoll.c Scheduler.c Err.c Drag.c
+set(DesktopList NoBudge.c Timer.c NullPoll.c Scheduler.c Err.c Drag.c
     Entity.c Loader2.c Saver.c Entity2.c Loader3.c Saver2.c Pal256.c UserData.c)
 
 set(ObjectList ${OSUtilsList} ${ToolboxList} ${DesktopIOList} ${DesktopList})
