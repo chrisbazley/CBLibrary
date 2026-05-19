@@ -118,8 +118,6 @@ target_compile_definitions(CBObsolete PRIVATE
     $<$<CONFIG:Release>:NDEBUG>
 )
 
-target_compile_definitions(CBExtra PRIVATE CBLIB_OBSOLETE)
-
 target_compile_options(CBExtra PRIVATE
     $<$<CONFIG:Release>:-O3>
 )
