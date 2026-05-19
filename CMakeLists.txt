@@ -71,7 +71,7 @@ install(TARGETS CB
     PUBLIC_HEADER DESTINATION include
 )
 
-add_library(CBObsolete STATIC ${ObsoleteObjects} ${PUBLIC_HEADERS})
+add_library(CBObsolete STATIC ${ObsoleteList} ${PUBLIC_HEADERS})
 
 set_target_properties(CBObsolete PROPERTIES
     PUBLIC_HEADER "${PUBLIC_HEADERS}"
