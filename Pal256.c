@@ -959,7 +959,7 @@ static _Optional CONST _kernel_oserror *update_window(const Pal256Data *pal_data
   assert(pal_data != NULL);
 
   WimpRedrawWindowBlock block = {
-    .window_handle = pal_data->wimp_handle;
+    .window_handle = pal_data->wimp_handle,
     .visible_area = {
       .xmin = left_x,
       .ymin = bottom_y,
