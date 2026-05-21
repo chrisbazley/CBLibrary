@@ -63,6 +63,7 @@
   CJB: 10-May-26: Use int instead of unsigned int for percentages.
                   Cast the result of flex_size to unsigned to stop a warning.
   CJB: 21-May-26: Use size_t internally instead of unsigned int.
+                  Assign compound literals to ensure full initialisation.
 */
 
 /* ISO library headers */
@@ -207,12 +208,16 @@ _Optional CONST _kernel_oserror *load_fileM2(const char *file_path,
       return lookup_error("NoMem", "");
     }
 
-    state->limit = (unsigned)size;
-    state->mem_pos = 0;
-    state->start = 0;
-    state->common.f = NULL;
-    state->common.destructor = (fileop_destructor *)NULL;
-    state->read_pos = 0; /* start reading from beginning of file */
+    *state = (fileop_state){
+      .limit = (unsigned)size,
+      .mem_pos = 0,
+      .start = 0,
+      .common = {
+        .f = NULL,
+        .destructor = (fileop_destructor *)NULL,
+      },
+      .read_pos = 0, /* start reading from beginning of file */
+    };
   }
   else
   {
@@ -348,11 +353,15 @@ _Optional CONST _kernel_oserror *save_fileM2(const char *file_path,
     if (state == NULL)
       return lookup_error("NoMem", "");
 
-    state->limit = end_offset;
-    state->start= start_offset;
-    state->mem_pos = start_offset;
-    state->common.f = NULL;
-    state->common.destructor = (fileop_destructor *)NULL;
+    *state = (fileop_state){
+      .limit = end_offset,
+      .start= start_offset,
+      .mem_pos = start_offset,
+      .common = {
+        .f = NULL,
+        .destructor = (fileop_destructor *)NULL,
+      },
+    };
     open_mode = "wb"; /* open for writing */
   }
   else
