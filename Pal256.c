@@ -82,8 +82,9 @@
   CJB: 21-May-26: Use int instead of uint8_t for stored grid indices.
                   Use a temporary variable to avoid a non-portable cast of
                   toolbox_get_client_handle's argument to type void **.
-                  Use initialisers to ensure that WimpRedrawWindowBlock
-                  and Pal256ColourSelectedEvent are fully initialised.
+                  Use initialisers to ensure that WimpRedrawWindowBlock,
+                  WimpDragBox and Pal256ColourSelectedEvent are fully
+                  initialised.
                   Assign a compound literal to ensure that Pal256Data is
                   fully initialized.
  */
@@ -651,30 +652,27 @@ static int mouse_click(int event_code, WimpPollBlock *event, IdBlock *id_block, 
 
         case Wimp_MouseButtonSelect * ButtonModifierDrag:
           {
-            WimpDragBox drag_box;
-            int colsleft_scrx, colsbot_scry;
             intptr_t eigen_factors[VarIndex_LAST];
 
             e = os_read_vdu_variables(mode_vars, eigen_factors);
             if (e != NULL)
               break;
 
-            colsleft_scrx = window_state.visible_area.xmin - window_state.xscroll +
-                            XOrigin;
+            int const colsleft_scrx = window_state.visible_area.xmin - window_state.xscroll +
+                                      XOrigin,
+                      colsbot_scry = window_state.visible_area.ymax - window_state.yscroll +
+                                     YOrigin;
 
-            colsbot_scry = window_state.visible_area.ymax - window_state.yscroll +
-                           YOrigin;
-
-            drag_box.drag_type = Wimp_DragBox_DragPoint;
-            drag_box.parent_box.xmin = colsleft_scrx;
-
-            drag_box.parent_box.xmax = colsleft_scrx + Width -
-                                       (1 << eigen_factors[VarIndex_XEigFactor]);
-
-            drag_box.parent_box.ymin = colsbot_scry;
-
-            drag_box.parent_box.ymax = colsbot_scry + Height -
-                                       (1 << eigen_factors[VarIndex_YEigFactor]);
+            WimpDragBox drag_box = {
+              .drag_type = Wimp_DragBox_DragPoint;
+              .parent_box = {
+                .xmin = colsleft_scrx,
+                .xmax = colsleft_scrx + Width -
+                        (1 << eigen_factors[VarIndex_XEigFactor]),
+                .ymin = colsbot_scry,
+                .ymax = colsbot_scry + Height -
+                        (1 << eigen_factors[VarIndex_YEigFactor]),
+            };
 
             e = wimp_drag_box(&drag_box);
             if (e != NULL)
