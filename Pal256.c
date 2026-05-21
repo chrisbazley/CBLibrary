@@ -664,7 +664,7 @@ static int mouse_click(int event_code, WimpPollBlock *event, IdBlock *id_block, 
                                      YOrigin;
 
             WimpDragBox drag_box = {
-              .drag_type = Wimp_DragBox_DragPoint;
+              .drag_type = Wimp_DragBox_DragPoint,
               .parent_box = {
                 .xmin = colsleft_scrx,
                 .xmax = colsleft_scrx + Width -
