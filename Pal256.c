@@ -171,7 +171,7 @@ typedef struct
 {
   ObjectId      window_id; /* Toolbox window Id */
   int           wimp_handle; /* Wimp window handle */
-  int           orig_col, orig_row; /* as specified by client */
+  int           orig_col, orig_row, /* as specified by client */
                 current_col, current_row; /* as displayed in dialogue */
   bool          dragging;
   PaletteEntry const *palette;
