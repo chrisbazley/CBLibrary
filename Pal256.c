@@ -84,6 +84,8 @@
                   toolbox_get_client_handle's argument to type void **.
                   Use initialisers to ensure that WimpRedrawWindowBlock
                   and Pal256ColourSelectedEvent are fully initialised.
+                  Assign a compound literal to ensure that Pal256Data is
+                  fully initialized.
  */
 
 /* ISO library headers */
@@ -249,11 +251,13 @@ _Optional CONST _kernel_oserror *Pal256_initialise(
   else
   {
     /* Initialise data block */
-    pal_data->window_id = object;
-    pal_data->current_col = pal_data->orig_col = 0;
-    pal_data->current_row = pal_data->orig_row = NumRows - 1;
-    pal_data->dragging = false;
-    pal_data->palette = palette;
+    *pal_data = (Pal256Data){
+      .window_id = object,
+      .current_col = pal_data->orig_col = 0,
+      .current_row = pal_data->orig_row = NumRows - 1,
+      .dragging = false,
+      .palette = palette,
+    };
 
     /* Stash the Wimp handle of the window underlying the Toolbox object */
     e = window_get_wimp_handle(0, object, &pal_data->wimp_handle);
