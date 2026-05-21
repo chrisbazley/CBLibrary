@@ -321,7 +321,7 @@ _Optional CONST _kernel_oserror *Pal256_set_colour(ObjectId object, unsigned int
   assert(c < NumRows * NumColumns);
 
   void *handle;
-  ON_ERR_RTN_E(toolbox_get_client_handle(0, object, handle));
+  ON_ERR_RTN_E(toolbox_get_client_handle(0, object, &handle));
   Pal256Data *const pal_data = handle;
 
   DEBUGF("Pal256: Displaying colour %u\n", c);
