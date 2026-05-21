@@ -79,6 +79,11 @@
   CJB: 10-May-26: Use int instead of unsigned int for grid indices.
   CJB: 11-May-26: Cast in apply_selection to stop warning about unsigned int.
                   Assert valid colour number passed to Pal256_set_colour.
+  CJB: 21-May-26: Use int instead of uint8_t for stored grid indices.
+                  Use a temporary variable to avoid a non-portable cast of
+                  toolbox_get_client_handle's argument to type void **.
+                  Use initialisers to ensure that WimpRedrawWindowBlock
+                  and Pal256ColourSelectedEvent are fully initialised.
  */
 
 /* ISO library headers */
@@ -166,10 +171,8 @@ typedef struct
 {
   ObjectId      window_id; /* Toolbox window Id */
   int           wimp_handle; /* Wimp window handle */
-  uint8_t       orig_col; /* as specified by client */
-  uint8_t       orig_row;
-  uint8_t       current_col; /* as displayed in dialogue */
-  uint8_t       current_row;
+  int           orig_col, orig_row; /* as specified by client */
+                current_col, current_row; /* as displayed in dialogue */
   bool          dragging;
   PaletteEntry const *palette;
 }
@@ -317,9 +320,9 @@ _Optional CONST _kernel_oserror *Pal256_set_colour(ObjectId object, unsigned int
   /* Set the currently selected colour */
   assert(c < NumRows * NumColumns);
 
-  Pal256Data *pal_data;
-
-  ON_ERR_RTN_E(toolbox_get_client_handle(0, object, (void **)&pal_data));
+  void *handle;
+  ON_ERR_RTN_E(toolbox_get_client_handle(0, object, handle));
+  Pal256Data *const pal_data = handle;
 
   DEBUGF("Pal256: Displaying colour %u\n", c);
   pal_data->orig_row = NumRows - 1 - (c / NumColumns);
@@ -948,19 +951,22 @@ static _Optional CONST _kernel_oserror *update_window(const Pal256Data *pal_data
                                                       bool              selected)
 {
   /* Calculate redraw rectangle in work area (relative) coordinates */
-  int left_x = XOrigin + col * CellWidth;
-  int bottom_y = YOrigin + row * CellHeight;
-  WimpRedrawWindowBlock block;
+  int left_x = XOrigin + col * CellWidth,
+      bottom_y = YOrigin + row * CellHeight;
   int more;
   _Optional CONST _kernel_oserror *e = NULL;
 
   assert(pal_data != NULL);
 
-  block.window_handle = pal_data->wimp_handle;
-  block.visible_area.xmin = left_x;
-  block.visible_area.ymin = bottom_y;
-  block.visible_area.xmax = left_x + CellWidth;
-  block.visible_area.ymax = bottom_y + CellHeight;
+  WimpRedrawWindowBlock block = {
+    .window_handle = pal_data->wimp_handle;
+    .visible_area = {
+      .xmin = left_x,
+      .ymin = bottom_y,
+      .xmax = left_x + CellWidth,
+      .ymax = bottom_y + CellHeight,
+    }
+  };
 
   DEBUGF("Pal256: Updating rectangle x: %d,%d y: %d,%d\n",
         block.visible_area.xmin,
@@ -989,8 +995,6 @@ static _Optional CONST _kernel_oserror *update_window(const Pal256Data *pal_data
 
 static _Optional CONST _kernel_oserror *apply_selection(Pal256Data *pal_data)
 {
-  Pal256ColourSelectedEvent warn_client;
-
   assert(pal_data != NULL);
 
   /* This becomes the new default colour */
@@ -1000,14 +1004,18 @@ static _Optional CONST _kernel_oserror *apply_selection(Pal256Data *pal_data)
   int const colour_number = pal_data->current_col +
                             (NumRows - 1 - pal_data->current_row) *
                             NumColumns;
+  DEBUGF("Pal256: Colour %d selected\n", colour_number);
+  assert(colour_number >= 0);
 
   /* Raise event to tell client of colour selection */
-  warn_client.hdr.size = sizeof(warn_client);
-  warn_client.hdr.event_code = Pal256_ColourSelected;
-  warn_client.hdr.flags = 0;
-  assert(colour_number >= 0);
-  warn_client.colour_number = (unsigned)colour_number;
-  DEBUGF("Pal256: Colour %u selected\n", warn_client.colour_number);
+  Pal256ColourSelectedEvent warn_client = {
+    .hdr = {
+      .size = sizeof(warn_client),
+      .event_code = Pal256_ColourSelected,
+      .flags = 0,
+    },
+    .colour_number = (unsigned)colour_number,
+  };
 
   return toolbox_raise_toolbox_event(0,
                                      pal_data->window_id,
