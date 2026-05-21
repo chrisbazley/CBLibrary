@@ -170,7 +170,7 @@ int get_loadsave_perc(FILE *_Optional **handle)
   }
   perc_done = (bytes_done * 100u) / total_size;
 
-  DEBUGF("LoadSaveMT: %u%% complete\n", perc_done);
+  DEBUGF("LoadSaveMT: %zu%% complete\n", perc_done);
   assert(perc_done <= 100u);
   return (int)perc_done;
 }
