@@ -62,6 +62,7 @@
                   Handle pointer-to-null in get_loadsave_perc().
   CJB: 10-May-26: Use int instead of unsigned int for percentages.
                   Cast the result of flex_size to unsigned to stop a warning.
+  CJB: 21-May-26: Use size_t internally instead of unsigned int.
 */
 
 /* ISO library headers */
@@ -115,9 +116,7 @@ typedef struct
 {
   fileop_common  common;
   long int       read_pos;
-  unsigned int   start;
-  unsigned int   mem_pos;
-  unsigned int   limit;
+  size_t         start, mem_pos, limit;
 }
 fileop_state;
 
@@ -146,7 +145,7 @@ _Optional CONST _kernel_oserror *loadsave_initialise(_Optional MessagesFD *mfd)
 int get_loadsave_perc(FILE *_Optional **handle)
 {
   _Optional fileop_state *state = (fileop_state *)*handle;
-  unsigned int bytes_done, total_size, perc_done;
+  size_t bytes_done, total_size, perc_done;
 
   DEBUGF("LoadSaveMT: Request for %% done\n");
 
@@ -219,7 +218,7 @@ _Optional CONST _kernel_oserror *load_fileM2(const char *file_path,
   {
     /* Continue from where we left off */
     state = (fileop_state *)*handle;
-    DEBUGF("LoadSaveMT: Resume load at mem_pos %u\n", state->mem_pos);
+    DEBUGF("LoadSaveMT: Resume load at mem_pos %zu\n", state->mem_pos);
   }
 
   _kernel_last_oserror(); /* reset SCL's error recording */
@@ -316,7 +315,7 @@ _Optional CONST _kernel_oserror *load_fileM2(const char *file_path,
   else
   {
     /* Stopped before EOF */
-    DEBUGF("LoadSaveMT: Loading suspended at mem_pos %u (time up)\n",
+    DEBUGF("LoadSaveMT: Loading suspended at mem_pos %zu (time up)\n",
           state->mem_pos);
 
     if (fopen_num() >= FOPEN_MAX)
@@ -360,7 +359,7 @@ _Optional CONST _kernel_oserror *save_fileM2(const char *file_path,
   {
     /* Continue from where we left off */
     state = (fileop_state *)*handle;
-    DEBUGF("LoadSaveMT: Resume save at mem_pos %u\n", state->mem_pos);
+    DEBUGF("LoadSaveMT: Resume save at mem_pos %zu\n", state->mem_pos);
     open_mode = "ab"; /* open for appending */
   }
 
@@ -457,7 +456,7 @@ _Optional CONST _kernel_oserror *save_fileM2(const char *file_path,
   else
   {
     /* Assume stopped cos of time out */
-    DEBUGF("LoadSaveMT: Saving suspended at mem_pos %u (time up)\n",
+    DEBUGF("LoadSaveMT: Saving suspended at mem_pos %zu (time up)\n",
           state->mem_pos);
 
     if (fopen_num() >= FOPEN_MAX)
