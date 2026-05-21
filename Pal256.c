@@ -672,6 +672,7 @@ static int mouse_click(int event_code, WimpPollBlock *event, IdBlock *id_block, 
                 .ymin = colsbot_scry,
                 .ymax = colsbot_scry + Height -
                         (1 << eigen_factors[VarIndex_YEigFactor]),
+              },
             };
 
             e = wimp_drag_box(&drag_box);
