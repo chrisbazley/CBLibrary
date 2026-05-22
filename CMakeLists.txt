@@ -38,7 +38,16 @@ set(ObjectList ${OSUtilsList} ${ToolboxList} ${DesktopIOList} ${DesktopList})
 set(XObjectList ErrNotRec.c FPCompOnly.c)
 set(ObsoleteList ${ObjectList} FednetComp.c RoundRobin.c Loader.c)
 
-file(GLOB PUBLIC_HEADERS "*.h")
+file(GLOB ALL_HEADERS "*.h")
+
+# Strip the deprecated components out for modern targets
+set(PUBLIC_HEADERS ${ALL_HEADERS})
+list(REMOVE_ITEM PUBLIC_HEADERS
+    "${CMAKE_CURRENT_SOURCE_DIR}/Deprecated.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/FednetComp.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/RoundRobin.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Loader.h"
+)
 
 add_library(CB STATIC ${ObjectList} ${PUBLIC_HEADERS})
 
@@ -71,10 +80,10 @@ install(TARGETS CB
     PUBLIC_HEADER DESTINATION include
 )
 
-add_library(CBObsolete STATIC ${ObsoleteList} ${PUBLIC_HEADERS})
+add_library(CBObsolete STATIC ${ObsoleteList} ${ALL_HEADERS})
 
 set_target_properties(CBObsolete PROPERTIES
-    PUBLIC_HEADER "${PUBLIC_HEADERS}"
+    PUBLIC_HEADER "${ALL_HEADERS}"
     DEBUG_POSTFIX "dbg"
 )
 
