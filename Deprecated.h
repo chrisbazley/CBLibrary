@@ -28,7 +28,12 @@ History:
   CJB: 01-Oct-09: Added macro definitions of deprecated file type names.
   CJB: 19-Oct-09: Moved the various WARN_GLOB and RPT_GLOB_ERR macro definitions
                   here because they rely upon a deprecated function.
+  CJB: 26-May-26: Report an error if this file is included other than via Macros.h.
 */
+
+#ifndef Macros_h
+#error "Deprecated.h is not intended to be included directly"
+#endif
 
 /* Clone a string (superseded by strdup function) */
 #define CLONE_STR(lvalue, string) do { \
