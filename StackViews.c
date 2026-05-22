@@ -46,6 +46,7 @@
                   GNU C compiler warnings.
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 22-May-26: Ensure only pointers of type void * are converted to intptr_t.
  */
 
 /* ISO library headers */
@@ -180,7 +181,7 @@ _Optional CONST _kernel_oserror *StackViews_open(ObjectId id, ObjectId parent, C
       int info_block[100/sizeof(int)]; /* block must be 100 bytes */
       _kernel_swi_regs regs;
       regs.r[0] = 11;
-      regs.r[1] = (intptr_t)info_block;
+      regs.r[1] = (intptr_t)(void *)info_block;
       info_block[0] = state.window_handle; /* window handle */
       ON_ERR_RTN_E(_kernel_swi(Wimp_Extend, &regs, &regs));
       bottom_border = info_block[2];

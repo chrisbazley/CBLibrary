@@ -75,6 +75,7 @@
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
                   Allow null 'type' argument for ViewsMenu_show_object().
   CJB: 11-May-26: Avoid passing a freed pointer to menu_remove_entry().
+  CJB: 22-May-26: Ensure only pointers of type void * are converted to uintptr_t.
  */
 
 /* ISO library headers */
@@ -220,7 +221,7 @@ _Optional CONST _kernel_oserror *ViewsMenu_setname(ObjectId showobject, const ch
          but the menu_set_entry_text() definition is lax.) */
       ON_ERR_RTN_E(menu_set_entry_text(0,
                                        VM,
-                                       (ComponentId)(uintptr_t)view_info,
+                                       (ComponentId)(uintptr_t)(void *)view_info,
                                        (char *)view_name));
     }
   }
@@ -303,7 +304,7 @@ _Optional CONST _kernel_oserror *ViewsMenu_add(ObjectId showobject, const char *
     MenuTemplateEntry Entry =
     {
       0,
-      (ComponentId)(uintptr_t)new_view,
+      (ComponentId)(uintptr_t)(void *)new_view,
       &*new_view->name,
       sizeof(new_view->name),
       (void *)NULL,
@@ -512,7 +513,7 @@ static int menu_selection(int           event_code,
   NOT_USED(event);
   NOT_USED(handle);
 
-  view_info = (ViewInfo *)(uintptr_t)id_block->self_component;
+  view_info = (void *)(uintptr_t)id_block->self_component;
   if (view_info->remove_me)
   {
     putchar('\a'); /* beep */
@@ -652,7 +653,7 @@ static _Optional CONST _kernel_oserror *destroy_view(ViewInfo *view_info)
   assert(view_info != NULL);
   DEBUGF("ViewsMenu: Removing view record %p\n", (void *)view_info);
 
-  ON_ERR_RTN_E(menu_remove_entry(0, VM, (ComponentId)(uintptr_t)view_info));
+  ON_ERR_RTN_E(menu_remove_entry(0, VM, (ComponentId)(uintptr_t)(void *)view_info));
 
   /* Link over record */
   linkedlist_remove(&view_list, &view_info->list_item);
