@@ -33,6 +33,8 @@
   CJB: 15-May-26: Use offsetof(WimpMessage, data) instead of sizeof(message.hdr)
                   because the latter does not give a sufficiently aligned address
                   offset on 64-bit systems.
+  CJB: 22-May-26: Add initialisers to declarations and assign compound literals
+                  to ensure full initialisation of message data.
 */
 
 /* ISO library headers */
@@ -248,16 +250,21 @@ static _Optional CONST _kernel_oserror *request_data(
 {
   assert(data_request != NULL);
 
-  WimpMessage message;
-  message.hdr.action_code = Wimp_MDataRequest;
-  message.hdr.your_ref = 0;
+  WimpMessage message = {
+    .hdr = {
+      .action_code = Wimp_MDataRequest,
+      .your_ref = 0,
+    },
+  };
 
   WimpDataRequestMessage *const drm = (WimpDataRequestMessage *)&message.data;
-  drm->destination_window = data_request->destination_window;
-  drm->destination_icon = data_request->destination_icon;
-  drm->destination_x = data_request->destination_x;
-  drm->destination_y = data_request->destination_y;
-  drm->flags = data_request->flags;
+  *drm = (WimpDataRequestMessage){
+    .destination_window = data_request->destination_window,
+    .destination_icon = data_request->destination_icon,
+    .destination_x = data_request->destination_x,
+    .destination_y = data_request->destination_y,
+    .flags = data_request->flags,
+  };
 
   /* Copy list of file types into message body (-1 for terminator) */
   size_t const array_len = copy_file_types(drm->file_types,
@@ -291,13 +298,18 @@ static _Optional CONST _kernel_oserror *claim_entities(unsigned int const flags)
   }
 
   /* Notify other tasks that we are claiming the specified entities */
-  WimpMessage message;
-  WimpClaimEntityMessage *const cem = (WimpClaimEntityMessage *)&message.data;
+  WimpMessage message = {
+    .hdr = {
+      .size = offsetof(WimpMessage, data) + sizeof(WimpClaimEntityMessage),
+      .your_ref = 0,
+      .action_code = Wimp_MClaimEntity,
+    },
+  };
 
-  message.hdr.size = offsetof(WimpMessage, data) + sizeof(WimpClaimEntityMessage);
-  message.hdr.your_ref = 0;
-  message.hdr.action_code = Wimp_MClaimEntity;
-  cem->flags = to_claim;
+  WimpClaimEntityMessage *const cem = (WimpClaimEntityMessage *)&message.data;
+  *cem = (WimpClaimEntityMessage){
+    .flags = to_claim,
+  };
 
   ON_ERR_RTN_E(wimp_send_message(Wimp_EUserMessage, &message, 0, 0, NULL));
 
@@ -785,18 +797,21 @@ static int datarequest_handler(WimpMessage *const message, void *const handle)
       int const file_type = pick_file_type(data_request->file_types,
         &*entities_info[entity].file_types);
 
-      WimpMessage ds;
-      ds.hdr.your_ref = message->hdr.my_ref;
-      /* action code and message size are filled out automatically */
-      ds.data.data_save.destination_window =
-        data_request->destination_window;
-
-      ds.data.data_save.destination_icon = data_request->destination_icon;
-      ds.data.data_save.destination_x = data_request->destination_x;
-      ds.data.data_save.destination_y = data_request->destination_y;
-      ds.data.data_save.estimated_size = get_estimated_size(entity, file_type);
-      ds.data.data_save.file_type = file_type;
-      STRCPY_SAFE(ds.data.data_save.leaf_name, "EntityData");
+      WimpMessage ds = {
+        .hdr = {
+          .your_ref = message->hdr.my_ref,
+          /* action code and message size are filled out automatically */
+        },
+        .data.data_save = {
+          .destination_window = data_request->destination_window,
+          .destination_icon = data_request->destination_icon,
+          .destination_x = data_request->destination_x,
+          .destination_y = data_request->destination_y,
+          .estimated_size = get_estimated_size(entity, file_type),
+          .file_type = file_type,
+          .leaf_name = "EntityData",
+        },
+      };
 
       _Optional CONST _kernel_oserror *const e = saver2_send_data(message->hdr.sender,
         &ds, entities_info[entity].write_method, send_complete, send_failed,
@@ -1205,7 +1220,9 @@ _Optional CONST _kernel_oserror *entity2_dispose_all(Entity2ExitMethod *const ex
       },
     };
     WimpReleaseEntityMessage *rem = (WimpReleaseEntityMessage *)&message.data;
-    rem->flags = owned_entities;
+    *rem = (WimpReleaseEntityMessage){
+      .flags = owned_entities,
+    };
     ON_ERR_RTN_E(wimp_send_message(Wimp_EUserMessageRecorded, &message, 0, 0,
                                    NULL));
     /* A clipboard holder application will respond to this message by
