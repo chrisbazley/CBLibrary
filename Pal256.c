@@ -87,6 +87,7 @@
                   initialised.
                   Assign a compound literal to ensure that Pal256Data is
                   fully initialized.
+  CJB: 26-May-26: Use int instead of unsigned int in the public interface.
  */
 
 /* ISO library headers */
@@ -320,16 +321,17 @@ _Optional CONST _kernel_oserror *Pal256_initialise(
 
 /* ----------------------------------------------------------------------- */
 
-_Optional CONST _kernel_oserror *Pal256_set_colour(ObjectId object, unsigned int c)
+_Optional CONST _kernel_oserror *Pal256_set_colour(ObjectId object, int c)
 {
   /* Set the currently selected colour */
+  assert(c >= 0);
   assert(c < NumRows * NumColumns);
 
   void *handle;
   ON_ERR_RTN_E(toolbox_get_client_handle(0, object, &handle));
   Pal256Data *const pal_data = handle;
 
-  DEBUGF("Pal256: Displaying colour %u\n", c);
+  DEBUGF("Pal256: Displaying colour %d\n", c);
   pal_data->orig_row = NumRows - 1 - (c / NumColumns);
   pal_data->orig_col = c % NumColumns;
 
@@ -1017,7 +1019,7 @@ static _Optional CONST _kernel_oserror *apply_selection(Pal256Data *pal_data)
       .event_code = Pal256_ColourSelected,
       .flags = 0,
     },
-    .colour_number = (unsigned)colour_number,
+    .colour_number = colour_number,
   };
 
   return toolbox_raise_toolbox_event(0,

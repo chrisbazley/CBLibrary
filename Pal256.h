@@ -45,6 +45,7 @@ History:
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 22-May-26: Make the declaration of Pal256_colour_brightness conditional
                   upon CBLIB_OBSOLETE.
+  CJB: 26-May-26: Use int instead of unsigned int in the public interface.
 */
 
 #ifndef Pal256_h
@@ -73,7 +74,7 @@ History:
 typedef struct
 {
   ToolboxEventHeader hdr;
-  unsigned int       colour_number;
+  int                colour_number;
 }
 Pal256ColourSelectedEvent;
 /*
@@ -108,7 +109,7 @@ _Optional CONST _kernel_oserror *Pal256_initialise(
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-_Optional CONST _kernel_oserror *Pal256_set_colour(ObjectId /*object*/, unsigned int /*c*/);
+_Optional CONST _kernel_oserror *Pal256_set_colour(ObjectId /*object*/, int /*c*/);
    /*
     * Causes colour number 'c' (0-255) to be displayed by the specified Pal256
     * dialogue box 'object'. This is also the colour that will be restored if
