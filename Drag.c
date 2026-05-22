@@ -76,6 +76,8 @@
   CJB: 15-May-26: Use offsetof(WimpMessage, data) instead of offsetof(WimpMessage, data)
                   because the latter does not give a sufficiently aligned address
                   offset on 64-bit systems.
+  CJB: 26-May-26: Add initialiser and assign compound literal to ensure full
+                  initialisation of message data.
 */
 
 /* ISO library headers */
@@ -613,16 +615,18 @@ static SchedulerTime _drag_null_event_handler(void *handle,
 static _Optional CONST _kernel_oserror *_drag_send_dragging_msg(void)
 {
   _Optional CONST _kernel_oserror *e = NULL;
-  WimpMessage message;
+  WimpMessage message = {
+    .hdr.action_code = Wimp_MDragging,
+  };
   WimpDraggingMessage *dragging = (WimpDraggingMessage *)&message.data;
-
-  message.hdr.action_code = Wimp_MDragging;
-  dragging->window_handle = pointer.window_handle;
-  dragging->icon_handle = pointer.icon_handle;
-  dragging->x = pointer.x;
-  dragging->y = pointer.y;
-  dragging->flags = Wimp_MDragging_DataFromSelection |
-                    (drag_aborted ? Wimp_MDragging_DoNotClaimMessage : 0);
+  *dragging = (WimpDraggingMessage){
+    .window_handle = pointer.window_handle,
+    .icon_handle = pointer.icon_handle,
+    .x = pointer.x,
+    .y = pointer.y,
+    .flags = Wimp_MDragging_DataFromSelection |
+                    (drag_aborted ? Wimp_MDragging_DoNotClaimMessage : 0),
+  };
   DEBUGF("Drag: Dragging message flags are %d\n", dragging->flags);
   if (client_data_bbox != NULL)
   {
