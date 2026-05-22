@@ -43,6 +43,8 @@ History:
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
   CJB: 28-May-22: Allow initialisation with a 'const' palette array.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 22-May-26: Make the declaration of Pal256_colour_brightness conditional
+                  upon CBLIB_OBSOLETE.
 */
 
 #ifndef Pal256_h
@@ -116,10 +118,12 @@ _Optional CONST _kernel_oserror *Pal256_set_colour(ObjectId /*object*/, unsigned
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
+#ifdef CBLIB_OBSOLETE
 char Pal256_colour_brightness(unsigned long colour);
    /*
     * This function is deprecated - you should use 'palette_entry_brightness'
     * instead.
     */
+#endif
 
 #endif
