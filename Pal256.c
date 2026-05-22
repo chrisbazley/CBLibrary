@@ -88,6 +88,7 @@
                   Assign a compound literal to ensure that Pal256Data is
                   fully initialized.
   CJB: 26-May-26: Use int instead of unsigned int in the public interface.
+                  Use union instead of cast for mouse click event data.
  */
 
 /* ISO library headers */
@@ -595,7 +596,7 @@ static int mouse_click(int event_code, WimpPollBlock *event, IdBlock *id_block, 
 {
   /* In order that the pseudo-transient dbox mechanism can work
      we pass mouse click events on rather than claiming them */
-  WimpMouseClickEvent *wmce = (WimpMouseClickEvent *)event;
+  WimpMouseClickEvent *wmce = &event->mouse_click;
   Pal256Data *pal_data = handle;
   int row, col;
   _Optional CONST _kernel_oserror *e = NULL;
