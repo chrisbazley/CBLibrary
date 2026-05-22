@@ -39,6 +39,7 @@
                   to the offset to the message body, to fix strcpy writing outside
                   allocated memory on 64-bit systems.
   CJB: 15-May-26: As above, but for data.ram_fetch.
+  CJB: 22-May-26: Stop allocating heap memory for WimpMessage objects.
 */
 
 /* ISO library headers */
@@ -331,48 +332,27 @@ static _Optional CONST _kernel_oserror *send_datasaveack(LoadOpData *const load_
   DEBUGF("Loader3: Replying to DataSave message ref. %d\n",
     load_op_data->datasave_msg.hdr.my_ref);
 
-  /* Allocate (very) temporary buffer for a DataSaveAck message */
-  int const msg_size = WORD_ALIGN(offsetof(WimpMessage, data.data_save_ack.leaf_name) +
-                                  sizeof("<Wimp$Scrap>"));
-
-  _Optional WimpMessage *const data_save_ack = malloc((size_t)msg_size);
-  if (data_save_ack == NULL)
-  {
-    return no_mem();
-  }
-
-  /* Populate header of DataSaveAck message */
-  data_save_ack->hdr.size = msg_size;
-  data_save_ack->hdr.your_ref = load_op_data->datasave_msg.hdr.my_ref;
-  data_save_ack->hdr.action_code = Wimp_MDataSaveAck;
-
-  /* Populate body of DataSaveAck message
-     (mostly copied from the DataSave message) */
-  data_save_ack->data.data_save_ack.destination_window =
-    load_op_data->datasave_msg.data.data_save.destination_window;
-
-  data_save_ack->data.data_save_ack.destination_icon =
-    load_op_data->datasave_msg.data.data_save.destination_icon;
-
-  data_save_ack->data.data_save_ack.destination_x =
-    load_op_data->datasave_msg.data.data_save.destination_x;
-
-  data_save_ack->data.data_save_ack.destination_y =
-    load_op_data->datasave_msg.data.data_save.destination_y;
-
-  data_save_ack->data.data_save_ack.estimated_size = DestinationUnsafe;
-
-  data_save_ack->data.data_save_ack.file_type =
-    load_op_data->datasave_msg.data.data_save.file_type;
-
-  strcpy(&*data_save_ack->data.data_save_ack.leaf_name, "<Wimp$Scrap>");
+  WimpMessage data_save_ack = {
+    .hdr = {
+      .size = WORD_ALIGN(offsetof(WimpMessage, data.data_save_ack.leaf_name) +
+                                  sizeof("<Wimp$Scrap>")),
+      .your_ref = load_op_data->datasave_msg.hdr.my_ref,
+      .action_code = Wimp_MDataSaveAck,
+    },
+    .data.data_save_ack = {
+      .destination_window = load_op_data->datasave_msg.data.data_save.destination_window,
+      .destination_icon = load_op_data->datasave_msg.data.data_save.destination_icon,
+      .destination_x = load_op_data->datasave_msg.data.data_save.destination_x,
+      .destination_y = load_op_data->datasave_msg.data.data_save.destination_y,
+      .estimated_size = DestinationUnsafe,
+      .file_type = load_op_data->datasave_msg.data.data_save.file_type,
+      .leaf_name = "<Wimp$Scrap>",
+    },
+  };
 
   /* Send our reply to the sender of the DataSave message */
-  _Optional CONST _kernel_oserror *const e = send_msg(load_op_data, Wimp_EUserMessage,
-    &*data_save_ack, load_op_data->datasave_msg.hdr.sender);
-
-  free(data_save_ack);
-  return e;
+  return = send_msg(load_op_data, Wimp_EUserMessage,
+                    &data_save_ack, load_op_data->datasave_msg.hdr.sender);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -403,21 +383,6 @@ static _Optional CONST _kernel_oserror *send_ramfetch(
 
   DEBUGF("Loader3: Replying to message ref. %d\n", message->hdr.my_ref);
 
-  /* Allocate (very) temporary buffer for a RAMFetch message */
-  int const msg_size = offsetof(WimpMessage, data.ram_fetch) + sizeof(WimpRAMFetchMessage);
-  _Optional WimpMessage *const ram_fetch = malloc((size_t)msg_size);
-  if (ram_fetch == NULL)
-  {
-    return no_mem();
-  }
-
-  /* Populate header of RAMFetch message */
-  ram_fetch->hdr.size = msg_size;
-  ram_fetch->hdr.your_ref = message->hdr.my_ref;
-  ram_fetch->hdr.action_code = Wimp_MRAMFetch;
-
-  /* Populate body of RAMFetch message
-     (tell them to write at the end of the data already received) */
   if (!load_op_data->no_flex_budge)
   {
     nobudge_register(PreExpandHeap); /* copy of flex anchor in message */
@@ -425,18 +390,26 @@ static _Optional CONST _kernel_oserror *send_ramfetch(
   }
 
   assert(load_op_data->have_RAM_buffer);
-  ram_fetch->data.ram_fetch.buffer = (char *)load_op_data->RAM_buffer +
-    load_op_data->bytes_received;
 
-  ram_fetch->data.ram_fetch.buffer_size = flex_size(&load_op_data->RAM_buffer) -
-    load_op_data->bytes_received;
+  WimpMessage ram_fetch = {
+    .hdr = {
+      .size = offsetof(WimpMessage, data.ram_fetch) +
+              sizeof(WimpRAMFetchMessage),
+      .your_ref = message->hdr.my_ref,
+      .action_code = Wimp_MRAMFetch,
+    },
+    .data.ram_fetch = {
+      /* tell them to write at the end of the data already received */
+      .buffer = (unsigned char *)load_op_data->RAM_buffer +
+                load_op_data->bytes_received,
+      .buffer_size = flex_size(&load_op_data->RAM_buffer) -
+                     load_op_data->bytes_received;
+    },
+  };
 
   /* Send our reply to the sender of the RAMTransmit or DataSave message */
-  _Optional CONST _kernel_oserror *const err = send_msg(load_op_data,
-    Wimp_EUserMessageRecorded, &*ram_fetch, message->hdr.sender);
-
-  free(ram_fetch);
-  return err;
+  return send_msg(load_op_data,
+                  Wimp_EUserMessageRecorded, &ram_fetch, message->hdr.sender);
 }
 
 /* ----------------------------------------------------------------------- */
