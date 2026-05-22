@@ -403,7 +403,7 @@ static _Optional CONST _kernel_oserror *send_ramfetch(
       .buffer = (unsigned char *)load_op_data->RAM_buffer +
                 load_op_data->bytes_received,
       .buffer_size = flex_size(&load_op_data->RAM_buffer) -
-                     load_op_data->bytes_received;
+                     load_op_data->bytes_received,
     },
   };
 
