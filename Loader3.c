@@ -351,8 +351,8 @@ static _Optional CONST _kernel_oserror *send_datasaveack(LoadOpData *const load_
   };
 
   /* Send our reply to the sender of the DataSave message */
-  return = send_msg(load_op_data, Wimp_EUserMessage,
-                    &data_save_ack, load_op_data->datasave_msg.hdr.sender);
+  return send_msg(load_op_data, Wimp_EUserMessage,
+                  &data_save_ack, load_op_data->datasave_msg.hdr.sender);
 }
 
 /* ----------------------------------------------------------------------- */
