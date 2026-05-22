@@ -110,6 +110,8 @@ History:
                   that discards its result, since err_check() is now defined
                   inline.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 22-May-26: Added the definition of UNION_CAST to combat strict aliasing.
+
 */
 
 #ifndef Macros_h
@@ -339,6 +341,12 @@ enum
 
 #define CONTAINER_OF(addr, type, member) \
   ((type *)(((char *)(addr)) - offsetof(type, member)))
+
+#define UNION_CAST(addr, dst_type, src_type) \
+  (&( \
+      (union { dst_type dst; src_type src; } *) \
+      (1 ? (addr) : (src_type *)0) \
+    )->dst)
 
 /* --- RISC OS object types --- */
 #include "OSFile.h"
