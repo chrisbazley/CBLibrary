@@ -111,7 +111,7 @@ History:
                   inline.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 22-May-26: Added the definition of UNION_CAST to combat strict aliasing.
-
+  CJB: 25-May-26: Added the definition of C23_CONST to ease compatibility.
 */
 
 #ifndef Macros_h
@@ -347,6 +347,12 @@ enum
       (union { dst_type dst; src_type src; } *) \
       (1 ? (addr) : (src_type *)0) \
     )->dst)
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+#define C23_CONST const
+#else
+#define C23_CONST
+#endif
 
 /* --- RISC OS object types --- */
 #include "OSFile.h"
