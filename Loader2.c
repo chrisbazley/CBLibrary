@@ -67,10 +67,12 @@
   CJB: 10-May-26: Fix wrong format specifier in loader2_buffer_file.
   CJB: 12-May-26: Cast arguments of malloc and memcpy to type size_t.
                   Use offsetof(WimpMessage, data.data_save_ack.leaf_name) instead
-				  of relying on the size of the message header being equivalent
-				  to the offset to the message body, to fix strcpy writing outside
-				  allocated memory on 64-bit systems.
+                  of relying on the size of the message header being equivalent
+                  to the offset to the message body, to fix strcpy writing outside
+                  allocated memory on 64-bit systems.
   CJB: 15-May-26: As above, but for data.data_save.leaf_name and data.ram_fetch.
+  CJB: 27-May-26: Assign a compound literal to ensure full initialisation of
+                  each new LoadOpData.
 */
 
 /* ISO library headers */
@@ -297,22 +299,21 @@ _Optional CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message
     return lookup_error("NoMem", "");
 
   /* Initialise record for a new load operation */
-  load_op_data->RAM_capable = false;
-  load_op_data->idle_function = false;
-  load_op_data->no_flex_budge = false;
-  /* According to the RISC OS 3 PRM a file type value of &ffffffff in a
+  *load_op_data = (LoadOpData){
+    .RAM_capable = false,
+    .idle_function = false,
+    .no_flex_budge = false,
+    /* According to the RISC OS 3 PRM a file type value of &ffffffff in a
      DataSave message (and by extension DataLoad) means file is untyped */
-  if (message->data.data_save.file_type == FileType_Null)
-    load_op_data->file_type = FileType_None;
-  else
-    load_op_data->file_type = message->data.data_save.file_type;
-
-  load_op_data->have_RAM_buffer = false; /* no flex block here */
-  load_op_data->ram_fetch.buffer_size = 0;
-  load_op_data->datasave_msg = NULL; /* no heap block here */
-  load_op_data->callback.funct = finished_method; /* may be NULL */
-  load_op_data->loader_funct = load_method; /* should be NULL */
-  load_op_data->callback.arg = client_handle;
+    .file_type = (message->data.data_save.file_type == FileType_Null ?
+                 FileType_None : message->data.data_save.file_type),
+    .have_RAM_buffer = false, /* no flex block here */
+    .ram_fetch.buffer_size = 0,
+    .datasave_msg = NULL, /* no heap block here */
+    .callback.funct = finished_method, /* may be NULL */
+    .loader_funct = load_method, /* should be NULL */
+    .callback.arg = client_handle,
+  };
 
   /* Add new record to head of linked list */
   linkedlist_insert(&load_op_data_list, NULL, &load_op_data->list_item);
