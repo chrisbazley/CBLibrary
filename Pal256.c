@@ -89,6 +89,8 @@
                   fully initialized.
   CJB: 26-May-26: Use int instead of unsigned int in the public interface.
                   Use union instead of cast for mouse click event data.
+  CJB: 27-May-26: Update the integer types of Pal256_colour_brightness to
+                  match the function to which it redirects.
  */
 
 /* ISO library headers */
@@ -343,9 +345,9 @@ _Optional CONST _kernel_oserror *Pal256_set_colour(ObjectId object, int c)
 
 #ifdef CBLIB_OBSOLETE
 /* The following function is deprecated; use palette_entry_brightness(). */
-char Pal256_colour_brightness(unsigned long colour)
+int Pal256_colour_brightness(PaletteEntry colour)
 {
-  return palette_entry_brightness((PaletteEntry)colour);
+  return palette_entry_brightness(colour);
 }
 #endif /* CBLIB_OBSOLETE */
 

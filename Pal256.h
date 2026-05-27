@@ -46,6 +46,8 @@ History:
   CJB: 22-May-26: Make the declaration of Pal256_colour_brightness conditional
                   upon CBLIB_OBSOLETE.
   CJB: 26-May-26: Use int instead of unsigned int in the public interface.
+  CJB: 27-May-26: Update the integer types of Pal256_colour_brightness to
+                  match the function to which it redirects.
 */
 
 #ifndef Pal256_h
@@ -120,7 +122,7 @@ _Optional CONST _kernel_oserror *Pal256_set_colour(ObjectId /*object*/, int /*c*
     */
 
 #ifdef CBLIB_OBSOLETE
-char Pal256_colour_brightness(unsigned long colour);
+int Pal256_colour_brightness(PaletteEntry colour);
    /*
     * This function is deprecated - you should use 'palette_entry_brightness'
     * instead.
