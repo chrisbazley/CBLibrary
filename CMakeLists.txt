@@ -39,6 +39,7 @@ set(XObjectList ErrNotRec.c FPCompOnly.c)
 set(ObsoleteList ${ObjectList} FednetComp.c RoundRobin.c Loader.c)
 
 file(GLOB ALL_HEADERS "*.h")
+file(GLOB PRIVATE_HEADERS "Internal/*.h")
 
 # Strip the deprecated components out for modern targets
 set(PUBLIC_HEADERS ${ALL_HEADERS})
@@ -49,7 +50,7 @@ list(REMOVE_ITEM PUBLIC_HEADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/Loader.h"
 )
 
-add_library(CB STATIC ${ObjectList} ${PUBLIC_HEADERS})
+add_library(CB STATIC ${ObjectList} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
 
 set_target_properties(CB PROPERTIES
     PUBLIC_HEADER "${PUBLIC_HEADERS}"
@@ -80,7 +81,7 @@ install(TARGETS CB
     PUBLIC_HEADER DESTINATION include
 )
 
-add_library(CBObsolete STATIC ${ObsoleteList} ${ALL_HEADERS})
+add_library(CBObsolete STATIC ${ObsoleteList} ${ALL_HEADERS} ${PRIVATE_HEADERS})
 
 set_target_properties(CBObsolete PROPERTIES
     PUBLIC_HEADER "${ALL_HEADERS}"
@@ -113,7 +114,7 @@ install(TARGETS CBObsolete
     PUBLIC_HEADER DESTINATION include
 )
 
-add_library(CBExtra STATIC ${XObjectList} ${PUBLIC_HEADERS})
+add_library(CBExtra STATIC ${XObjectList} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
 
 set_target_properties(CBExtra PROPERTIES
     PUBLIC_HEADER "${PUBLIC_HEADERS}"
