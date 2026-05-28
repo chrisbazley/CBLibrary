@@ -40,6 +40,7 @@
                   allocated memory on 64-bit systems.
   CJB: 15-May-26: As above, but for data.ram_fetch.
   CJB: 22-May-26: Stop allocating heap memory for WimpMessage objects.
+  CJB: 28-May-26: Simplify control flow in loader3_receive_data.
 */
 
 /* ISO library headers */
@@ -739,27 +740,23 @@ _Optional CONST _kernel_oserror *loader3_receive_data(const WimpMessage *const m
   /* Allocate memory for a new load operation */
   DEBUGF("Loader3: Creating a record for a new load operation\n");
   _Optional LoadOpData *const load_op_data = malloc(sizeof(*load_op_data));
-  if (load_op_data != NULL)
-  {
-    /* Initialise record for a new load operation */
-    *load_op_data = (LoadOpData){
-      .RAM_capable = false,
-      .idle_function = false,
-      .no_flex_budge = false,
-      .have_RAM_buffer = false,
-      .bytes_received = 0,
-      .read_method = read_method,
-      .failed_method = failed_method,
-      .client_handle = client_handle,
-    };
-  };
   if (load_op_data == NULL)
   {
     return no_mem();
   }
 
   /* Initialise record for a new load operation */
-  load_op_data->datasave_msg = *message,
+  *load_op_data = (LoadOpData){
+    .RAM_capable = false,
+    .idle_function = false,
+    .no_flex_budge = false,
+    .have_RAM_buffer = false,
+    .bytes_received = 0,
+    .read_method = read_method,
+    .failed_method = failed_method,
+    .client_handle = client_handle,
+    .datasave_msg = *message,
+  };
 
   /* Add new record to head of linked list */
   linkedlist_insert(&load_op_data_list, NULL, &load_op_data->list_item);
