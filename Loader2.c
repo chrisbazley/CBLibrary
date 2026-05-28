@@ -73,6 +73,7 @@
   CJB: 15-May-26: As above, but for data.data_save.leaf_name and data.ram_fetch.
   CJB: 27-May-26: Assign a compound literal to ensure full initialisation of
                   each new LoadOpData.
+  CJB: 22-May-26: Stop allocating heap memory for WimpMessage objects.
 */
 
 /* ISO library headers */
@@ -130,7 +131,7 @@ typedef struct
   bool                    have_RAM_buffer:1;
   int                     file_type;
   WimpRAMFetchMessage     ram_fetch; /* includes flex anchor */
-  _Optional WimpMessage        *datasave_msg; /* heap block */
+  WimpMessage             datasave_msg;
   _Optional Loader2FileHandler *loader_funct;
   LoadOpCallback          callback;
 }
@@ -309,7 +310,7 @@ _Optional CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message
                  FileType_None : message->data.data_save.file_type),
     .have_RAM_buffer = false, /* no flex block here */
     .ram_fetch.buffer_size = 0,
-    .datasave_msg = NULL, /* no heap block here */
+    .datasave_msg = *message,
     .callback.funct = finished_method, /* may be NULL */
     .loader_funct = load_method, /* should be NULL */
     .callback.arg = client_handle,
@@ -342,30 +343,6 @@ _Optional CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message
   {
     /* Can try RAM transfer (see if they support it) */
 
-    /* Calculate minimum size of the DataSave message, which may be less than
-       message->hdr.size depending on the sophistication of its sender */
-    int msg_size = WORD_ALIGN(offsetof(WimpMessage, data.data_save.leaf_name) +
-                              strlen(message->data.data_save.leaf_name) + 1);
-
-    assert(msg_size <= message->hdr.size);
-    if (msg_size > message->hdr.size) /* paranoia */
-      msg_size = message->hdr.size;
-
-    /* Copy incoming DataSave message in case we need to reply to it later */
-    load_op_data->datasave_msg = malloc((size_t)msg_size);
-    if (load_op_data->datasave_msg == NULL)
-    {
-      /* De-link new record from head of linked list and scrap it */
-      _ldr2_destroy_op(&*load_op_data);
-      return lookup_error("NoMem", ""); /* Could not claim memory */
-    }
-
-    DEBUGF("Loader2: Copying DataSave message to %p\n",
-          (void *)load_op_data->datasave_msg);
-
-    memcpy(&*load_op_data->datasave_msg, message, (size_t)msg_size);
-    load_op_data->datasave_msg->hdr.size = msg_size;
-
     /* Use estimated file size as buffer size unless it is implausible
        but allocate one extra byte to try to avoid a second RAMFetch. */
     load_op_data->ram_fetch.buffer_size =
@@ -384,42 +361,34 @@ _Optional CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message
 
     load_op_data->have_RAM_buffer = true;
 
-    { /* Allocate (very) temporary buffer for a RAMFetch message */
-      _Optional WimpMessage *reply = malloc(offsetof(WimpMessage, data.ram_fetch) +
-                                            sizeof(WimpRAMFetchMessage));
-      if (reply == NULL)
-      {
-        _ldr2_destroy_op(&*load_op_data);
-        return lookup_error("NoMem", ""); /* Could not claim memory */
-      }
-
-      /* Populate header of RAMFetch message */
-      reply->hdr.size = sizeof(reply->hdr) + sizeof(WimpRAMFetchMessage);
-      reply->hdr.your_ref = message->hdr.my_ref;
-      reply->hdr.action_code = Wimp_MRAMFetch;
-
-      /* Populate body of RAMFetch message */
-      if (!load_op_data->no_flex_budge)
-      {
-        nobudge_register(PreExpandHeap); /* Protect copy of flex anchor in message */
-        load_op_data->no_flex_budge = true;
-      }
-      reply->data.ram_fetch = load_op_data->ram_fetch;
-
-      /* Send our reply to the sender of the DataSave message (recorded
-         delivery) */
-      e = wimp_send_message(Wimp_EUserMessageRecorded,
-                            &*reply,
-                            message->hdr.sender,
-                            0,
-                            NULL);
-      if (e != NULL)
-        _ldr2_destroy_op(&*load_op_data);
-      else
-        _ldr2_retain_my_ref(&*load_op_data, &*reply);
-
-      free(reply);
+    if (!load_op_data->no_flex_budge)
+    {
+      nobudge_register(PreExpandHeap); /* Protect copy of flex anchor in message */
+      load_op_data->no_flex_budge = true;
     }
+
+    WimpMessage reply = {
+      /* Populate header of RAMFetch message */
+      .hdr = {
+        .size = offsetof(WimpMessage, data.ram_fetch) + sizeof(WimpRAMFetchMessage),
+        .your_ref = message->hdr.my_ref,
+        .action_code = Wimp_MRAMFetch,
+      },
+      /* Populate body of RAMFetch message */
+      .data.ram_fetch = load_op_data->ram_fetch,
+    };
+
+    /* Send our reply to the sender of the DataSave message (recorded
+     delivery) */
+    e = wimp_send_message(Wimp_EUserMessageRecorded,
+                          &reply,
+                          message->hdr.sender,
+                          0,
+                          NULL);
+    if (e != NULL)
+      _ldr2_destroy_op(&*load_op_data);
+    else
+      _ldr2_retain_my_ref(&*load_op_data, &reply);
   }
   else
   {
@@ -666,7 +635,6 @@ static int _ldr2_ramtransmit_msg_handler(WimpMessage *message, void *handle)
   }
   else
   {
-    _Optional WimpMessage *reply;
     DEBUGF("Loader2: RAM transfer buffer filled (unfinished)\n");
 
     /* Extend the buffer for more data */
@@ -680,44 +648,39 @@ static int _ldr2_ramtransmit_msg_handler(WimpMessage *message, void *handle)
     }
     load_op_data->ram_fetch.buffer_size = BufferExtend;
 
-    /* Allocate (very) temporary buffer for a RAMFetch message */
-    reply = malloc(offsetof(WimpMessage, data.ram_fetch) + sizeof(WimpRAMFetchMessage));
-    if (reply == NULL)
-    {
-      _ldr2_finished(&*load_op_data, false, lookup_error("NoMem", ""));
-      return 1; /* claim message */
-    }
-
-    /* Populate header of RAMFetch message */
-    reply->hdr.size = sizeof(reply->hdr) + sizeof(WimpRAMFetchMessage);
-    reply->hdr.your_ref = message->hdr.my_ref;
-    reply->hdr.action_code = Wimp_MRAMFetch;
-
-    /* Populate body of RAMFetch message
-       (tell them to write at the end of the data already received) */
     if (!load_op_data->no_flex_budge)
     {
       nobudge_register(PreExpandHeap); /* Protect copy of flex anchor in message */
       load_op_data->no_flex_budge = true;
     }
-    reply->data.ram_fetch.buffer = (char *)load_op_data->ram_fetch.buffer +
-                                   flex_size(&load_op_data->ram_fetch.buffer) -
-                                   BufferExtend;
-    reply->data.ram_fetch.buffer_size = load_op_data->ram_fetch.buffer_size;
+
+    WimpMessage reply = {
+      /* Populate header of RAMFetch message */
+      .hdr = {
+        .size = offsetof(WimpMessage, data.ram_fetch) + sizeof(WimpRAMFetchMessage),
+        .your_ref = message->hdr.my_ref,
+        .action_code = Wimp_MRAMFetch,
+      },
+      /* Populate body of RAMFetch message
+         (tell them to write at the end of the data already received) */
+      .data.ram_fetch = {
+        .buffer = (char *)load_op_data->ram_fetch.buffer +
+                  flex_size(&load_op_data->ram_fetch.buffer) - BufferExtend,
+        .buffer_size = load_op_data->ram_fetch.buffer_size,
+      },
+    };
 
     /* Send our reply to the sender of the RAMTransmit message (recorded
        delivery) */
     e = wimp_send_message(Wimp_EUserMessageRecorded,
-                          &*reply,
+                          &reply,
                           message->hdr.sender,
                           0,
                           NULL);
     if (e != NULL)
       _ldr2_finished(&*load_op_data, false, e);
     else
-      _ldr2_retain_my_ref(&*load_op_data, &*reply);
-
-    free(reply);
+      _ldr2_retain_my_ref(&*load_op_data, &reply);
   } /* was not last bufferful */
 
   return 1; /* claim message */
@@ -761,18 +724,14 @@ static int _ldr2_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBloc
       if (!load_op_data->RAM_capable)
       {
         /* Use file transfer instead, by replying to the old DataSave message */
-        flex_free(&load_op_data->ram_fetch.buffer);
-        load_op_data->have_RAM_buffer = false;
-
-        if (load_op_data->datasave_msg)
+        if (load_op_data->have_RAM_buffer)
         {
-          e = _ldr2_replyto_datasave(&*load_op_data->datasave_msg, &*load_op_data);
-
-          free(load_op_data->datasave_msg); /* no longer require copy of DataSave */
-          load_op_data->datasave_msg = NULL;
+          flex_free(&load_op_data->ram_fetch.buffer);
+          load_op_data->have_RAM_buffer = false;
         }
 
-        if (!load_op_data->datasave_msg || e != NULL)
+        e = _ldr2_replyto_datasave(&load_op_data->datasave_msg, &*load_op_data);
+        if (e != NULL)
           _ldr2_finished(&*load_op_data, false, e);
       }
       else
@@ -861,55 +820,44 @@ static _Optional LoadOpData *_ldr2_find_record(int msg_ref)
 static _Optional CONST _kernel_oserror *_ldr2_replyto_datasave(const WimpMessage *reply_to, LoadOpData *load_op_data)
 {
   _Optional CONST _kernel_oserror *e;
-  _Optional WimpMessage *reply;
   int msg_size;
 
   assert(reply_to != NULL);
   assert(load_op_data != NULL);
   DEBUGF("Loader2: Replying to DataSave message ref. %d\n", reply_to->hdr.my_ref);
 
-  /* Allocate (very) temporary buffer for a DataSaveAck message */
   msg_size = WORD_ALIGN(offsetof(WimpMessage, data.data_save_ack.leaf_name) +
                         sizeof("<Wimp$Scrap>"));
 
-  reply = malloc((size_t)msg_size);
-  if (reply == NULL)
-    return lookup_error("NoMem", ""); /* Memory couldn't be claimed */
-
-  /* Populate header of DataSaveAck message */
-  reply->hdr.size = msg_size;
-  reply->hdr.your_ref = reply_to->hdr.my_ref;
-  reply->hdr.action_code = Wimp_MDataSaveAck;
-
-  /* Populate body of DataSaveAck message
+  WimpMessage reply = {
+    /* Populate header of DataSaveAck message */
+    .hdr = {
+      .size = msg_size,
+      .your_ref = reply_to->hdr.my_ref,
+      .action_code = Wimp_MDataSaveAck,
+    },
+    /* Populate body of DataSaveAck message
      (mostly copied from the DataSave message) */
-  reply->data.data_save_ack.destination_window =
-    reply_to->data.data_save.destination_window;
-
-  reply->data.data_save_ack.destination_icon =
-    reply_to->data.data_save.destination_icon;
-
-  reply->data.data_save_ack.destination_x =
-    reply_to->data.data_save.destination_x;
-
-  reply->data.data_save_ack.destination_y =
-    reply_to->data.data_save.destination_y;
-
-  reply->data.data_save_ack.estimated_size = -1; /* not a safe destination */
-  reply->data.data_save_ack.file_type = reply_to->data.data_save.file_type;
-  strcpy(&*reply->data.data_save_ack.leaf_name, "<Wimp$Scrap>");
+    .data.data_save_ack = {
+      .destination_window = reply_to->data.data_save.destination_window,
+      .destination_icon = reply_to->data.data_save.destination_icon,
+      .destination_x = reply_to->data.data_save.destination_x,
+      .destination_y = reply_to->data.data_save.destination_y,
+      .estimated_size = -1, /* not a safe destination */
+      .file_type = reply_to->data.data_save.file_type,
+      .leaf_name = "<Wimp$Scrap>",
+    },
+  };
 
   /* Send our reply to the sender of the DataSave message */
   e = wimp_send_message(Wimp_EUserMessage,
-                        &*reply,
+                        &reply,
                         reply_to->hdr.sender,
                         0,
                         NULL);
 
   if (e == NULL)
-    _ldr2_retain_my_ref(load_op_data, &*reply);
-
-  free(reply);
+    _ldr2_retain_my_ref(load_op_data, &reply);
 
   return e; /* success */
 }
@@ -926,8 +874,6 @@ static void _ldr2_destroy_op(LoadOpData *load_op_data)
 
   if (load_op_data->idle_function)
     scheduler_deregister(_ldr2_time_out, load_op_data);
-
-  free(load_op_data->datasave_msg);
 
   if (load_op_data->have_RAM_buffer)
     flex_free(&load_op_data->ram_fetch.buffer);
