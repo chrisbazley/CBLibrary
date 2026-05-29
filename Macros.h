@@ -112,6 +112,7 @@ History:
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 22-May-26: Added the definition of UNION_CAST to combat strict aliasing.
   CJB: 25-May-26: Added the definition of C23_CONST to ease compatibility.
+  CJB: 29-May-26: Added the definition of CLAMP to clamp values to a range.
 */
 
 #ifndef Macros_h
@@ -283,6 +284,7 @@ enum
 
 #define LOWEST(a, b) ((a) < (b) ? (a) : (b))
 #define HIGHEST(a, b) ((a) > (b) ? (a) : (b))
+#define CLAMP(x, lo, hi) LOWEST(HIGHEST(x, lo), hi)
 
 /* Assign to an l-value the unsigned difference between two expressions.
    This compiles to very efficient in-line ARM code, unlike abs(x - y). */
