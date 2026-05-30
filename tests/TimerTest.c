@@ -92,7 +92,7 @@ static void test3(void)
   _Optional CONST _kernel_oserror *e = NULL;
 
   const clock_t start = clock();
-  for (size_t n = 0; n < NFlags; ++n)
+  for (int n = 0; n < NFlags; ++n)
   {
     timeup_flags[n] = true;
     e = timer_register(&timeup_flags[n], WaitTime*(n+1));
@@ -132,7 +132,7 @@ static void test4(void)
   _Optional CONST _kernel_oserror *e = NULL;
 
   const clock_t start = clock();
-  for (size_t n = 0; n < NFlags; ++n)
+  for (int n = 0; n < NFlags; ++n)
   {
     timeup_flags[n] = true;
     e = timer_register(&timeup_flags[n], WaitTime*(n+1));
