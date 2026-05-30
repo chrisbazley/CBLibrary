@@ -361,7 +361,7 @@ static void test9(void)
 
   /* Check that string comparison is case-insensitive */
   for (i = 0; i <= strlen(names[0]); ++i)
-    upper_case[i] = toupper(names[0][i]);
+    upper_case[i] = (char)toupper(names[0][i]);
 
   assert(userdata_find_by_file_name(upper_case) == &data[0]);
 
