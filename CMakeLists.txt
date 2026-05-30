@@ -61,11 +61,6 @@ target_include_directories(CB PUBLIC .)
 
 target_compile_definitions(CB PRIVATE
     $<$<CONFIG:Debug>:DEBUG_OUTPUT>
-    $<$<CONFIG:Release>:NDEBUG>
-)
-
-target_compile_options(CB PRIVATE
-    $<$<CONFIG:Release>:-O3>
 )
 
 # Several header files depend on headers from dependencies
@@ -92,14 +87,9 @@ target_include_directories(CBObsolete PUBLIC .)
 
 target_compile_definitions(CBObsolete PRIVATE
     $<$<CONFIG:Debug>:DEBUG_OUTPUT>
-    $<$<CONFIG:Release>:NDEBUG>
 )
 
 target_compile_definitions(CBObsolete PRIVATE CBLIB_OBSOLETE)
-
-target_compile_options(CBObsolete PRIVATE
-    $<$<CONFIG:Release>:-O3>
-)
 
 # Several header files depend on headers from dependencies
 target_link_libraries(CBObsolete PUBLIC
@@ -125,11 +115,6 @@ target_include_directories(CBExtra PUBLIC .)
 
 target_compile_definitions(CBExtra PRIVATE
     $<$<CONFIG:Debug>:DEBUG_OUTPUT>
-    $<$<CONFIG:Release>:NDEBUG>
-)
-
-target_compile_options(CBExtra PRIVATE
-    $<$<CONFIG:Release>:-O3>
 )
 
 # Several header files depend on headers from dependencies
