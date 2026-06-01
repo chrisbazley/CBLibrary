@@ -113,6 +113,9 @@ History:
   CJB: 22-May-26: Added the definition of UNION_CAST to combat strict aliasing.
   CJB: 25-May-26: Added the definition of C23_CONST to ease compatibility.
   CJB: 29-May-26: Added the definition of CLAMP to clamp values to a range.
+  CJB: 01-Jun-26: Deleted the definition of UNION_CAST because it doesn't seem
+                  to have any practical benefit.
+
 */
 
 #ifndef Macros_h
@@ -343,12 +346,6 @@ enum
 
 #define CONTAINER_OF(addr, type, member) \
   ((type *)(((char *)(addr)) - offsetof(type, member)))
-
-#define UNION_CAST(addr, dst_type, src_type) \
-  (&( \
-      (union { dst_type dst; src_type src; } *) \
-      (1 ? (addr) : (src_type *)0) \
-    )->dst)
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
 #define C23_CONST const
