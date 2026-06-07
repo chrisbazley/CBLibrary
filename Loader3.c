@@ -41,6 +41,7 @@
   CJB: 15-May-26: As above, but for data.ram_fetch.
   CJB: 22-May-26: Stop allocating heap memory for WimpMessage objects.
   CJB: 28-May-26: Simplify control flow in loader3_receive_data.
+  CJB: 07-Jun-26: Use memcpy instead of strcpy since length is known.
 */
 
 /* ISO library headers */
@@ -834,14 +835,14 @@ bool loader3_load_file(const char *const file_name, int const file_type,
     .client_handle = client_handle,
   };
 
-  if (strlen(file_name) >=
-      sizeof(load_op_data.datasave_msg.data.data_save.leaf_name))
+  size_t const len = strlen(file_name);
+  if (len >= sizeof(load_op_data.datasave_msg.data.data_save.leaf_name))
   {
     report_fail(&load_op_data, lookup_error("StrOFlo", ""));
   }
   else
   {
-    strcpy(load_op_data.datasave_msg.data.data_save.leaf_name, file_name);
+    memcpy(load_op_data.datasave_msg.data.data_save.leaf_name, file_name, len + 1);
     load_op_data.datasave_msg.data.data_save.file_type = file_type;
     success = load_file(&load_op_data, file_name);
   }
