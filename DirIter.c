@@ -36,6 +36,8 @@
   CJB: 15-May-26: Use size_t instead of unsigned int for the number of
                   catalogue entries in the buffer, and pass size_t to
                   os_gbpb_read_cat_no_path to ensure type compatibility.
+  CJB: 07-Jun-26: Stop updating bytes_free with a final value that is never
+                  used (in get_name).
 */
 
 /* ISO library headers */
@@ -556,7 +558,6 @@ static size_t get_name(const DirIterator *iterator,
       nbytes = LOWEST(level->entry_name_len, bytes_free);
       memcpy(write, entry->name, nbytes);
       write += nbytes;
-      bytes_free -= nbytes;
 
       /* Append a nul terminator */
       assert(write < buffer + buff_size);
