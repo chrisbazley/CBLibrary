@@ -64,6 +64,8 @@
                   Cast the result of flex_size to unsigned to stop a warning.
   CJB: 21-May-26: Use size_t internally instead of unsigned int.
                   Assign compound literals to ensure full initialisation.
+  CJB: 16-Jun-26: Assign the address of the FILE * member to *handle instead
+                  of casting the address of the struct that contains it.
 */
 
 /* ISO library headers */
@@ -330,7 +332,7 @@ _Optional CONST _kernel_oserror *load_fileM2(const char *file_path,
       fclose_dec(&*state->common.f);
       state->common.f = NULL;
     }
-    *handle = (FILE **)state; /* write back pointer to state */
+    *handle = &state->common.f; /* write back pointer to state */
   }
   return NULL; /* no error */
 }
@@ -484,7 +486,7 @@ _Optional CONST _kernel_oserror *save_fileM2(const char *file_path,
     }
   }
 
-  *handle = (FILE **)state; /* write back pointer to state */
+  *handle = &state->common.f; /* write back pointer to state */
 
   if (write_fail)
   {
