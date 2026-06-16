@@ -66,6 +66,8 @@
                   get_comp_perc().
   CJB: 10-May-26: Use int instead of unsigned int for percentages.
                   Cast the result of flex_size to suppress a warning.
+  CJB: 16-Jun-26: Assign the address of the FILE * member to *handle instead
+                  of casting the address of the struct that contains it.
 */
 
 /* ISO library headers */
@@ -445,7 +447,7 @@ _Optional CONST _kernel_oserror *load_compressedM(const char *const file_path,
     }
   }
 
-  *handle = (FILE **)state; /* write back pointer to state */
+  *handle = &state->common.f; /* write back pointer to state */
   return e_token != NULL ? lookup_error(&*e_token, file_path) : NULL;
 }
 
@@ -537,7 +539,7 @@ _Optional CONST _kernel_oserror *save_compressedM2(const char *const file_path,
     }
   }
 
-  *handle = (FILE **)state; /* write back pointer to state */
+  *handle = &state->common.f; /* write back pointer to state */
   return e_token != NULL ? lookup_error(&*e_token, file_path) : NULL;
 }
 
