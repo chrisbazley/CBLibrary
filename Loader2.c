@@ -834,7 +834,7 @@ static _Optional CONST _kernel_oserror *_ldr2_replyto_datasave(const WimpMessage
   WimpMessage reply = {
     /* Populate header of DataSaveAck message */
     .hdr = {
-      .size = (size_t)msg_size,
+      .size = (int)msg_size,
       .your_ref = reply_to->hdr.my_ref,
       .action_code = Wimp_MDataSaveAck,
     },
