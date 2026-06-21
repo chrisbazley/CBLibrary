@@ -78,6 +78,8 @@
                   offset on 64-bit systems.
   CJB: 26-May-26: Add initialiser and assign compound literal to ensure full
                   initialisation of message data.
+  CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
+                  use of WORD_ALIGN on values of type size_t.
 */
 
 /* ISO library headers */
@@ -648,8 +650,8 @@ static _Optional CONST _kernel_oserror *_drag_send_dragging_msg(void)
     client_file_types ? &*client_file_types : &(int){FileType_Null},
     ARRAY_SIZE(dragging->file_types) - 1) + 1;
 
-  message.hdr.size = WORD_ALIGN(offsetof(WimpMessage, data) +
-    offsetof(WimpDraggingMessage, file_types) +
+  message.hdr.size = (int)WORD_ALIGN_SZ(
+    offsetof(WimpMessage, data) + offsetof(WimpDraggingMessage, file_types) +
     sizeof(dragging->file_types[0]) * array_len);
 
   if (dragclaim_task)

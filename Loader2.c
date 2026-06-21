@@ -74,6 +74,8 @@
   CJB: 27-May-26: Assign a compound literal to ensure full initialisation of
                   each new LoadOpData.
   CJB: 22-May-26: Stop allocating heap memory for WimpMessage objects.
+  CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
+                  use of WORD_ALIGN on values of type size_t.
 */
 
 /* ISO library headers */
@@ -820,19 +822,19 @@ static _Optional LoadOpData *_ldr2_find_record(int msg_ref)
 static _Optional CONST _kernel_oserror *_ldr2_replyto_datasave(const WimpMessage *reply_to, LoadOpData *load_op_data)
 {
   _Optional CONST _kernel_oserror *e;
-  int msg_size;
 
   assert(reply_to != NULL);
   assert(load_op_data != NULL);
   DEBUGF("Loader2: Replying to DataSave message ref. %d\n", reply_to->hdr.my_ref);
 
-  msg_size = WORD_ALIGN(offsetof(WimpMessage, data.data_save_ack.leaf_name) +
-                        sizeof("<Wimp$Scrap>"));
+  size_t const msg_size =
+    WORD_ALIGN_SZ(offsetof(WimpMessage, data.data_save_ack.leaf_name) +
+                  sizeof("<Wimp$Scrap>"));
 
   WimpMessage reply = {
     /* Populate header of DataSaveAck message */
     .hdr = {
-      .size = msg_size,
+      .size = (size_t)msg_size,
       .your_ref = reply_to->hdr.my_ref,
       .action_code = Wimp_MDataSaveAck,
     },

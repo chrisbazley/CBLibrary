@@ -38,6 +38,8 @@
                   os_gbpb_read_cat_no_path to ensure type compatibility.
   CJB: 07-Jun-26: Stop updating bytes_free with a final value that is never
                   used (in get_name).
+  CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
+                  use of WORD_ALIGN on values of type size_t.
 */
 
 /* ISO library headers */
@@ -260,7 +262,7 @@ static _Optional CONST _kernel_oserror *refill_buffer(DirIterator       *iterato
       level->nentries, keep_size, (void *)level->buffer);
 
     memmove(level->buffer, &*level->entry, keep_size);
-    keep_size = WORD_ALIGN(keep_size); /* align before fresh entries */
+    keep_size = WORD_ALIGN_SZ(keep_size); /* align before fresh entries */
   }
   level->entry = (const OS_GBPB_CatalogueInfo *)level->buffer;
 
@@ -407,7 +409,7 @@ static void advance(DirIteratorLevel *level)
   if (--level->nentries > 0 && level->entry != NULL)
   {
     /* Calculate the address of the next catalogue entry in the buffer */
-    const size_t name_size = WORD_ALIGN(level->entry_name_len + 1);
+    const size_t name_size = WORD_ALIGN_SZ(level->entry_name_len + 1);
 
     entry = level->entry;
     assert(entry != NULL);

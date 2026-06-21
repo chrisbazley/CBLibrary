@@ -35,6 +35,8 @@
                   offset on 64-bit systems.
   CJB: 22-May-26: Add initialisers to declarations and assign compound literals
                   to ensure full initialisation of message data.
+  CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
+                  use of WORD_ALIGN on values of type size_t.
 */
 
 /* ISO library headers */
@@ -270,9 +272,9 @@ static _Optional CONST _kernel_oserror *request_data(
   size_t const array_len = copy_file_types(drm->file_types,
     data_request->file_types, ARRAY_SIZE(drm->file_types) - 1) + 1;
 
-  message.hdr.size = WORD_ALIGN(offsetof(WimpMessage, data) +
-                       offsetof(WimpDataRequestMessage, file_types) +
-                       sizeof(drm->file_types[0]) * array_len);
+  message.hdr.size = (int)WORD_ALIGN_SZ(
+    offsetof(WimpMessage, data) + offsetof(WimpDataRequestMessage, file_types) +
+    sizeof(drm->file_types[0]) * array_len);
 
   _Optional CONST _kernel_oserror *const e =
     wimp_send_message(Wimp_EUserMessageRecorded, &message, 0, 0, NULL);

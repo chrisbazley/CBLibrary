@@ -89,6 +89,8 @@
   CJB: 15-May-26: Use offsetof(WimpMessage, data) instead of sizeof(message.hdr)
                   because the latter does not give a sufficiently aligned address
                   offset on 64-bit systems.
+  CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
+                  use of WORD_ALIGN on values of type size_t.
 */
 
 /* ISO library headers */
@@ -956,9 +958,9 @@ static _Optional CONST _kernel_oserror *_ent_request_data(int window, int icon, 
   while (file_types[array_len++] != FileType_Null);
   DEBUGF("Entity: File types array length is %zu\n", array_len);
 
-  message.hdr.size = WORD_ALIGN(sizeof(message.hdr) +
-                     offsetof(WimpDataRequestMessage, file_types) +
-                     sizeof(drm->file_types[0]) * array_len);
+  message.hdr.size = (int)WORD_ALIGN_SZ(
+    sizeof(message.hdr) + offsetof(WimpDataRequestMessage, file_types) +
+    sizeof(drm->file_types[0]) * array_len);
 
   e = wimp_send_message(Wimp_EUserMessageRecorded, &message, 0, 0, NULL);
   if (e == NULL)

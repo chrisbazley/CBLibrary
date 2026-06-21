@@ -28,6 +28,8 @@
                   instead of relying on the size of the header being equal
                   to the offset to the body, which is not true for 64-bit
                   system.
+  CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
+                  use of WORD_ALIGN on values of type size_t.
 */
 
 /* ISO library headers */
@@ -782,8 +784,9 @@ _Optional CONST _kernel_oserror *saver2_send_data(int const task_handle,
         message->data.data_save.destination_window);
 
   /* Populate a few fields of the DataSave message automatically */
-  message->hdr.size = WORD_ALIGN(offsetof(WimpMessage, data.data_save.leaf_name) +
-                                 strlen(message->data.data_save.leaf_name) + 1);
+  message->hdr.size =
+    (int)WORD_ALIGN_SZ(offsetof(WimpMessage, data.data_save.leaf_name) +
+                       strlen(message->data.data_save.leaf_name) + 1);
   message->hdr.action_code = Wimp_MDataSave;
 
   /* Allocate data block for new save operation and link it into the list */

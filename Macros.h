@@ -115,7 +115,8 @@ History:
   CJB: 29-May-26: Added the definition of CLAMP to clamp values to a range.
   CJB: 01-Jun-26: Deleted the definition of UNION_CAST because it doesn't seem
                   to have any practical benefit.
-
+  CJB: 21-Jun-26: Added the definition of WORD_ALIGN_SZ to avoid warnings about
+                  use of WORD_ALIGN on values of type size_t.
 */
 
 #ifndef Macros_h
@@ -268,6 +269,12 @@ enum
  * expression (useful for sprite widths, which must include right hand wastage).
  */
 #define WORD_ALIGN(value) (((value) + 3) & ~3)
+
+/* Return the nearest word aligned value greater than or equal to a given
+ * expression (useful for Wimp message sizes, which must be a whole number of
+ * words).
+ */
+#define WORD_ALIGN_SZ(value) (((value) + 3u) & ~(size_t)3)
 
 /* Suppress compiler warnings about an unused function argument. */
 #define NOT_USED(x) ((void)(x))

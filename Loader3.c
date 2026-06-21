@@ -42,6 +42,8 @@
   CJB: 22-May-26: Stop allocating heap memory for WimpMessage objects.
   CJB: 28-May-26: Simplify control flow in loader3_receive_data.
   CJB: 07-Jun-26: Use memcpy instead of strcpy since length is known.
+  CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
+                  use of WORD_ALIGN on values of type size_t.
 */
 
 /* ISO library headers */
@@ -335,21 +337,28 @@ static _Optional CONST _kernel_oserror *send_datasaveack(LoadOpData *const load_
     load_op_data->datasave_msg.hdr.my_ref);
 
   WimpMessage data_save_ack = {
-    .hdr = {
-      .size = WORD_ALIGN(offsetof(WimpMessage, data.data_save_ack.leaf_name) +
-                                  sizeof("<Wimp$Scrap>")),
-      .your_ref = load_op_data->datasave_msg.hdr.my_ref,
-      .action_code = Wimp_MDataSaveAck,
-    },
-    .data.data_save_ack = {
-      .destination_window = load_op_data->datasave_msg.data.data_save.destination_window,
-      .destination_icon = load_op_data->datasave_msg.data.data_save.destination_icon,
-      .destination_x = load_op_data->datasave_msg.data.data_save.destination_x,
-      .destination_y = load_op_data->datasave_msg.data.data_save.destination_y,
-      .estimated_size = DestinationUnsafe,
-      .file_type = load_op_data->datasave_msg.data.data_save.file_type,
-      .leaf_name = "<Wimp$Scrap>",
-    },
+    .hdr =
+      {
+        .size = (int)WORD_ALIGN_SZ(
+          offsetof(WimpMessage, data.data_save_ack.leaf_name) +
+          sizeof("<Wimp$Scrap>")),
+        .your_ref = load_op_data->datasave_msg.hdr.my_ref,
+        .action_code = Wimp_MDataSaveAck,
+      },
+    .data.data_save_ack =
+      {
+        .destination_window =
+          load_op_data->datasave_msg.data.data_save.destination_window,
+        .destination_icon =
+          load_op_data->datasave_msg.data.data_save.destination_icon,
+        .destination_x =
+          load_op_data->datasave_msg.data.data_save.destination_x,
+        .destination_y =
+          load_op_data->datasave_msg.data.data_save.destination_y,
+        .estimated_size = DestinationUnsafe,
+        .file_type = load_op_data->datasave_msg.data.data_save.file_type,
+        .leaf_name = "<Wimp$Scrap>",
+      },
   };
 
   /* Send our reply to the sender of the DataSave message */
