@@ -40,6 +40,7 @@
                   used (in get_name).
   CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
                   use of WORD_ALIGN on values of type size_t.
+  CJB: 06-Jul-26: Assign a compound literal to ensure complete initialisation.
 */
 
 /* ISO library headers */
@@ -333,11 +334,14 @@ static _Optional CONST _kernel_oserror *enter_dir(DirIterator *iterator)
   if (level != NULL)
   {
     /* Record the length of the path name leading up to this directory. */
-    level->path_name_len = stringbuffer_get_length(&iterator->path_name);
-    level->entry = NULL;
-    level->nentries = 0;
-    level->gbpb_next = 0; /* start of directory */
-    level->buffer_size = DEFAULT_BUFFER_SIZE;
+    *level = (DirIteratorLevel){
+      .path_name_len = stringbuffer_get_length(&iterator->path_name),
+      .entry = NULL,
+      .nentries = 0,
+      .gbpb_next = 0, /* start of directory */
+      .buffer_size = DEFAULT_BUFFER_SIZE,
+    };
+
     linkedlist_insert(&iterator->dir_list, NULL, &level->list_item);
 
     /* Try to fill the buffer with catalogue entries for this level. */
