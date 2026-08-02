@@ -76,6 +76,7 @@
                   Allow null 'type' argument for ViewsMenu_show_object().
   CJB: 11-May-26: Avoid passing a freed pointer to menu_remove_entry().
   CJB: 22-May-26: Ensure only pointers of type void * are converted to uintptr_t.
+  CJB: 02-Aug-26: Delete unused variable 'VM_parent'.
  */
 
 /* ISO library headers */
@@ -118,7 +119,7 @@ ViewInfo;
 
 static ComponentId VM_parent_entry;
 static LinkedList view_list;
-static ObjectId VM, VM_parent;
+static ObjectId VM;
 static bool menu_showing = false, removals_pending = false;
 static _Optional MessagesFD *desc;
 #ifndef CBLIB_OBSOLETE
@@ -175,7 +176,6 @@ _Optional CONST _kernel_oserror *ViewsMenu_parentcreated(ObjectId parent_menu, C
 {
   /* To be called when parent menu is created */
   VM_parent_entry = parent_entry;
-  VM_parent = parent_menu;
 
   /* Register event handlers for when parent is opened and closed */
   ON_ERR_RTN_E(event_register_toolbox_handler(parent_menu,
