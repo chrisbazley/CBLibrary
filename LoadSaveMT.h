@@ -37,6 +37,9 @@ History:
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-May-26: Use int instead of unsigned int for percentages.
+  CJB: 02-Aug-26: Every instance of pointer-to-pointer-to-optional-pointer-to-FILE
+                  should be pointer-to-pointer-to-optional-pointer-to-optional-FILE
+                  (i.e. there can be no FILE, as well as no pointer to FILE.)
 */
 
 #ifndef LoadSaveMT_h
@@ -66,7 +69,7 @@ _Optional CONST _kernel_oserror *loadsave_initialise(_Optional MessagesFD */*mfd
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
 
-int get_loadsave_perc(FILE *_Optional ** /*handle*/);
+int get_loadsave_perc(_Optional FILE *_Optional ** /*handle*/);
    /*
     * Calculates what proportion of a file operation has been completed and
     * returns this as a percentage value. 'handle' must be the same pointer
@@ -77,7 +80,7 @@ int get_loadsave_perc(FILE *_Optional ** /*handle*/);
 _Optional CONST _kernel_oserror *load_fileM2(const char * /*file_path*/,
                                              flex_ptr /*buffer_anchor*/,
                                              const volatile bool * /*time_up*/,
-                                             FILE *_Optional ** /*handle*/);
+                                             _Optional FILE *_Optional ** /*handle*/);
    /*
     * Loads data from the specified file 'file_path' into a new flex block
     * anchored at 'buffer_anchor', returning when the variable pointed to by
@@ -91,7 +94,7 @@ _Optional CONST _kernel_oserror *load_fileM2(const char * /*file_path*/,
 _Optional CONST _kernel_oserror *save_fileM2(const char * /*file_path*/,
    flex_ptr /*buffer_anchor*/, const volatile bool * /*time_up*/,
    unsigned int /*start_offset*/, unsigned int /*end_offset*/,
-   FILE *_Optional ** /*handle*/);
+   _Optional FILE *_Optional ** /*handle*/);
    /*
     * Saves an area of flex block 'buffer_anchor' that is delimited by
     * 'start_offset' (inclusive) and 'end_offset' (exclusive). This data is
@@ -105,14 +108,14 @@ _Optional CONST _kernel_oserror *save_fileM2(const char * /*file_path*/,
 
 _Optional CONST _kernel_oserror *load_fileM(const char * /*file_path*/,
    flex_ptr /*buffer_anchor*/, const volatile bool * /*time_up*/,
-   FILE *_Optional ** /*handle*/, bool /*sprite*/);
+   _Optional FILE *_Optional ** /*handle*/, bool /*sprite*/);
    /*
     * This function is deprecated - you should use 'load_fileM2' instead.
     */
 
 _Optional CONST _kernel_oserror *save_fileM(const char * /*file_path*/,
    int /*file_type*/, flex_ptr /*buffer_anchor*/, const volatile bool * /*time_up*/,
-   FILE *_Optional ** /*handle*/, bool /*sprite*/);
+   _Optional FILE *_Optional ** /*handle*/, bool /*sprite*/);
    /*
     * This function is deprecated - you should use 'save_fileM2' instead.
     */

@@ -26,6 +26,9 @@ History:
   CJB: 05-Nov-04: Added clib-style documentation and dependency information.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 02-Aug-26: Every instance of pointer-to-pointer-to-optional-pointer-to-FILE
+                  should be pointer-to-pointer-to-optional-pointer-to-optional-FILE
+                  (i.e. there can be no FILE, as well as no pointer to FILE.)
 */
 
 #ifndef AbortFOp_h
@@ -38,7 +41,7 @@ History:
 #define _Optional
 #endif
 
-void abort_file_op(FILE *_Optional ** /*handle*/);
+void abort_file_op(_Optional FILE *_Optional ** /*handle*/);
    /*
     * Causes a stream to be flushed and the associated file to be closed, then
     * deallocation of the heap block that contained a pointer to this stream

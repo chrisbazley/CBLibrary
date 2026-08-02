@@ -128,7 +128,7 @@ _Optional CONST _kernel_oserror *file_perc_initialise(_Optional MessagesFD *mfd)
 
 _Optional CONST _kernel_oserror *file_perc_load(FilePercOp type, const char *file_path, flex_ptr buffer_anchor)
 {
-  FILE *_Optional *handle = NULL;
+  _Optional FILE *_Optional *handle = NULL;
   _Optional CONST _kernel_oserror *err;
 
   DEBUGF("FilePerc: Starting a load operation of type %d with path '%s' and "
@@ -202,7 +202,7 @@ _Optional CONST _kernel_oserror *file_perc_load(FilePercOp type, const char *fil
 
 _Optional CONST _kernel_oserror *file_perc_save(FilePercOp type, const char *file_path, int file_type, flex_ptr buffer_anchor, unsigned int start_offset, unsigned int end_offset)
 {
-  FILE *_Optional *handle = NULL;
+  _Optional FILE *_Optional *handle = NULL;
   _Optional CONST _kernel_oserror *err;
 
   DEBUGF("FilePerc: Starting a save operation of type %d with path '%s', "

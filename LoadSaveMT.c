@@ -66,7 +66,12 @@
                   Assign compound literals to ensure full initialisation.
   CJB: 16-Jun-26: Assign the address of the FILE * member to *handle instead
                   of casting the address of the struct that contains it.
-*/
+  CJB: 02-Aug-26: Every instance of pointer-to-pointer-to-optional-pointer-to-FILE
+                  should be pointer-to-pointer-to-optional-pointer-to-optional-FILE
+                  (i.e. there can be no FILE, as well as no pointer to FILE.)
+                  Don't dereference a potentially-null pointer when assigning to
+                  *handle (although we're getting the address of the first member).
+ */
 
 /* ISO library headers */
 #include <stdlib.h>
@@ -145,7 +150,7 @@ _Optional CONST _kernel_oserror *loadsave_initialise(_Optional MessagesFD *mfd)
 
 /* ----------------------------------------------------------------------- */
 
-int get_loadsave_perc(FILE *_Optional **handle)
+int get_loadsave_perc(_Optional FILE *_Optional **handle)
 {
   _Optional fileop_state *state = (fileop_state *)*handle;
   size_t bytes_done, total_size, perc_done;
@@ -180,7 +185,7 @@ int get_loadsave_perc(FILE *_Optional **handle)
 /* ----------------------------------------------------------------------- */
 
 _Optional CONST _kernel_oserror *load_fileM2(const char *file_path,
-  flex_ptr buffer_anchor, const volatile bool *time_up, FILE *_Optional **handle)
+  flex_ptr buffer_anchor, const volatile bool *time_up, _Optional FILE *_Optional **handle)
 {
   _Optional fileop_state *state;
 
@@ -341,7 +346,7 @@ _Optional CONST _kernel_oserror *load_fileM2(const char *file_path,
 
 _Optional CONST _kernel_oserror *save_fileM2(const char *file_path,
   flex_ptr buffer_anchor, const volatile bool *time_up, unsigned int start_offset,
-  unsigned int end_offset, FILE *_Optional **handle)
+  unsigned int end_offset, _Optional FILE *_Optional **handle)
 {
   _Optional fileop_state *state;
   const char *open_mode;
@@ -486,7 +491,7 @@ _Optional CONST _kernel_oserror *save_fileM2(const char *file_path,
     }
   }
 
-  *handle = &state->common.f; /* write back pointer to state */
+  *handle = state ? &state->common.f : NULL; /* write back pointer to state */
 
   if (write_fail)
   {
@@ -502,7 +507,7 @@ _Optional CONST _kernel_oserror *save_fileM2(const char *file_path,
 #ifdef CBLIB_OBSOLETE
 /* The following function is deprecated; use load_fileM2(). */
 _Optional CONST _kernel_oserror *load_fileM(const char *file_path, flex_ptr buffer_anchor,
-  const volatile bool *time_up, FILE *_Optional **handle, bool sprite)
+  const volatile bool *time_up, _Optional FILE *_Optional **handle, bool sprite)
 {
   ON_ERR_RTN_E(load_fileM2(file_path, buffer_anchor, time_up, handle));
 
@@ -526,7 +531,7 @@ _Optional CONST _kernel_oserror *load_fileM(const char *file_path, flex_ptr buff
 
 /* The following function is deprecated; use save_fileM2(). */
 _Optional CONST _kernel_oserror *save_fileM(const char *file_path, int file_type,
-  flex_ptr buffer_anchor, const volatile bool *time_up, FILE *_Optional **handle, bool sprite)
+  flex_ptr buffer_anchor, const volatile bool *time_up, _Optional FILE *_Optional **handle, bool sprite)
 {
   SpriteAreaHeader *dummy = (SpriteAreaHeader *)0;
   ON_ERR_RTN_E(save_fileM2(file_path, buffer_anchor, time_up, sprite ?

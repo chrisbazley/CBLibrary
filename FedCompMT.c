@@ -68,6 +68,11 @@
                   Cast the result of flex_size to suppress a warning.
   CJB: 16-Jun-26: Assign the address of the FILE * member to *handle instead
                   of casting the address of the struct that contains it.
+  CJB: 02-Aug-26: Every instance of pointer-to-pointer-to-optional-pointer-to-FILE
+                  should be pointer-to-pointer-to-optional-pointer-to-optional-FILE
+                  (i.e. there can be no FILE, as well as no pointer to FILE.)
+                  Don't dereference a potentially-null pointer when assigning to
+                  *handle (although we're getting the address of the first member).
 */
 
 /* ISO library headers */
@@ -343,7 +348,7 @@ _Optional CONST _kernel_oserror *compress_initialise(_Optional MessagesFD *const
 
 /* ----------------------------------------------------------------------- */
 
-int get_decomp_perc(FILE *_Optional **const handle)
+int get_decomp_perc(_Optional FILE *_Optional **const handle)
 {
   assert(handle != NULL);
   _Optional const decomp_state *const state = (decomp_state *)*handle;
@@ -360,7 +365,7 @@ int get_decomp_perc(FILE *_Optional **const handle)
 
 /* ----------------------------------------------------------------------- */
 
-int get_comp_perc(FILE *_Optional **const handle)
+int get_comp_perc(_Optional FILE *_Optional **const handle)
 {
   assert(handle != NULL);
   _Optional const comp_state *const state = (comp_state *)*handle;
@@ -383,7 +388,7 @@ int get_comp_perc(FILE *_Optional **const handle)
 
 _Optional CONST _kernel_oserror *load_compressedM(const char *const file_path,
   flex_ptr buffer_anchor, const volatile bool *const time_up,
-  FILE *_Optional **const handle)
+  _Optional FILE *_Optional **const handle)
 {
   assert(file_path != NULL);
   assert(buffer_anchor != NULL);
@@ -447,7 +452,7 @@ _Optional CONST _kernel_oserror *load_compressedM(const char *const file_path,
     }
   }
 
-  *handle = &state->common.f; /* write back pointer to state */
+  *handle = state ? &state->common.f : NULL; /* write back pointer to state */
   return e_token != NULL ? lookup_error(&*e_token, file_path) : NULL;
 }
 
@@ -456,7 +461,7 @@ _Optional CONST _kernel_oserror *load_compressedM(const char *const file_path,
 _Optional CONST _kernel_oserror *save_compressedM2(const char *const file_path,
   flex_ptr buffer_anchor, const volatile bool *const time_up,
   unsigned int const start_offset, unsigned int const end_offset,
-  FILE *_Optional **const handle)
+  _Optional FILE *_Optional **const handle)
 {
   assert(file_path != NULL);
   assert(buffer_anchor != NULL);
@@ -539,7 +544,7 @@ _Optional CONST _kernel_oserror *save_compressedM2(const char *const file_path,
     }
   }
 
-  *handle = &state->common.f; /* write back pointer to state */
+  *handle = state ? &state->common.f : NULL; /* write back pointer to state */
   return e_token != NULL ? lookup_error(&*e_token, file_path) : NULL;
 }
 
@@ -548,7 +553,7 @@ _Optional CONST _kernel_oserror *save_compressedM2(const char *const file_path,
 #ifdef CBLIB_OBSOLETE
 /* The following function is deprecated; use save_compressedM2(). */
 _Optional CONST _kernel_oserror *save_compressedM(const char *file_path, int file_type,
-  flex_ptr buffer_anchor, const volatile bool *time_up, FILE *_Optional **handle)
+  flex_ptr buffer_anchor, const volatile bool *time_up, _Optional FILE *_Optional **handle)
 {
   ON_ERR_RTN_E(save_compressedM2(file_path, buffer_anchor, time_up, 0,
                                  (unsigned)flex_size(buffer_anchor), handle));

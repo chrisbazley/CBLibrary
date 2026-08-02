@@ -24,6 +24,9 @@
   CJB: 28-Oct-20: A destructor called by abort_file_op may require the file
                   handle to be open so don't close it.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 02-Aug-26: Every instance of pointer-to-pointer-to-optional-pointer-to-FILE
+                  should be pointer-to-pointer-to-optional-pointer-to-optional-FILE
+                  (i.e. there can be no FILE, as well as no pointer to FILE.)
 */
 
 /* ISO library headers */
@@ -36,7 +39,7 @@
 #include "Internal/FOpPrivate.h"
 #include "Internal/CBMisc.h"
 
-void abort_file_op(FILE *_Optional **handle)
+void abort_file_op(_Optional FILE *_Optional **handle)
 {
   _Optional fileop_common *fop;
 
