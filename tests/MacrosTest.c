@@ -52,6 +52,29 @@ static void test2(void)
   assert(*s == '\0');
 }
 
+static void test3(void)
+{
+  /* CONTAINER_OF */
+  struct string {
+    char *s;
+  };
+
+  struct number {
+    int x;
+  };
+
+  struct container {
+    struct string s;
+    struct number n;
+  } c = { { "99" }, { 99 } };
+
+  struct container *c2 = CONTAINER_OF(&c.n, struct container, n);
+  assert(c2 == &c);
+
+  struct container *c3 = CONTAINER_OF(&c.s, struct container, s);
+  assert(c3 == &c);
+}
+
 void Macros_tests(void)
 {
   static const struct
@@ -62,7 +85,8 @@ void Macros_tests(void)
   unit_tests[] =
   {
     { "STRING_OR_NULL with strings", test1 },
-    { "STRING_OR_NULL with null pointer", test2 }
+    { "STRING_OR_NULL with null pointer", test2 },
+    { "CONTAINER_OF", test3 },
   };
 
   for (size_t count = 0; count < ARRAY_SIZE(unit_tests); count ++)
