@@ -72,7 +72,7 @@ static int osfile(int op, const char *name, _kernel_osfile_block *inout)
   err = _kernel_osfile(op, name, inout);
   if (err == _kernel_ERROR)
   {
-    const _kernel_oserror * const e = _kernel_last_oserror();
+    _Optional const _kernel_oserror * const e = _kernel_last_oserror();
     assert(e != NULL);
     printf("Error 0x%x %s\n", e->errnum, e->errmess);
     exit(EXIT_FAILURE);

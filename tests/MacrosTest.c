@@ -27,7 +27,7 @@
 /* Local headers */
 #include "Tests.h"
 
-static const char *nullptr = NULL;
+static _Optional const char *nullptr = NULL;
 
 static void test1(void)
 {
