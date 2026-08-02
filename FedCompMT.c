@@ -73,6 +73,7 @@
                   (i.e. there can be no FILE, as well as no pointer to FILE.)
                   Don't dereference a potentially-null pointer when assigning to
                   *handle (although we're getting the address of the first member).
+                  Use CONTAINER_OF to get comp_state and decomp_state pointers.
 */
 
 /* ISO library headers */
@@ -351,11 +352,12 @@ _Optional CONST _kernel_oserror *compress_initialise(_Optional MessagesFD *const
 int get_decomp_perc(_Optional FILE *_Optional **const handle)
 {
   assert(handle != NULL);
-  _Optional const decomp_state *const state = (decomp_state *)*handle;
-
-  if (!state) {
+  _Optional FILE *_Optional *f = *handle;
+  if (!f) {
     return 0u;
   }
+  const fileop_common *const common = CONTAINER_OF(f, fileop_common, f);
+  const decomp_state *const state = CONTAINER_OF(common, decomp_state, common);
 
   long int const wpos = writer_ftell(&state->common.writer);
   assert(wpos >= 0);
@@ -368,11 +370,12 @@ int get_decomp_perc(_Optional FILE *_Optional **const handle)
 int get_comp_perc(_Optional FILE *_Optional **const handle)
 {
   assert(handle != NULL);
-  _Optional const comp_state *const state = (comp_state *)*handle;
-
-  if (!state) {
+  _Optional FILE *_Optional *f = *handle;
+  if (!f) {
     return 0u;
   }
+  const fileop_common *const common = CONTAINER_OF(f, fileop_common, f);
+  const comp_state *const state = CONTAINER_OF(common, comp_state, common);
 
   long int const rpos = reader_ftell(&state->common.reader);
   assert(rpos >= 0);
@@ -394,7 +397,11 @@ _Optional CONST _kernel_oserror *load_compressedM(const char *const file_path,
   assert(buffer_anchor != NULL);
   assert(handle != NULL);
   _Optional const char *e_token = NULL;
-  _Optional decomp_state *state = (decomp_state *)*handle;
+  _Optional FILE *_Optional *const f = *handle;
+  _Optional fileop_common *const common = f ?
+     CONTAINER_OF(f, fileop_common, f) : NULL;
+  _Optional decomp_state *state = common ?
+     CONTAINER_OF(common, decomp_state, common) : NULL;
 
   if (state == NULL)
   {
@@ -468,8 +475,12 @@ _Optional CONST _kernel_oserror *save_compressedM2(const char *const file_path,
   assert(end_offset >= start_offset);
   assert(end_offset <= (unsigned)flex_size(buffer_anchor));
   assert(handle != NULL);
-  _Optional comp_state *state = (comp_state *)*handle;
   _Optional const char *e_token = NULL;
+  _Optional FILE *_Optional *const f = *handle;
+  _Optional fileop_common *const common = f ?
+    CONTAINER_OF(f, fileop_common, f) : NULL;
+  _Optional comp_state *state = common ?
+    CONTAINER_OF(common, comp_state, common) : NULL;
 
   if (state == NULL)
   {

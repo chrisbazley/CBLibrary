@@ -71,6 +71,7 @@
                   (i.e. there can be no FILE, as well as no pointer to FILE.)
                   Don't dereference a potentially-null pointer when assigning to
                   *handle (although we're getting the address of the first member).
+                  Use CONTAINER_OF to get fileop_state pointers.
  */
 
 /* ISO library headers */
@@ -152,14 +153,17 @@ _Optional CONST _kernel_oserror *loadsave_initialise(_Optional MessagesFD *mfd)
 
 int get_loadsave_perc(_Optional FILE *_Optional **handle)
 {
-  _Optional fileop_state *state = (fileop_state *)*handle;
   size_t bytes_done, total_size, perc_done;
 
   DEBUGF("LoadSaveMT: Request for %% done\n");
 
-  if (!state) {
+  assert(handle);
+  _Optional FILE *_Optional *f = *handle;
+  if (!f) {
     return 0u;
   }
+  const fileop_common *const common = CONTAINER_OF(f, fileop_common, f);
+  const fileop_state *const state = CONTAINER_OF(common, fileop_state, common);
 
   assert(state->limit >= state->start);
   total_size = state->limit - state->start;
@@ -229,7 +233,8 @@ _Optional CONST _kernel_oserror *load_fileM2(const char *file_path,
   else
   {
     /* Continue from where we left off */
-    state = (fileop_state *)*handle;
+    fileop_common *const common = CONTAINER_OF(*handle, fileop_common, f);
+    state = CONTAINER_OF(common, fileop_state, common);
     DEBUGF("LoadSaveMT: Resume load at mem_pos %zu\n", state->mem_pos);
   }
 
@@ -374,7 +379,8 @@ _Optional CONST _kernel_oserror *save_fileM2(const char *file_path,
   else
   {
     /* Continue from where we left off */
-    state = (fileop_state *)*handle;
+    fileop_common *const common = CONTAINER_OF(*handle, fileop_common, f);
+    state = CONTAINER_OF(common, fileop_state, common);
     DEBUGF("LoadSaveMT: Resume save at mem_pos %zu\n", state->mem_pos);
     open_mode = "ab"; /* open for appending */
   }
