@@ -70,6 +70,7 @@
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-May-26: Cast the time passed to event_poll_idle to stop a warning.
+  CJB: 02-Aug-26: Delete unused variable 'list_changed'.
  */
 
 /* ISO library headers */
@@ -130,7 +131,7 @@ static LinkedList clients_list;
 static _Optional SchedulerClient *global_next;
 static SchedulerTime max_time_in_app;
 static volatile bool time_up;
-static bool defer_removals, removal_deferred, list_changed, initialised = false;
+static bool defer_removals, removal_deferred, initialised = false;
 static unsigned int suspended, clients_count;
 static _Optional MessagesFD *desc;
 #ifndef CBLIB_OBSOLETE
@@ -293,7 +294,6 @@ _Optional CONST _kernel_oserror *scheduler_register(SchedulerIdleFunction *funct
 
     /* Link new record onto head of our list */
     linkedlist_insert(&clients_list, NULL, &new_record->list_item);
-    list_changed = true;
   }
   return e;
 }
