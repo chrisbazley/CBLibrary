@@ -80,6 +80,7 @@
                   initialisation of message data.
   CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
                   use of WORD_ALIGN on values of type size_t.
+  CJB: 02-Aug-26: Make definition of 'desc' conditional because it may be unused.
 */
 
 /* ISO library headers */
@@ -165,7 +166,9 @@ static _Optional DragFinishedHandler *client_fn_drop;
 static int dragclaim_msg_ref, dragging_msg_ref;
 static int dragclaim_task;
 static WimpGetPointerInfoBlock pointer;
+#ifdef COPY_ARRAY_ARGS
 static _Optional MessagesFD *desc;
+#endif
 #ifndef CBLIB_OBSOLETE
 static void (*report)(CONST _kernel_oserror *);
 #endif
@@ -188,10 +191,16 @@ _Optional CONST _kernel_oserror *drag_initialise(
   assert(!initialised);
 
 #ifdef CBLIB_OBSOLETE
+#ifdef COPY_ARRAY_ARGS
   desc = msgs_get_descriptor();
+#endif
 #else
   /* Store pointers to messages file descriptor and error-reporting function */
+#ifdef COPY_ARRAY_ARGS
   desc = mfd;
+#else
+  NOT_USED(mfd);
+#endif
   report = report_error;
 #endif /* CBLIB_OBSOLETE */
 
