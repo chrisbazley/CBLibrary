@@ -97,7 +97,7 @@ static void test1(void)
 {
   /* Initialize */
   userdata_init();
-  userdata_for_each(never_call_me, NULL);
+  userdata_for_each(never_call_me, &(int){0});
 }
 
 static void test2(void)
@@ -113,7 +113,10 @@ static void test2(void)
 
   for (i = 0; i < ARRAY_SIZE(data); ++i)
   {
-    const bool success = userdata_add_to_list(&data[i], NULL, NULL, "");
+    const bool success = userdata_add_to_list(&data[i],
+                                              (UserDataIsSafeFn *)NULL,
+                                              (UserDataDestroyFn *)NULL,
+                                              "");
     assert(success);
   }
 
@@ -145,7 +148,10 @@ static void test3(void)
 
   for (i = 0; i < ARRAY_SIZE(data); ++i)
   {
-    const bool success = userdata_add_to_list(&data[i], NULL, NULL, "");
+    const bool success = userdata_add_to_list(&data[i],
+                                              (UserDataIsSafeFn *)NULL,
+                                              (UserDataDestroyFn *)NULL,
+                                              "");
     assert(success);
   }
 
@@ -188,7 +194,9 @@ static void test4(void)
      no callback occurs. */
   for (i = 0; i < ARRAY_SIZE(data); ++i)
   {
-    const bool success = userdata_add_to_list(&data[i], NULL, i % 2 ? record_destroys : NULL, "");
+    const bool success = userdata_add_to_list(&data[i],
+                                              (UserDataIsSafeFn *)NULL,
+                                              i % 2 ? record_destroys : (UserDataDestroyFn *)NULL, "");
     assert(success);
   }
 
@@ -228,7 +236,10 @@ static void test5(void)
 
   for (i = 0; i < ARRAY_SIZE(data); ++i)
   {
-    const bool success = userdata_add_to_list(&data[i], NULL, NULL, "");
+    const bool success = userdata_add_to_list(&data[i],
+                                              (UserDataIsSafeFn *)NULL,
+                                              (UserDataDestroyFn *)NULL,
+                                              "");
     assert(success);
   }
 
@@ -253,12 +264,13 @@ static void test6(void)
 
   for (i = 0; i < ARRAY_SIZE(data); ++i)
   {
-    const bool success = userdata_add_to_list(&data[i], NULL, NULL, "");
+    const bool success = userdata_add_to_list(&data[i], (UserDataIsSafeFn *)NULL,
+                                              (UserDataDestroyFn *)NULL, "");
     assert(success);
   }
 
   callback_count = 0;
-  userdata_for_each(remove_in_callback, NULL);
+  userdata_for_each(remove_in_callback, &(int){0});
   assert(callback_count == ARRAY_SIZE(data));
 
   callback_count = 0;
@@ -289,7 +301,9 @@ static void test7(void)
      and no callback occurs. */
   for (i = 0; i < ARRAY_SIZE(data); ++i)
   {
-    const bool success = userdata_add_to_list(&data[i], i % 2 ? record_is_safe : NULL, NULL, "");
+    const bool success = userdata_add_to_list(&data[i],
+                                              i % 2 ? record_is_safe : (UserDataIsSafeFn *)NULL,
+                                              (UserDataDestroyFn *)NULL, "");
     assert(success);
   }
 
@@ -317,7 +331,8 @@ static void test8(void)
 
   for (i = 0; i < ARRAY_SIZE(data); ++i)
   {
-    const bool success = userdata_add_to_list(&data[i], record_is_safe, NULL, "");
+    const bool success = userdata_add_to_list(&data[i], record_is_safe,
+                                              (UserDataDestroyFn *)NULL, "");
     assert(success);
   }
 
@@ -352,7 +367,10 @@ static void test9(void)
 
   for (i = 0; i < ARRAY_SIZE(data); ++i)
   {
-    const bool success = userdata_add_to_list(&data[i], NULL, NULL, names[i]);
+    const bool success = userdata_add_to_list(&data[i],
+                                              (UserDataIsSafeFn *)NULL,
+                                              (UserDataDestroyFn *)NULL,
+                                              names[i]);
     assert(success);
   }
 
@@ -391,7 +409,7 @@ static void test10(void)
 
   userdata_init();
 
-  success = userdata_add_to_list(&data, NULL, NULL, "");
+  success = userdata_add_to_list(&data, (UserDataIsSafeFn *)NULL, (UserDataDestroyFn *)NULL, "");
   assert(success);
 
   got_name = userdata_get_file_name(&data);
@@ -429,7 +447,7 @@ static void test11(void)
 
   for (i = 0; i < ARRAY_SIZE(data)-1; ++i)
   {
-    success = userdata_add_to_list(&data[i], NULL, NULL, "");
+    success = userdata_add_to_list(&data[i], (UserDataIsSafeFn *)NULL, (UserDataDestroyFn *)NULL, "");
     assert(success);
   }
 
@@ -438,7 +456,10 @@ static void test11(void)
     unsigned int j;
 
     Fortify_SetNumAllocationsLimit(limit);
-    success = userdata_add_to_list(&data[i], NULL, NULL, "notempty");
+    success = userdata_add_to_list(&data[i],
+                                   (UserDataIsSafeFn *)NULL,
+                                   (UserDataDestroyFn *)NULL,
+                                   "notempty");
     Fortify_SetNumAllocationsLimit(ULONG_MAX);
 
     if (success)
@@ -450,7 +471,7 @@ static void test11(void)
     /* Check that the state of the list is unchanged on error,
        or finally the item was added if successful */
     callback_count = 0;
-    userdata_for_each(record_callbacks, NULL);
+    userdata_for_each(record_callbacks, &(int){0});
     printf("%u == %u\n", callback_count, i);
     assert(callback_count == i);
 
@@ -482,7 +503,10 @@ static void test12(void)
   userdata_init();
 
   expected = names[0];
-  success = userdata_add_to_list(&data, NULL, NULL, expected);
+  success = userdata_add_to_list(&data,
+                                 (UserDataIsSafeFn *)NULL,
+                                 (UserDataDestroyFn *)NULL,
+                                 expected);
   assert(success);
 
   for (limit = 0; limit < FortifyAllocationLimit; ++limit)
@@ -522,7 +546,7 @@ static void test13(void)
 
   for (i = 0; i < ARRAY_SIZE(data); ++i)
   {
-    const bool success = userdata_add_to_list(&data[i], NULL, record_destroys, "");
+    const bool success = userdata_add_to_list(&data[i], (UserDataIsSafeFn *)NULL, record_destroys, "");
     assert(success);
   }
 
@@ -564,7 +588,10 @@ static void test14(void)
 
   for (i = 0; i < ARRAY_SIZE(data); ++i)
   {
-    const bool success = userdata_add_to_list(&data[i], NULL, NULL, "");
+    const bool success = userdata_add_to_list(&data[i],
+                                              (UserDataIsSafeFn *)NULL,
+                                              (UserDataDestroyFn *)NULL,
+                                              "");
     assert(success);
   }
 
