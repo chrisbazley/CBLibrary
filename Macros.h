@@ -117,6 +117,9 @@ History:
                   to have any practical benefit.
   CJB: 21-Jun-26: Added the definition of WORD_ALIGN_SZ to avoid warnings about
                   use of WORD_ALIGN on values of type size_t.
+  CJB: 02-Aug-26: Require the first argument of the CONTAINER_OF macro to have
+                  the same type as the specified member of the specified
+                  container type.
 */
 
 #ifndef Macros_h
@@ -352,7 +355,8 @@ enum
 #endif /* CHECK_PRINTF */
 
 #define CONTAINER_OF(addr, type, member) \
-  ((type *)(((char *)(addr)) - offsetof(type, member)))
+  (sizeof(0 ? &((type *)0)->member : (addr)), \
+   (type *)(((char *)(addr)) - offsetof(type, member)))
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
 #define C23_CONST const
