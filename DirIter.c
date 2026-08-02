@@ -41,6 +41,8 @@
   CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
                   use of WORD_ALIGN on values of type size_t.
   CJB: 06-Jul-26: Assign a compound literal to ensure complete initialisation.
+  CJB: 02-Aug-26: Explicitly allow null as the output argument for
+                  diriterator_get_object_* functions.
 */
 
 /* ISO library headers */
@@ -495,7 +497,7 @@ static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
 }
 
 static size_t get_name(const DirIterator *iterator,
-                       char              *buffer,
+                       _Optional char    *buffer,
                        size_t             buff_size,
                        size_t             skip_size)
 {
@@ -504,6 +506,11 @@ static size_t get_name(const DirIterator *iterator,
 
   DEBUG_VERBOSEF("DirIterator: skip %zu characters of path\n",
     skip_size);
+
+  if (!buffer)
+  {
+    buff_size = 0;
+  }
 
   assert(iterator != NULL);
   level = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
@@ -530,11 +537,11 @@ static size_t get_name(const DirIterator *iterator,
     assert(level->path_name_len ==
            stringbuffer_get_length(&iterator->path_name));
 
-    if (buff_size > 0)
+    if (buff_size > 0 && buffer)
     {
       /* -1 is to leave room for the null terminator */
       size_t nbytes, bytes_free = buff_size - 1;
-      char *write = buffer;
+      char *write = &*buffer;
 
       assert(buffer != NULL);
 
@@ -695,8 +702,8 @@ bool diriterator_is_empty(const DirIterator *iterator)
   return is_empty;
 }
 
-int diriterator_get_object_info(const DirIterator     *iterator,
-                                DirIteratorObjectInfo *info)
+int diriterator_get_object_info(const DirIterator               *iterator,
+                                _Optional DirIteratorObjectInfo *info)
 {
   DirIteratorLevel *level;
   int object_type;
@@ -741,7 +748,7 @@ int diriterator_get_object_info(const DirIterator     *iterator,
 }
 
 size_t diriterator_get_object_path_name(const DirIterator *iterator,
-                                        char              *buffer,
+                                        _Optional char    *buffer,
                                         size_t             buff_size)
 {
   DEBUGF("DirIterator: Getting path name from iterator %p into "
@@ -753,7 +760,7 @@ size_t diriterator_get_object_path_name(const DirIterator *iterator,
 }
 
 size_t diriterator_get_object_sub_path_name(const DirIterator *iterator,
-                                            char              *buffer,
+                                            _Optional char    *buffer,
                                             size_t             buff_size)
 {
   DEBUGF("DirIterator: Getting sub-path name from iterator %p into "
@@ -770,7 +777,7 @@ size_t diriterator_get_object_sub_path_name(const DirIterator *iterator,
 }
 
 size_t diriterator_get_object_leaf_name(const DirIterator *iterator,
-                                        char              *buffer,
+                                        _Optional char    *buffer,
                                         size_t             buff_size)
 {
   DEBUGF("DirIterator: Getting leaf name from iterator %p into "

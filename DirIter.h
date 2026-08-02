@@ -44,6 +44,8 @@ History:
   CJB: 24-Nov-14: Added reset method.
   CJB: 01-Jun-16: Documented that diriterator_destroy(NULL) has no effect.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 02-Aug-26: Explicitly allow null as the output argument for
+                  diriterator_get_object_* functions.
  */
 
 #ifndef DirIter_h
@@ -112,8 +114,8 @@ bool diriterator_is_empty(const DirIterator *iterator);
     * Returns: true if the iterator is empty, otherwise false.
     */
 
-int diriterator_get_object_info(const DirIterator     * /*iterator*/,
-                                DirIteratorObjectInfo * /*info*/);
+int diriterator_get_object_info(const DirIterator               * /*iterator*/,
+                                _Optional DirIteratorObjectInfo * /*info*/);
    /*
     * Gets catalogue information about the current object from a specified
     * directory tree iterator. Unless 'info' is a null pointer, the object's
@@ -127,7 +129,7 @@ int diriterator_get_object_info(const DirIterator     * /*iterator*/,
     */
 
 size_t diriterator_get_object_path_name(const DirIterator * /*iterator*/,
-                                        char              * /*buffer*/,
+                                        _Optional char    * /*buffer*/,
                                         size_t              /*buff_size*/);
    /*
     * Gets the full path name of the current object from a specified
@@ -144,7 +146,7 @@ size_t diriterator_get_object_path_name(const DirIterator * /*iterator*/,
 
 size_t diriterator_get_object_sub_path_name(
                                         const DirIterator * /*iterator*/,
-                                        char              * /*buffer*/,
+                                        _Optional char    * /*buffer*/,
                                         size_t              /*buff_size*/);
    /*
     * Gets the sub-path name of the current object from a specified
@@ -157,7 +159,7 @@ size_t diriterator_get_object_sub_path_name(
     */
 
 size_t diriterator_get_object_leaf_name(const DirIterator * /*iterator*/,
-                                        char              * /*buffer*/,
+                                        _Optional char    * /*buffer*/,
                                         size_t              /*buff_size*/);
    /*
     * Gets the leaf name of the current object from a specified directory

@@ -266,15 +266,15 @@ static int date_and_time_to_string(OSDateAndTime *utc,
   return nchars;
 }
 
-static void validate_object_info(DirIteratorObjectInfo *info, int object_type, size_t i)
+static void validate_object_info(_Optional DirIteratorObjectInfo *info, int object_type, size_t i)
 {
   unsigned int expected_attributes;
   char buffer[StringBufferSize];
 
   assert(i < ARRAY_SIZE(test_objects));
 
-  int n = date_and_time_to_string(
-                   &info->date_stamp, buffer, sizeof(buffer));
+  int n = date_and_time_to_string(info ? &info->date_stamp : &(OSDateAndTime){0},
+                                  buffer, sizeof(buffer));
   assert(n >= 0);
   assert(n < (int)sizeof(buffer));
   printf("object type: %d\n", object_type);
@@ -486,13 +486,13 @@ static void test1(void)
 static void test2(void)
 {
   /* No recursion */
-  simple_test(0, NULL);
+  simple_test(0, "*");
 }
 
 static void test3(void)
 {
   /* Directory recursion */
-  simple_test(DirIterator_RecurseIntoDirectories, NULL);
+  simple_test(DirIterator_RecurseIntoDirectories, "*");
 }
 
 static void test4(void)
