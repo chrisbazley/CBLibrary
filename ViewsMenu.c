@@ -76,7 +76,8 @@
                   Allow null 'type' argument for ViewsMenu_show_object().
   CJB: 11-May-26: Avoid passing a freed pointer to menu_remove_entry().
   CJB: 22-May-26: Ensure only pointers of type void * are converted to uintptr_t.
-  CJB: 02-Aug-26: Delete unused variable 'VM_parent'.
+  CJB: 02-Aug-26: Delete unused variable 'VM_parent'. Don't pass a pointer to
+                  _Optional char into strdup.
  */
 
 /* ISO library headers */
@@ -207,7 +208,7 @@ _Optional CONST _kernel_oserror *ViewsMenu_setname(ObjectId showobject, const ch
     if (file_path != NULL)
     {
       /* Change filepath associated with this menu entry */
-      new_ptr = strdup(file_path);
+      new_ptr = strdup(&*file_path);
       if (new_ptr == NULL)
         return lookup_error("NoMem");
 
