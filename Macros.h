@@ -120,6 +120,8 @@ History:
   CJB: 02-Aug-26: Require the first argument of the CONTAINER_OF macro to have
                   the same type as the specified member of the specified
                   container type.
+  CJB: 06-Aug-26: Explicitly discard the first operand of the comma operator
+                  in the CONTAINER_OF macro definition to avoid warnings.
 */
 
 #ifndef Macros_h
@@ -355,7 +357,7 @@ enum
 #endif /* CHECK_PRINTF */
 
 #define CONTAINER_OF(addr, type, member) \
-  (sizeof(0 ? &((type *)0)->member : (addr)), \
+  ((void)sizeof(0 ? &((type *)0)->member : (addr)), \
    (type *)(((char *)(addr)) - offsetof(type, member)))
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
