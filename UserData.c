@@ -26,6 +26,8 @@
   CJB: 10-Apr-16: Cast pointer parameters to void * to match %p.
   CJB: 05-Feb-19: Use stringbuffer_append_all where appropriate.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 10-Aug-26: Make a local copy of the is_safe function pointer in
+                  count_unsafe_user_data to help the analyser.
 */
 
 /* ISO library headers */
@@ -245,11 +247,12 @@ static bool count_unsafe_user_data(UserData *data, void *arg)
   assert(data != NULL);
   assert(count != NULL);
 
-  if (data->is_safe)
+  _Optional UserDataIsSafeFn *is_safe_fn = data->is_safe;
+  if (is_safe_fn)
   {
     DEBUGF("UserData: Getting safe state of user data item %p\n",
            (void *)data);
-    is_safe = data->is_safe(data);
+    is_safe = is_safe_fn(data);
   }
 
   if (!is_safe)
