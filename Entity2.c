@@ -37,6 +37,8 @@
                   to ensure full initialisation of message data.
   CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
                   use of WORD_ALIGN on values of type size_t.
+  CJB: 10-Aug-26: Make a local copy of write_method in request_own to help the
+                  analyser.
 */
 
 /* ISO library headers */
@@ -460,7 +462,8 @@ static _Optional CONST _kernel_oserror *request_own(size_t const entity,
   assert(entity < ARRAY_SIZE(entities_info));
   assert(data_request != NULL);
 
-  if (!entities_info[entity].write_method || !entities_info[entity].file_types)
+  _Optional Saver2WriteMethod *write_method = entities_info[entity].write_method;
+  if (!write_method || !entities_info[entity].file_types)
   {
     DEBUGF("Entity2: No data function for entity %zu\n", entity);
     return no_data(entity);
@@ -484,7 +487,7 @@ static _Optional CONST _kernel_oserror *request_own(size_t const entity,
   DEBUGF("Entity2: Calling data function with arg %p for entity %zu\n",
          entities_info[entity].client_handle, entity);
 
-  bool success = entities_info[entity].write_method(&writer, file_type,
+  bool success = write_method(&writer, file_type,
     "EntityData", entities_info[entity].client_handle);
 
   /* Destroying a writer can fail because it flushes buffered output. */
