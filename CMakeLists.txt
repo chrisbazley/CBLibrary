@@ -10,6 +10,18 @@ FetchContent_Declare(CBUtil GIT_REPOSITORY https://github.com/chrisbazley/CBUtil
 
 FetchContent_MakeAvailable(OptionalAcornC Stream CBOS CBUtil)
 
+option(USE_OPTIONAL "Enable the _Optional qualifier" OFF)
+
+if(USE_OPTIONAL)
+    add_compile_definitions(USE_OPTIONAL)
+
+    if(CMAKE_GENERATOR STREQUAL "Xcode")
+        set(CMAKE_XCODE_ATTRIBUTE_RUN_CLANG_STATIC_ANALYZER "YES")
+        set(CMAKE_XCODE_ATTRIBUTE_CLANG_ANALYZER_OTHER_FLAGS
+            "-analyzer-checker optionality,core -analyzer-max-loop 32")
+    endif()
+endif()
+
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_XCODE_ATTRIBUTE_RUN_CLANG_STATIC_ANALYZER "YES")
 
@@ -18,7 +30,7 @@ if(MSVC)
     add_compile_options(/W4 /wd4200 /wd4996 /wd4130)
 else()
     # For GCC and Clang
-    add_compile_options(-Wall -Wextra -Wsign-conversion -pedantic)
+    add_compile_options(-Wall -Wextra -Wsign-compare -pedantic)
 endif()
 
 if(CMAKE_C_COMPILER_ID MATCHES "Clang|AppleClang")
