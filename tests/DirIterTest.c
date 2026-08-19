@@ -319,9 +319,9 @@ static void validate_object(const DirIterator *it, size_t i)
   assert(!diriterator_is_empty(it));
 
   /* Find last path separator */
-  const char *expected = strrchr(test_objects[i].name, '.');
-  assert(expected != NULL);
-  ++expected;
+  _Optional const char *stop = strrchr(test_objects[i].name, '.');
+  assert(stop != NULL);
+  const char *expected = stop + 1;
 
   size_t n = diriterator_get_object_leaf_name(&*it, buffer, sizeof(buffer));
   assert(n == strlen(expected));
@@ -353,7 +353,7 @@ static size_t find_next(size_t i, unsigned int flags, const char *pattern)
   {
     /* Does the last separator in the path coincide with the end of
        the root directory path? */
-    const char * const last_sep = strrchr(test_objects[i].name, '.');
+    _Optional const char * const last_sep = strrchr(test_objects[i].name, '.');
     assert(last_sep != NULL);
     if ( ( (flags & DirIterator_RecurseIntoDirectories) ||
             last_sep == test_objects[i].name +
@@ -575,7 +575,7 @@ static void test10(void)
   assert(e == NULL);
 
   /* Find last path separator */
-  const char * const last_sep = strrchr(test_objects[2].name, '.');
+  _Optional const char * const last_sep = strrchr(test_objects[2].name, '.');
   assert(last_sep != NULL);
 
   char buffer[StringBufferSize];
@@ -691,7 +691,7 @@ static void test14(void)
   assert(e == NULL);
 
   /* Find last path separator */
-  const char * const last_sep = strrchr(test_objects[2].name, '.');
+  _Optional const char * const last_sep = strrchr(test_objects[2].name, '.');
   assert(last_sep != NULL);
 
   const size_t n = diriterator_get_object_leaf_name(&*it, NULL, 0);
