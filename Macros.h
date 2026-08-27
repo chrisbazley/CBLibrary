@@ -122,6 +122,8 @@ History:
                   container type.
   CJB: 06-Aug-26: Explicitly discard the first operand of the comma operator
                   in the CONTAINER_OF macro definition to avoid warnings.
+  CJB: 27-Aug-26: Add a semantic dereference in CONTAINER_OF to allow
+                  CONTAINER_OF on pointer-to-_Optional to be diagnosed.
 */
 
 #ifndef Macros_h
@@ -358,7 +360,7 @@ enum
 
 #define CONTAINER_OF(addr, type, member) \
   ((void)sizeof(0 ? &((type *)0)->member : (addr)), \
-   (type *)(((char *)(addr)) - offsetof(type, member)))
+   (type *)(((char *)&*(addr)) - offsetof(type, member)))
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
 #define C23_CONST const
