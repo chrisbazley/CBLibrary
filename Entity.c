@@ -91,6 +91,9 @@
                   offset on 64-bit systems.
   CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
                   use of WORD_ALIGN on values of type size_t.
+  CJB: 27-Aug-26: Make local copies of lost_method and client_handle in
+                  entity_claim and entity_release to help the analyser; likewise,
+                  data_method and client_handle in _ent_probe_or_request.
 */
 
 /* ISO library headers */
@@ -332,10 +335,14 @@ _Optional CONST _kernel_oserror *entity_claim(unsigned int flags,
 
     /* Tell the previous claimant that it has been usurped */
     if (entities_info[entity].lost_method) {
+      EntityLostMethod *const lost_method =
+        &*entities_info[entity].lost_method;
+      void *const client_handle = entities_info[entity].client_handle;
+
       DEBUGF("Entity: Calling EntityLostMethod with handle %p for entity %zu\n",
-            entities_info[entity].client_handle, entity);
+            client_handle, entity);
       assert(TEST_BITS(owned_entities, 1u<<entity));
-      entities_info[entity].lost_method(entities_info[entity].client_handle);
+      lost_method(client_handle);
     }
 
     /* Record the new client handle and function pointers */
@@ -432,9 +439,13 @@ void entity_release(unsigned int flags)
 
     /* Tell the owner of this entity that it has been usurped */
     if (entities_info[entity].lost_method) {
+      EntityLostMethod *const lost_method =
+        &*entities_info[entity].lost_method;
+      void *const client_handle = entities_info[entity].client_handle;
+
       DEBUGF("Entity: Calling release function with handle %p for entity %zu\n",
-            entities_info[entity].client_handle, entity);
-      entities_info[entity].lost_method(entities_info[entity].client_handle);
+            client_handle, entity);
+      lost_method(client_handle);
     } else {
       DEBUGF("Entity: No release function for entity %zu\n", entity);
     }
@@ -1070,15 +1081,18 @@ static _Optional CONST _kernel_oserror *_ent_probe_or_request(
       if (entities_info[entity].data_method)
       {
         bool data_persists;
+        EntityDataMethod *const data_method =
+          &*entities_info[entity].data_method;
+        void *const client_handle = entities_info[entity].client_handle;
 
         DEBUGF("Entity: Calling data function with handle %p for entity %zu\n",
-               entities_info[entity].client_handle, entity);
+               client_handle, entity);
 
         data_persists = true; /* default for safety */
-        data = entities_info[entity].data_method(
+        data = data_method(
                                             file_types,
                                             probe,
-                                            entities_info[entity].client_handle,
+                                            client_handle,
                                             &data_persists,
                                             &data_type);
 

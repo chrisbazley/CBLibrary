@@ -39,6 +39,8 @@
                   use of WORD_ALIGN on values of type size_t.
   CJB: 10-Aug-26: Make a local copy of write_method in request_own to help the
                   analyser.
+  CJB: 27-Aug-26: Make local copies of lost_method and client_handle in
+                  release_own to help the analyser.
 */
 
 /* ISO library headers */
@@ -670,10 +672,14 @@ static void release_own(size_t const entity)
 #endif
 
   if (entities_info[entity].lost_method) {
-    DEBUGF("Entity2: Calling release function with arg %p for entity %zu\n",
-          entities_info[entity].client_handle, entity);
+    Entity2LostMethod *const lost_method =
+      &*entities_info[entity].lost_method;
+    void *const client_handle = entities_info[entity].client_handle;
 
-    entities_info[entity].lost_method(entities_info[entity].client_handle);
+    DEBUGF("Entity2: Calling release function with arg %p for entity %zu\n",
+          client_handle, entity);
+
+    lost_method(client_handle);
   } else {
     DEBUGF("Entity2: No release function for entity %zu\n", entity);
   }
