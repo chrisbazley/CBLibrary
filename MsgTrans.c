@@ -50,6 +50,10 @@
   CJB: 29-Aug-22: Use size_t rather than unsigned int for nparam.
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 28-Aug-26: Make msgs_get_descriptor easier to analyse by returning
+                  early if no descriptor has been set instead of relying on
+                  the analyser to understand that DEBUGF cannot change the
+                  value of 'desc'.
 */
 
 /* ISO library headers */
@@ -173,7 +177,8 @@ MessagesFD *msgs_get_descriptor(void)
   {
     desc = &descriptor;
     DEBUGF("MsgTrans: No descriptor has been set - using internal %p\n",
-           (void *)desc);
+           (void *)&descriptor);
+    return &descriptor;
   }
 
   return &*desc;
