@@ -461,7 +461,7 @@ static int parent_about_to_be_shown(int           event_code,
                                     IdBlock      *id_block,
                                     void         *handle)
 {
-  /* Parent of views menu is about to open */
+  assert(event_code == Menu_AboutToBeShown);
   NOT_USED(event_code);
   NOT_USED(event);
   NOT_USED(handle);
@@ -484,7 +484,7 @@ static int parent_has_been_hidden(int           event_code,
                                   IdBlock      *id_block,
                                   void         *handle)
 {
-  /* Parent of views menu has closed */
+  assert(event_code == Menu_HasBeenHidden);
   NOT_USED(event_code);
   NOT_USED(event);
   NOT_USED(id_block);
@@ -510,6 +510,7 @@ static int menu_selection(int           event_code,
   ViewInfo *view_info;
   _Optional CONST _kernel_oserror *e = NULL;
 
+  assert(event_code == Menu_Selection);
   NOT_USED(event_code);
   NOT_USED(event);
   NOT_USED(handle);

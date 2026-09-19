@@ -316,7 +316,8 @@ _Optional CONST _kernel_oserror *Pal256_initialise(
                                          &*pal_data);
 
     if (e != NULL)
-      object_deleted(0, &(ToolboxEvent){0}, &(IdBlock){0}, &*pal_data);
+      object_deleted(Toolbox_ObjectDeleted, &(ToolboxEvent){0},
+                     &(IdBlock){0}, &*pal_data);
   }
 
   return e;
@@ -539,6 +540,7 @@ static int numberrange_value_changed(int event_code, ToolboxEvent *event, IdBloc
   Pal256Data *pal_data = handle;
   NumberRangeValueChangedEvent *nrvce = (NumberRangeValueChangedEvent *)event;
   int row, col;
+  assert(event_code == NumberRange_ValueChanged);
   NOT_USED(event_code);
 
   assert(nrvce != NULL);
@@ -562,6 +564,7 @@ static int actionbutton_selected(int event_code, ToolboxEvent *event, IdBlock *i
   _Optional CONST _kernel_oserror *e = NULL;
   Pal256Data *pal_data = handle;
 
+  assert(event_code == ActionButton_Selected);
   NOT_USED(event_code);
   assert(event != NULL);
   assert(id_block != NULL);
@@ -604,6 +607,7 @@ static int mouse_click(int event_code, WimpPollBlock *event, IdBlock *id_block, 
   _Optional CONST _kernel_oserror *e = NULL;
   WimpGetWindowStateBlock window_state;
 
+  assert(event_code == Wimp_EMouseClick);
   NOT_USED(event_code);
   assert(wmce != NULL);
   assert(id_block != NULL);
@@ -718,6 +722,7 @@ static int user_drag(int event_code, WimpPollBlock *event, IdBlock *id_block, vo
 {
   Pal256Data *pal_data = handle;
 
+  assert(event_code == Wimp_EUserDrag);
   NOT_USED(event_code);
   NOT_USED(event);
   NOT_USED(id_block);
@@ -746,6 +751,7 @@ static int redraw_window(int event_code, WimpPollBlock *event, IdBlock *id_block
   int more, colsleft_scrx, colsbot_scry;
   WimpRedrawWindowBlock block;
 
+  assert(event_code == Wimp_ERedrawWindow);
   NOT_USED(event_code);
   NOT_USED(event);
   NOT_USED(id_block);
@@ -929,6 +935,7 @@ static int object_deleted(int           event_code,
   /* Remove handlers */
   Pal256Data *pal_data = handle;
 
+  assert(event_code == Toolbox_ObjectDeleted);
   NOT_USED(event_code);
   NOT_USED(event);
   NOT_USED(id_block);

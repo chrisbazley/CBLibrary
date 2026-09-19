@@ -558,9 +558,9 @@ static int _svr_ramfetch_msg_handler(WimpMessage *message, void *handle)
 
 static int _svr_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBlock *id_block, void *handle)
 {
-  /* This is a handler for bounced messages */
   _Optional SaveOpData *save_op_data;
 
+  assert(event_code == Wimp_EUserMessageAcknowledge);
   NOT_USED(event_code);
   assert(event != NULL);
   NOT_USED(id_block);

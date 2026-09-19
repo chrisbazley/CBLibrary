@@ -499,7 +499,7 @@ static int _drag_dragclaim_msg_handler(WimpMessage *message, void *handle)
 
 static int _drag_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBlock *id_block, void *handle)
 {
-  /* This is a handler for bounced messages */
+  assert(event_code == Wimp_EUserMessageAcknowledge);
   NOT_USED(event_code);
   assert(event != NULL);
   NOT_USED(id_block);
@@ -560,7 +560,7 @@ static int _drag_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBloc
 
 static int _drag_userdrag_handler(int event_code, WimpPollBlock *event, IdBlock *id_block, void *handle)
 {
-  /* This is a handler for UserDrag events (i.e. a drag has finished) */
+  assert(event_code == Wimp_EUserDrag);
   NOT_USED(event_code);
   assert(event != NULL);
   NOT_USED(id_block);

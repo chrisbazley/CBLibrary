@@ -230,6 +230,7 @@ static int null_event_handler(int event_code, WimpPollBlock *event, IdBlock *id_
 {
   unsigned int num_this_poll;
 
+  assert(event_code == Wimp_ENull);
   NOT_USED(event_code);
   NOT_USED(event);
   NOT_USED(id_block);
