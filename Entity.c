@@ -789,10 +789,10 @@ static int _ent_datarequest_msg_handler(WimpMessage *message, void *handle)
 
 static int _ent_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBlock *id_block, void *handle)
 {
-  /* This is a handler for bounced messages */
   _Optional RequestOpData *request_op_data;
   int claim = 0;
 
+  assert(event_code == Wimp_EUserMessageAcknowledge);
   NOT_USED(event_code);
   assert(event != NULL);
   NOT_USED(id_block);

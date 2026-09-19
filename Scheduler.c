@@ -445,6 +445,7 @@ static int _scheduler_null_handler(int event_code, WimpPollBlock *event, IdBlock
 {
   /* This handler for null events should be registered last to ensure that
      it is called before any other null event handlers */
+  assert(event_code == Wimp_ENull);
   NOT_USED(event_code);
   NOT_USED(event);
   NOT_USED(id_block);

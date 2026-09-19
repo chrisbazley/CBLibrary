@@ -616,7 +616,7 @@ static int ramtransmit_handler(WimpMessage *const message,
 static int msg_bounce_handler(int const event_code,
   WimpPollBlock *const event, IdBlock *const id_block, void *const handle)
 {
-  /* This is a handler for bounced messages */
+  assert(event_code == Wimp_EUserMessageAcknowledge);
   NOT_USED(event_code);
   assert(event != NULL);
   NOT_USED(id_block);
