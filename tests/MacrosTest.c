@@ -73,6 +73,39 @@ static void test3(void)
 
   struct container *c3 = CONTAINER_OF(&c.s, struct container, s);
   assert(c3 == &c);
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+  const struct container const_c = { { "100" }, { 100 } };
+  const struct container *const_c2 =
+    CONTAINER_OF(&const_c.n, const struct container, n);
+  assert(const_c2 == &const_c);
+
+  volatile struct container volatile_c = { { "101" }, { 101 } };
+  volatile struct container *volatile_c2 =
+    CONTAINER_OF(&volatile_c.n, volatile struct container, n);
+  assert(volatile_c2 == &volatile_c);
+
+  const volatile struct container cv_c = { { "102" }, { 102 } };
+  const volatile struct container *cv_c2 =
+    CONTAINER_OF(&cv_c.n, const volatile struct container, n);
+  assert(cv_c2 == &cv_c);
+#endif
+}
+
+static void test4(void)
+{
+  /* CONTAINER_OF must evaluate its pointer argument only once. */
+  struct container {
+    int member;
+  } containers[2] = { { 1 }, { 2 } };
+  int *members[] = { &containers[0].member, &containers[1].member };
+  int **next = members;
+
+  struct container *const container =
+    CONTAINER_OF(*next++, struct container, member);
+
+  assert(container == &containers[0]);
+  assert(next == &members[1]);
 }
 
 void Macros_tests(void)
@@ -87,6 +120,7 @@ void Macros_tests(void)
     { "STRING_OR_NULL with strings", test1 },
     { "STRING_OR_NULL with null pointer", test2 },
     { "CONTAINER_OF", test3 },
+    { "CONTAINER_OF evaluates its argument once", test4 },
   };
 
   for (size_t count = 0; count < ARRAY_SIZE(unit_tests); count ++)
