@@ -28,6 +28,7 @@
 
 /* CBOSLib headers */
 #include "OSFSCntrl.h"
+#include "OSFile.h"
 
 /* CBLibrary headers */
 #include "FileUtils.h"
@@ -42,65 +43,42 @@
 #define PATH_4 PATH_3 ".Bar"
 #define PATH_5 PATH_4 ".Baz"
 
-enum
-{
-  OS_File_CreateStampedFile = 11,
-  OS_File_CreateDirectory = 8,
-  OS_File_CreateDirectory_DefaultNoOfEntries = 0,
-  OS_File_ReadCatalogueInfo = 17
-};
-
 static void wipe(const char *path_name)
 {
   assert(path_name != NULL);
   (void)os_fscontrol_wipe(path_name, OS_FSControl_Recurse);
 }
 
-static int osfile(int op, const char *name, _kernel_osfile_block *inout)
+static void check_os_error(_Optional const _kernel_oserror *e)
 {
-
-  assert(name != NULL);
-  assert(inout != NULL);
-
-  int err = _kernel_osfile(op, name, inout);
-  if (err == _kernel_ERROR)
+  if (e != NULL)
   {
-    _Optional const _kernel_oserror * const e = _kernel_last_oserror();
-    assert(e != NULL);
     printf("Error 0x%x %s\n", e->errnum, e->errmess);
     exit(EXIT_FAILURE);
   }
-  return err;
 }
 
 static void create_dir(const char *path_name)
 {
-  _kernel_osfile_block inout;
-
   assert(path_name != NULL);
-  inout.start = OS_File_CreateDirectory_DefaultNoOfEntries;
-  osfile(OS_File_CreateDirectory, path_name, &inout);
+  check_os_error(os_file_create_dir(path_name,
+                                    OS_File_CreateDir_DefaultNoOfEntries));
 }
 
 static void create_file(const char *path_name, int type, int size)
 {
-  _kernel_osfile_block inout;
-
   assert(path_name != NULL);
-  inout.load = type;
-  inout.start = 0;
-  inout.end = size;
-  osfile(OS_File_CreateStampedFile, path_name, &inout);
+  check_os_error(os_file_create_stamped(path_name, type, size));
 }
 
 static int read_obj_type(const char *path_name)
 {
-  _kernel_osfile_block inout;
+  OS_File_CatalogueInfo catalogue_info;
 
   assert(path_name != NULL);
-  int obj_type = osfile(OS_File_ReadCatalogueInfo, path_name, &inout);
+  check_os_error(os_file_read_cat_no_path(path_name, &catalogue_info));
 
-  return obj_type;
+  return catalogue_info.object_type;
 }
 
 /* Mutable array in case string literals are in read-only memory */
