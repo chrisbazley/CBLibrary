@@ -163,6 +163,7 @@
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
+  CJB: 21-Sep-26: Use CONTAINER_OF to recover loader records from list items.
 */
 
 #ifdef CBLIB_OBSOLETE /* Use c.Loader2 instead */
@@ -775,12 +776,13 @@ static _Optional LoaderListenerBlk *_ldr_find_broadcast_listener(const char *fil
 {
   /* Search linked list to find if any Listeners are willing to start a thread
      to load this file type */
-  LoaderListenerBlk *scan_list;
-
-  for (scan_list = (LoaderListenerBlk *)linkedlist_get_head(&listener_list);
-       scan_list != NULL;
-       scan_list = (LoaderListenerBlk *)linkedlist_get_next(&scan_list->list_item))
+  for (_Optional LinkedListItem *item = linkedlist_get_head(&listener_list);
+       item != NULL;
+       item = linkedlist_get_next(&*item))
   {
+    LoaderListenerBlk *const scan_list =
+      CONTAINER_OF(&*item, LoaderListenerBlk, list_item);
+
     if (TEST_BITS(scan_list->flags, LISTENER_CLAIM))
     {
       if (TEST_BITS(scan_list->flags, LISTENER_FILTER))
@@ -822,7 +824,8 @@ static _Optional LoaderListenerBlk *_ldr_find_listener(LoaderListenerCriteria *c
 
 static bool _ldr_listener_is_match(LinkedList *list, LinkedListItem *item, void *arg)
 {
-  LoaderListenerBlk * const listener = (LoaderListenerBlk *)item;
+  LoaderListenerBlk * const listener =
+    CONTAINER_OF(item, LoaderListenerBlk, list_item);
   const LoaderListenerCriteria * const criteria = arg;
 
   assert(listener != NULL);
@@ -978,12 +981,13 @@ static _Optional LoaderListenerBlk *_ldr_find_suitable_listener(
 
   bool file_type_handled = false, dropzone_handled = false;
   {
-    LoaderListenerBlk *scan_list;
-
-    for (scan_list = (LoaderListenerBlk *)linkedlist_get_head(&listener_list);
-         scan_list != NULL;
-         scan_list = (LoaderListenerBlk *)linkedlist_get_next(&scan_list->list_item))
+    for (_Optional LinkedListItem *item = linkedlist_get_head(&listener_list);
+         item != NULL;
+         item = linkedlist_get_next(&*item))
     {
+      LoaderListenerBlk *const scan_list =
+        CONTAINER_OF(&*item, LoaderListenerBlk, list_item);
+
       bool good_dropzone = _ldr_check_dropzone(scan_list->criteria.object,
                            scan_list->criteria.gadgets, window, icon);
       DEBUGF("Loader: It is%s within the drop zone for listener %p\n",
@@ -1161,7 +1165,8 @@ static _Optional CONST _kernel_oserror *_ldr_abs_to_work_area(int window_handle,
 
 static bool _ldr_cancel_matching_op(LinkedList *list, LinkedListItem *item, void *arg)
 {
-  ExtraOpData * const extra_op_data = (ExtraOpData *)item;
+  ExtraOpData * const extra_op_data =
+    CONTAINER_OF(item, ExtraOpData, list_item);
   const LoaderListenerBlk * const kill_listener = arg;
 
   assert(extra_op_data != NULL);
@@ -1182,7 +1187,8 @@ static bool _ldr_cancel_matching_op(LinkedList *list, LinkedListItem *item, void
 
 static bool _ldr_kill_listener_for_object(LinkedList *list, LinkedListItem *item, void *arg)
 {
-  LoaderListenerBlk * const listener = (LoaderListenerBlk *)item;
+  LoaderListenerBlk * const listener =
+    CONTAINER_OF(item, LoaderListenerBlk, list_item);
   const ObjectId * const object_id = arg;
 
   assert(listener != NULL);

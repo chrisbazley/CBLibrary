@@ -44,6 +44,7 @@
   CJB: 02-Aug-26: Explicitly allow null as the output argument for
                   diriterator_get_object_* functions.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
+  CJB: 21-Sep-26: Use CONTAINER_OF to recover directory levels from list items.
 */
 
 /* ISO library headers */
@@ -145,10 +146,11 @@ static bool free_level_callback(LinkedList *list, LinkedListItem *item, void *ar
   assert(item != NULL);
   if (item != ctx->stop)
   {
-    assert(item != NULL);
-    DEBUG_VERBOSEF("DirIterator: freeing level %p\n", (void *)item);
+    DirIteratorLevel *const level =
+      CONTAINER_OF(item, DirIteratorLevel, list_item);
+    DEBUG_VERBOSEF("DirIterator: freeing level %p\n", (void *)level);
     linkedlist_remove(list, item);
-    free(item);
+    free(level);
   }
 
   return item == ctx->stop;
@@ -435,20 +437,32 @@ static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
   _Optional CONST _kernel_oserror *e = NULL;
 
   assert(iterator != NULL);
-  DirIteratorLevel *deepest_dir = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
+  _Optional LinkedListItem *const deepest_item =
+    linkedlist_get_head(&iterator->dir_list);
+  assert(deepest_item != NULL);
+  if (deepest_item == NULL)
+    return NULL;
+
+  DirIteratorLevel *const deepest_dir =
+    CONTAINER_OF(&*deepest_item, DirIteratorLevel, list_item);
 
   DEBUGF("DirIterator: Leaving level %p ('%s')\n", (void *)deepest_dir,
          stringbuffer_get_pointer(&iterator->path_name));
 
-  assert(deepest_dir != NULL);
-  DirIteratorLevel *ancestor = (DirIteratorLevel *)linkedlist_get_next(&deepest_dir->list_item);
+  _Optional LinkedListItem *ancestor_item =
+    linkedlist_get_next(&deepest_dir->list_item);
 
-  while (e == NULL && ancestor != NULL && ancestor->nentries == 0)
+  while (e == NULL && ancestor_item != NULL)
   {
+    DirIteratorLevel *ancestor =
+      CONTAINER_OF(&*ancestor_item, DirIteratorLevel, list_item);
+    if (ancestor->nentries != 0)
+      break;
+
     if (ancestor->gbpb_next == OS_GBPB_ReadCat_PositionEnd)
     {
       /* End of ancestor directory: go up another level */
-      ancestor = (DirIteratorLevel *)linkedlist_get_next(&ancestor->list_item);
+      ancestor_item = linkedlist_get_next(&ancestor->list_item);
     }
     else
     {
@@ -463,6 +477,7 @@ static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
         e = refill_buffer(iterator, &tmp);
         assert(tmp != NULL);
         ancestor = tmp;
+        ancestor_item = &ancestor->list_item;
       }
 
       /* Reinstate the leaf name of the current directory */
@@ -474,16 +489,24 @@ static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
   {
     /* Free the directory level structs lower than the lowest ancestor on
        which we managed to find catalogue entries.
-       This works even if ancestor == NULL (in which case the
+       This works even if ancestor_item == NULL (in which case the
        iterator is empty and all directory level structs are freed). */
-    free_levels(&iterator->dir_list, &ancestor->list_item);
+    free_levels(&iterator->dir_list, ancestor_item);
 
     /* Remove the leaf names of the lower directories from the path */
-    if (ancestor != NULL)
+    if (ancestor_item != NULL)
+    {
+      DirIteratorLevel *const ancestor =
+        CONTAINER_OF(&*ancestor_item, DirIteratorLevel, list_item);
       stringbuffer_truncate(&iterator->path_name, ancestor->path_name_len);
 
-    DEBUG_VERBOSEF("DirIterator: Deepest directory is now %p\n",
-      (void *)ancestor);
+      DEBUG_VERBOSEF("DirIterator: Deepest directory is now %p\n",
+        (void *)ancestor);
+    }
+    else
+    {
+      DEBUG_VERBOSEF("DirIterator: Iterator is now empty\n");
+    }
   }
 
   return e;
@@ -505,7 +528,10 @@ static size_t get_name(const DirIterator *iterator,
   }
 
   assert(iterator != NULL);
-  DirIteratorLevel *level = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
+  _Optional LinkedListItem *const item =
+    linkedlist_get_head(&iterator->dir_list);
+  _Optional DirIteratorLevel *level =
+    item ? CONTAINER_OF(&*item, DirIteratorLevel, list_item) : NULL;
   if (level == NULL || level->entry == NULL)
   {
     /* Output an empty string because the iterator is empty */
@@ -701,7 +727,10 @@ int diriterator_get_object_info(const DirIterator               *iterator,
          (void *)iterator, (void *)info);
 
   assert(iterator != NULL);
-  DirIteratorLevel *level = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
+  _Optional LinkedListItem *const item =
+    linkedlist_get_head(&iterator->dir_list);
+  _Optional DirIteratorLevel *level =
+    item ? CONTAINER_OF(&*item, DirIteratorLevel, list_item) : NULL;
   if (level == NULL || level->entry == NULL)
   {
     /* No current object because the iterator is empty */
@@ -783,12 +812,22 @@ _Optional CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
   DEBUG_VERBOSEF("DirIterator: Advancing iterator %p\n", (void *)iterator);
 
   assert(iterator != NULL);
-  DirIteratorLevel *level = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
-  if (level == NULL || level->entry == NULL)
+  _Optional LinkedListItem *const item =
+    linkedlist_get_head(&iterator->dir_list);
+  if (item == NULL)
   {
     DEBUGF("DirIterator: Empty\n");
+    return e;
   }
-  else
+
+  DirIteratorLevel *level =
+    CONTAINER_OF(&*item, DirIteratorLevel, list_item);
+  if (level->entry == NULL)
+  {
+    DEBUGF("DirIterator: Empty\n");
+    return e;
+  }
+
   {
     bool entered = false;
 
@@ -802,7 +841,7 @@ _Optional CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
       {
         e = enter_dir(iterator);
         if (e == NULL &&
-            level != (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list))
+            &level->list_item != linkedlist_get_head(&iterator->dir_list))
         {
           /* Don't want to return to the same entry on this level. */
           advance(level);

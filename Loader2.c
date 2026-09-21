@@ -77,6 +77,7 @@
   CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
                   use of WORD_ALIGN on values of type size_t.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
+  CJB: 21-Sep-26: Use CONTAINER_OF to recover load records from list items.
 */
 
 /* ISO library headers */
@@ -801,8 +802,10 @@ static _Optional LoadOpData *_ldr2_find_record(int msg_ref)
 {
 
   DEBUGF("Loader2: Searching for operation awaiting reply to %d\n", msg_ref);
-  _Optional LoadOpData *load_op_data = (LoadOpData *)linkedlist_for_each(
-                 &load_op_data_list, _ldr2_op_has_ref, &msg_ref);
+  _Optional LinkedListItem *const item = linkedlist_for_each(
+    &load_op_data_list, _ldr2_op_has_ref, &msg_ref);
+  _Optional LoadOpData *load_op_data =
+    item ? CONTAINER_OF(&*item, LoadOpData, list_item) : NULL;
 
   if (load_op_data == NULL)
   {
@@ -905,7 +908,8 @@ static SchedulerTime _ldr2_time_out(void *handle, SchedulerTime time_now, const 
 
 static bool _ldr2_cancel_matching_op(LinkedList *list, LinkedListItem *item, void *arg)
 {
-  LoadOpData * const load_op_data = (LoadOpData *)item;
+  LoadOpData * const load_op_data =
+    CONTAINER_OF(item, LoadOpData, list_item);
   const LoadOpCallback * const callback = arg;
 
   assert(load_op_data != NULL);
@@ -928,7 +932,8 @@ static bool _ldr2_cancel_matching_op(LinkedList *list, LinkedListItem *item, voi
 static bool _ldr2_op_has_ref(LinkedList *list, LinkedListItem *item, void *arg)
 {
   const int *msg_ref = arg;
-  const LoadOpData * const load_op_data = (LoadOpData *)item;
+  const LoadOpData * const load_op_data =
+    CONTAINER_OF(item, LoadOpData, list_item);
 
   assert(msg_ref != NULL);
   assert(load_op_data != NULL);

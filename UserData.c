@@ -29,6 +29,7 @@
   CJB: 10-Aug-26: Make a local copy of the is_safe function pointer in
                   count_unsafe_user_data to help the analyser.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
+  CJB: 21-Sep-26: Use CONTAINER_OF to recover user data from list items.
 */
 
 /* ISO library headers */
@@ -205,9 +206,10 @@ _Optional UserData *userdata_for_each(UserDataCallbackFn *callback, void *arg)
   visitor_context.callback = callback;
   visitor_context.arg = arg;
 
-  return (UserData *)linkedlist_for_each(&user_data_list,
-                                         user_data_visitor,
-                                         &visitor_context);
+  _Optional LinkedListItem *const item =
+    linkedlist_for_each(&user_data_list, user_data_visitor, &visitor_context);
+
+  return item ? CONTAINER_OF(&*item, UserData, list_item) : NULL;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -215,7 +217,7 @@ _Optional UserData *userdata_for_each(UserDataCallbackFn *callback, void *arg)
 
 static bool user_data_visitor(LinkedList *list, LinkedListItem *item, void *arg)
 {
-  UserData * const data = (UserData *)item;
+  UserData * const data = CONTAINER_OF(item, UserData, list_item);
   assert(arg);
   const UserDataVisitorCtx * const visitor_context = arg;
 

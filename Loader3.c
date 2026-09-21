@@ -44,6 +44,7 @@
   CJB: 07-Jun-26: Use memcpy instead of strcpy since length is known.
   CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
                   use of WORD_ALIGN on values of type size_t.
+  CJB: 21-Sep-26: Use CONTAINER_OF to recover load records from list items.
 */
 
 /* ISO library headers */
@@ -206,7 +207,8 @@ static bool op_has_ref(LinkedList *const list,
   LinkedListItem *const item, void *const arg)
 {
   const int *const msg_ref = arg;
-  const LoadOpData * const load_op_data = (LoadOpData *)item;
+  const LoadOpData * const load_op_data =
+    CONTAINER_OF(item, LoadOpData, list_item);
 
   assert(msg_ref != NULL);
   assert(load_op_data != NULL);
@@ -223,8 +225,10 @@ static _Optional LoadOpData *find_record(int msg_ref)
   if (!msg_ref)
     return NULL;
 
-  _Optional LoadOpData *const load_op_data = (LoadOpData *)linkedlist_for_each(
+  _Optional LinkedListItem *const item = linkedlist_for_each(
     &load_op_data_list, op_has_ref, &msg_ref);
+  _Optional LoadOpData *const load_op_data =
+    item ? CONTAINER_OF(&*item, LoadOpData, list_item) : NULL;
 
   if (load_op_data == NULL)
   {
@@ -243,7 +247,8 @@ static _Optional LoadOpData *find_record(int msg_ref)
 static bool cancel_matching_op(LinkedList *const list,
   LinkedListItem *const item, void *const arg)
 {
-  LoadOpData * const load_op_data = (LoadOpData *)item;
+  LoadOpData * const load_op_data =
+    CONTAINER_OF(item, LoadOpData, list_item);
   assert(load_op_data != NULL);
   NOT_USED(list);
 
