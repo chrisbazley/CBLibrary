@@ -448,17 +448,18 @@ static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
 
   _Optional LinkedListItem *ancestor_item =
     linkedlist_get_next(&deepest_dir->list_item);
-  _Optional DirIteratorLevel *ancestor = ancestor_item ?
-    CONTAINER_OF(&*ancestor_item, DirIteratorLevel, list_item) : NULL;
 
-  while (e == NULL && ancestor != NULL && ancestor->nentries == 0)
+  while (e == NULL && ancestor_item != NULL)
   {
+    DirIteratorLevel *ancestor =
+      CONTAINER_OF(&*ancestor_item, DirIteratorLevel, list_item);
+    if (ancestor->nentries != 0)
+      break;
+
     if (ancestor->gbpb_next == OS_GBPB_ReadCat_PositionEnd)
     {
       /* End of ancestor directory: go up another level */
       ancestor_item = linkedlist_get_next(&ancestor->list_item);
-      ancestor = ancestor_item ?
-        CONTAINER_OF(&*ancestor_item, DirIteratorLevel, list_item) : NULL;
     }
     else
     {
@@ -473,6 +474,7 @@ static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
         e = refill_buffer(iterator, &tmp);
         assert(tmp != NULL);
         ancestor = tmp;
+        ancestor_item = &ancestor->list_item;
       }
 
       /* Reinstate the leaf name of the current directory */
@@ -484,16 +486,24 @@ static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
   {
     /* Free the directory level structs lower than the lowest ancestor on
        which we managed to find catalogue entries.
-       This works even if ancestor == NULL (in which case the
+       This works even if ancestor_item == NULL (in which case the
        iterator is empty and all directory level structs are freed). */
-    free_levels(&iterator->dir_list, &ancestor->list_item);
+    free_levels(&iterator->dir_list, ancestor_item);
 
     /* Remove the leaf names of the lower directories from the path */
-    if (ancestor != NULL)
+    if (ancestor_item != NULL)
+    {
+      DirIteratorLevel *const ancestor =
+        CONTAINER_OF(&*ancestor_item, DirIteratorLevel, list_item);
       stringbuffer_truncate(&iterator->path_name, ancestor->path_name_len);
 
-    DEBUG_VERBOSEF("DirIterator: Deepest directory is now %p\n",
-      (void *)ancestor);
+      DEBUG_VERBOSEF("DirIterator: Deepest directory is now %p\n",
+        (void *)ancestor);
+    }
+    else
+    {
+      DEBUG_VERBOSEF("DirIterator: Iterator is now empty\n");
+    }
   }
 
   return e;
@@ -860,7 +870,8 @@ _Optional CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
         {
           /* Did we manage to read any more catalogue entries? */
           assert(level != NULL);
-          if (level->nentries < 2)
+          DirIteratorLevel *const current_level = &*level;
+          if (current_level->nentries < 2)
           {
             /* Go up a level until reaching the top or finding a directory in
                which we haven't already advanced past all of the entries. */
@@ -869,7 +880,7 @@ _Optional CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
           else
           {
             /* Advance to the next catalogue entry on the current level. */
-            advance(level);
+            advance(current_level);
           }
         }
       }
