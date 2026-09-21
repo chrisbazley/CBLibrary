@@ -95,6 +95,7 @@
                   entity_claim and entity_release to help the analyser; likewise,
                   data_method and client_handle in _ent_probe_or_request.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
+  CJB: 21-Sep-26: Use CONTAINER_OF to recover request records from list items.
 */
 
 /* ISO library headers */
@@ -1023,8 +1024,10 @@ static _Optional RequestOpData *_ent_find_data_req(int msg_ref)
 {
 
   DEBUGF("Entity: Searching for data request awaiting reply to %d\n", msg_ref);
-  _Optional RequestOpData *request_op_data = (RequestOpData *)linkedlist_for_each(
-                    &request_op_data_list, _ent_request_has_ref, &msg_ref);
+  _Optional LinkedListItem *const item = linkedlist_for_each(
+    &request_op_data_list, _ent_request_has_ref, &msg_ref);
+  _Optional RequestOpData *request_op_data =
+    item ? CONTAINER_OF(&*item, RequestOpData, list_item) : NULL;
   if (request_op_data == NULL)
   {
     DEBUGF("Entity: End of linked list (no match)\n");
@@ -1197,7 +1200,8 @@ static _Optional CONST _kernel_oserror *_ent_probe_or_request(
 
 static bool _ent_cancel_matching_request(LinkedList *list, LinkedListItem *item, void *arg)
 {
-  RequestOpData * const request_op_data = (RequestOpData *)item;
+  RequestOpData * const request_op_data =
+    CONTAINER_OF(item, RequestOpData, list_item);
   const RequestOpCallback * const callback = arg;
 
   assert(request_op_data != NULL);
@@ -1228,7 +1232,8 @@ static bool _ent_cancel_matching_request(LinkedList *list, LinkedListItem *item,
 static bool _ent_request_has_ref(LinkedList *list, LinkedListItem *item, void *arg)
 {
   const int *msg_ref = arg;
-  const RequestOpData * const request_op_data = (RequestOpData *)item;
+  const RequestOpData * const request_op_data =
+    CONTAINER_OF(item, RequestOpData, list_item);
 
   assert(msg_ref != NULL);
   assert(request_op_data != NULL);

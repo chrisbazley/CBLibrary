@@ -78,7 +78,8 @@
   CJB: 22-May-26: Ensure only pointers of type void * are converted to uintptr_t.
   CJB: 02-Aug-26: Delete unused variable 'VM_parent'. Don't pass a pointer to
                   _Optional char into strdup.
-   CJB: 21-Sep-26: Declare variables when they are first assigned.
+  CJB: 21-Sep-26: Declare variables when they are first assigned.
+  CJB: 21-Sep-26: Use CONTAINER_OF to recover view records from list items.
 */
 
 /* ISO library headers */
@@ -197,8 +198,10 @@ _Optional CONST _kernel_oserror *ViewsMenu_setname(ObjectId showobject, const ch
 {
   _Optional char *new_ptr;
 
-  _Optional ViewInfo *view_info = (ViewInfo *)linkedlist_for_each(
-              &view_list, view_has_matching_object, &showobject);
+  _Optional LinkedListItem *const item = linkedlist_for_each(
+    &view_list, view_has_matching_object, &showobject);
+  _Optional ViewInfo *view_info =
+    item ? CONTAINER_OF(&*item, ViewInfo, list_item) : NULL;
 
   assert(view_info != NULL);
 
@@ -235,8 +238,10 @@ _Optional CONST _kernel_oserror *ViewsMenu_setname(ObjectId showobject, const ch
 ObjectId ViewsMenu_getfirst(void)
 {
 
-  _Optional ViewInfo *view_info = (ViewInfo *)linkedlist_for_each(
-              &view_list, view_has_matching_object, (void *)NULL);
+  _Optional LinkedListItem *const item = linkedlist_for_each(
+    &view_list, view_has_matching_object, (void *)NULL);
+  _Optional ViewInfo *view_info =
+    item ? CONTAINER_OF(&*item, ViewInfo, list_item) : NULL;
 
   return view_info == NULL ? NULL_ObjectId : view_info->object;
 }
@@ -246,14 +251,17 @@ ObjectId ViewsMenu_getfirst(void)
 ObjectId ViewsMenu_getnext(ObjectId current)
 {
 
-  _Optional ViewInfo *view_info = (ViewInfo *)linkedlist_for_each(
-              &view_list, view_has_matching_object, &current);
+  _Optional LinkedListItem *item = linkedlist_for_each(
+    &view_list, view_has_matching_object, &current);
+  _Optional ViewInfo *view_info =
+    item ? CONTAINER_OF(&*item, ViewInfo, list_item) : NULL;
   if (view_info != NULL)
   {
-    for (view_info = (ViewInfo *)linkedlist_get_next(&view_info->list_item);
-         view_info != NULL;
-         view_info = (ViewInfo *)linkedlist_get_next(&view_info->list_item))
+    for (item = linkedlist_get_next(&view_info->list_item);
+         item != NULL;
+         item = linkedlist_get_next(&view_info->list_item))
     {
+      view_info = CONTAINER_OF(&*item, ViewInfo, list_item);
       if (!view_info->remove_me)
         return view_info->object; /* found */
     }
@@ -271,8 +279,10 @@ _Optional CONST _kernel_oserror *ViewsMenu_add(ObjectId showobject, const char *
          showobject, view_name, file_path);
 
   /* Check not already on list */
-  _Optional ViewInfo *view_info = (ViewInfo *)linkedlist_for_each(
-              &view_list, view_has_matching_object, &showobject);
+  _Optional LinkedListItem *const item = linkedlist_for_each(
+    &view_list, view_has_matching_object, &showobject);
+  _Optional ViewInfo *view_info =
+    item ? CONTAINER_OF(&*item, ViewInfo, list_item) : NULL;
 
   assert(view_info == NULL);
   if (view_info != NULL)
@@ -349,8 +359,10 @@ _Optional CONST _kernel_oserror *ViewsMenu_remove(ObjectId showobject)
 
   DEBUGF("ViewsMenu: Remove viewsmenu entry for object 0x%x\n", showobject);
 
-  _Optional ViewInfo *view_info = (ViewInfo *)linkedlist_for_each(
-              &view_list, view_has_matching_object, &showobject);
+  _Optional LinkedListItem *const item = linkedlist_for_each(
+    &view_list, view_has_matching_object, &showobject);
+  _Optional ViewInfo *view_info =
+    item ? CONTAINER_OF(&*item, ViewInfo, list_item) : NULL;
 
   assert(view_info != NULL);
 
@@ -383,8 +395,10 @@ ObjectId ViewsMenu_findview(const char *file_path_to_match)
 
   assert(file_path_to_match != NULL);
 
-  _Optional const ViewInfo *view_info = (ViewInfo *)linkedlist_for_each(
-              &view_list, view_has_matching_path, (char *)file_path_to_match);
+  _Optional LinkedListItem *const item = linkedlist_for_each(
+    &view_list, view_has_matching_path, (char *)file_path_to_match);
+  _Optional const ViewInfo *view_info =
+    item ? CONTAINER_OF(&*item, ViewInfo, list_item) : NULL;
 
   return view_info == NULL ? NULL_ObjectId : view_info->object;
 }
@@ -557,7 +571,7 @@ static void do_deferred_removals(void)
 
 static bool destroy_view_if_pending(LinkedList *list, LinkedListItem *item, void *arg)
 {
-  ViewInfo * const view_info = (ViewInfo *)item;
+  ViewInfo * const view_info = CONTAINER_OF(item, ViewInfo, list_item);
 
   assert(view_info != NULL);
   NOT_USED(arg);
@@ -573,7 +587,7 @@ static bool destroy_view_if_pending(LinkedList *list, LinkedListItem *item, void
 
 static bool view_has_matching_path(LinkedList *list, LinkedListItem *item, void *arg)
 {
-  const ViewInfo * const view_info = (ViewInfo *)item;
+  const ViewInfo * const view_info = CONTAINER_OF(item, ViewInfo, list_item);
   const char * const file_path_to_match = arg;
 
   assert(view_info != NULL);
@@ -588,7 +602,7 @@ static bool view_has_matching_path(LinkedList *list, LinkedListItem *item, void 
 
 static bool view_has_matching_object(LinkedList *list, LinkedListItem *item, void *arg)
 {
-  const ViewInfo * const view_info = (ViewInfo *)item;
+  const ViewInfo * const view_info = CONTAINER_OF(item, ViewInfo, list_item);
   const ObjectId * const object_to_match = arg;
 
   assert(view_info != NULL);
@@ -603,7 +617,7 @@ static bool view_has_matching_object(LinkedList *list, LinkedListItem *item, voi
 
 static bool view_show_object(LinkedList *list, LinkedListItem *item, void *arg)
 {
-  const ViewInfo * const view_info = (ViewInfo *)item;
+  const ViewInfo * const view_info = CONTAINER_OF(item, ViewInfo, list_item);
   _Optional CONST _kernel_oserror ** const eout = arg;
   _Optional CONST _kernel_oserror *e = NULL;
 

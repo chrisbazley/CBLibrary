@@ -30,6 +30,7 @@
                   system.
   CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
                   use of WORD_ALIGN on values of type size_t.
+  CJB: 21-Sep-26: Use CONTAINER_OF to recover save records from list items.
 */
 
 /* ISO library headers */
@@ -131,7 +132,8 @@ static bool op_has_ref(LinkedList *const list,
   LinkedListItem *const item, void *const arg)
 {
   const int *const msg_ref = arg;
-  const SaveOpData * const save_op_data = (SaveOpData *)item;
+  const SaveOpData * const save_op_data =
+    CONTAINER_OF(item, SaveOpData, list_item);
 
   assert(msg_ref != NULL);
   assert(save_op_data != NULL);
@@ -148,8 +150,10 @@ static _Optional SaveOpData *find_record(int msg_ref)
   if (!msg_ref)
     return NULL;
 
-  _Optional SaveOpData *const save_op_data = (SaveOpData *)linkedlist_for_each(
+  _Optional LinkedListItem *const item = linkedlist_for_each(
     &save_op_data_list, op_has_ref, &msg_ref);
+  _Optional SaveOpData *const save_op_data =
+    item ? CONTAINER_OF(&*item, SaveOpData, list_item) : NULL;
 
   if (save_op_data == NULL)
   {
@@ -365,7 +369,8 @@ static SchedulerTime delayed_dataload(void *const handle,
 static bool cancel_matching_op(LinkedList *const list,
   LinkedListItem *const item, void *const arg)
 {
-  SaveOpData * const save_op_data = (SaveOpData *)item;
+  SaveOpData * const save_op_data =
+    CONTAINER_OF(item, SaveOpData, list_item);
   assert(save_op_data != NULL);
   NOT_USED(list);
 

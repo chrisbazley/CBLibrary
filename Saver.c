@@ -79,6 +79,7 @@
   CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
                   use of WORD_ALIGN on values of type size_t.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
+  CJB: 21-Sep-26: Use CONTAINER_OF to recover save records from list items.
 */
 
 /* ISO library headers */
@@ -643,8 +644,10 @@ static _Optional SaveOpData *_svr_find_record(int msg_ref)
 {
 
   DEBUGF("Saver: Searching for operation awaiting reply to %d\n", msg_ref);
-  _Optional SaveOpData *save_op_data = (SaveOpData *)linkedlist_for_each(
-                 &save_op_data_list, _svr_op_has_ref, &msg_ref);
+  _Optional LinkedListItem *const item = linkedlist_for_each(
+    &save_op_data_list, _svr_op_has_ref, &msg_ref);
+  _Optional SaveOpData *save_op_data =
+    item ? CONTAINER_OF(&*item, SaveOpData, list_item) : NULL;
 
   if (save_op_data == NULL)
   {
@@ -788,7 +791,8 @@ static void _svr_save_as_file(SaveOpData *save_op_data, WimpMessage *message)
 
 static bool _svr_cancel_matching_op(LinkedList *list, LinkedListItem *item, void *arg)
 {
-  SaveOpData * const save_op_data = (SaveOpData *)item;
+  SaveOpData * const save_op_data =
+    CONTAINER_OF(item, SaveOpData, list_item);
   const flex_ptr data = arg;
 
   assert(save_op_data != NULL);
@@ -807,7 +811,8 @@ static bool _svr_cancel_matching_op(LinkedList *list, LinkedListItem *item, void
 static bool _svr_op_has_ref(LinkedList *list, LinkedListItem *item, void *arg)
 {
   const int * const msg_ref = arg;
-  const SaveOpData * const save_op_data = (SaveOpData *)item;
+  const SaveOpData * const save_op_data =
+    CONTAINER_OF(item, SaveOpData, list_item);
 
   assert(msg_ref != NULL);
   assert(save_op_data != NULL);

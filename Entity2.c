@@ -42,6 +42,7 @@
   CJB: 27-Aug-26: Make local copies of lost_method and client_handle in
                   release_own to help the analyser.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
+  CJB: 21-Sep-26: Use CONTAINER_OF to recover request records from list items.
 */
 
 /* ISO library headers */
@@ -401,7 +402,8 @@ static bool request_has_ref(LinkedList *const list, LinkedListItem *const item,
   void *const arg)
 {
   const int *msg_ref = arg;
-  const RequestOpData * const request_op_data = (RequestOpData *)item;
+  const RequestOpData * const request_op_data =
+    CONTAINER_OF(item, RequestOpData, list_item);
 
   assert(msg_ref != NULL);
   assert(request_op_data != NULL);
@@ -418,8 +420,10 @@ static _Optional RequestOpData *find_data_req(int msg_ref)
   if (!msg_ref)
     return NULL;
 
-  _Optional RequestOpData *const request_op_data = (RequestOpData *)linkedlist_for_each(
-                    &request_op_data_list, request_has_ref, &msg_ref);
+  _Optional LinkedListItem *const item = linkedlist_for_each(
+    &request_op_data_list, request_has_ref, &msg_ref);
+  _Optional RequestOpData *const request_op_data =
+    item ? CONTAINER_OF(&*item, RequestOpData, list_item) : NULL;
   if (request_op_data == NULL)
   {
     DEBUGF("Entity2: End of linked list (no match)\n");
@@ -605,7 +609,8 @@ static _Optional CONST _kernel_oserror *probe_or_request_remote(size_t const ent
 static bool cancel_matching_request(LinkedList *const list,
   LinkedListItem *const item, void *const arg)
 {
-  RequestOpData * const request_op_data = (RequestOpData *)item;
+  RequestOpData * const request_op_data =
+    CONTAINER_OF(item, RequestOpData, list_item);
   assert(request_op_data != NULL);
   NOT_USED(list);
 
