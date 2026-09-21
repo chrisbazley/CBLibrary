@@ -46,8 +46,6 @@ enum
 {
   ErrorNum_BufferOverflow = 705,
   Territory_Current = -1,
-  OS_File_Attribute_ReadForYou = 1,
-  OS_File_Attribute_WriteForYou = 2,
   ErrorNum_DirectoryDoesNotExist = 214,
   FortifyAllocationLimit = 2048,
   StringBufferSize = 256,
@@ -274,8 +272,8 @@ static void validate_object_info(_Optional DirIteratorObjectInfo *info, int obje
 
     default:
       assert(object_type == ObjectType_File);
-      expected_attributes = (OS_File_Attribute_ReadForYou |
-                             OS_File_Attribute_WriteForYou);
+      expected_attributes = (OS_File_Attribute_OwnerRead |
+                             OS_File_Attribute_OwnerWrite);
       break;
   }
 
