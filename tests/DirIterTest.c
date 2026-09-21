@@ -31,6 +31,7 @@
 
 /* CBOSLib headers */
 #include "OSFSCntrl.h"
+#include "OSFile.h"
 
 /* CBLibrary headers */
 #include "DirIter.h"
@@ -45,9 +46,6 @@ enum
 {
   ErrorNum_BufferOverflow = 705,
   Territory_Current = -1,
-  OS_File_CreateStampedFile = 11,
-  OS_File_CreateDirectory = 8,
-  OS_File_CreateDirectory_DefaultNoOfEntries = 0,
   OS_File_Attribute_ReadForYou = 1,
   OS_File_Attribute_WriteForYou = 2,
   ErrorNum_DirectoryDoesNotExist = 214,
@@ -176,13 +174,10 @@ static void wipe(const char *path_name)
   (void)os_fscontrol_wipe(path_name, OS_FSControl_Recurse);
 }
 
-static void osfile(int op, const char *name, _kernel_osfile_block *inout)
+static void check_os_error(_Optional const _kernel_oserror *e)
 {
-  const int err = _kernel_osfile(op, name, inout);
-  if (err == _kernel_ERROR)
+  if (e != NULL)
   {
-    _Optional const _kernel_oserror * const e = _kernel_last_oserror();
-    assert(e != NULL);
     printf("Error 0x%x %s\n", e->errnum, e->errmess);
     exit(EXIT_FAILURE);
   }
@@ -190,22 +185,15 @@ static void osfile(int op, const char *name, _kernel_osfile_block *inout)
 
 static void create_dir(const char *path_name)
 {
-  _kernel_osfile_block inout;
-
   assert(path_name != NULL);
-  inout.start = OS_File_CreateDirectory_DefaultNoOfEntries;
-  osfile(OS_File_CreateDirectory, path_name, &inout);
+  check_os_error(os_file_create_dir(path_name,
+                                    OS_File_CreateDir_DefaultNoOfEntries));
 }
 
 static void create_file(const char *path_name, int type, int size)
 {
-  _kernel_osfile_block inout;
-
   assert(path_name != NULL);
-  inout.load = type;
-  inout.start = 0;
-  inout.end = size;
-  osfile(OS_File_CreateStampedFile, path_name, &inout);
+  check_os_error(os_file_create_stamped(path_name, type, size));
 }
 
 static void init(void)
