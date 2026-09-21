@@ -23,6 +23,7 @@
                   in timer_deregister because it's dangerous to interfere
                   with ticker event deregistration.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 21-Sep-26: Declare SWI registers with initialisers.
  */
 
 /* ISO library headers */
@@ -41,11 +42,14 @@ extern void timer_set_flag(void);
 
 _Optional CONST _kernel_oserror *timer_register(volatile bool *timeup_flag, int wait_time)
 {
-  _kernel_swi_regs regs;
   *timeup_flag = false;
-  regs.r[0] = wait_time;
-  regs.r[1] = (intptr_t)&timer_set_flag;
-  regs.r[2] = (intptr_t)timeup_flag;
+  _kernel_swi_regs regs = {
+    .r = {
+      wait_time,
+      (intptr_t)&timer_set_flag,
+      (intptr_t)timeup_flag,
+    }
+  };
   return _kernel_swi(OS_CallAfter, &regs, &regs);
 }
 
@@ -54,8 +58,11 @@ _Optional CONST _kernel_oserror *timer_register(volatile bool *timeup_flag, int 
 
 _Optional CONST _kernel_oserror *timer_deregister(volatile bool *timeup_flag)
 {
-  _kernel_swi_regs regs;
-  regs.r[0] = (intptr_t)&timer_set_flag;
-  regs.r[1] = (intptr_t)timeup_flag;
+  _kernel_swi_regs regs = {
+    .r = {
+      (intptr_t)&timer_set_flag,
+      (intptr_t)timeup_flag,
+    }
+  };
   return _kernel_swi(OS_RemoveTickerEvent, &regs, &regs);
 }

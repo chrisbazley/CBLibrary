@@ -52,13 +52,16 @@ enum
 
 static void wipe(const char *path_name)
 {
-  _kernel_swi_regs regs;
-
   assert(path_name != NULL);
 
-  regs.r[0] = OS_FSControl_Wipe;
-  regs.r[1] = (intptr_t)path_name;
-  regs.r[3] = OS_FSControl_Flag_Recurse;
+  _kernel_swi_regs regs = {
+    .r = {
+      OS_FSControl_Wipe,
+      (intptr_t)path_name,
+      0,
+      OS_FSControl_Flag_Recurse,
+    }
+  };
   _kernel_swi(OS_FSControl, &regs, &regs);
 }
 
