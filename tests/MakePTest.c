@@ -25,7 +25,9 @@
 
 /* Acorn C/C++ library headers */
 #include "kernel.h"
-#include "swis.h"
+
+/* CBOSLib headers */
+#include "OSFSCntrl.h"
 
 /* CBLibrary headers */
 #include "FileUtils.h"
@@ -42,8 +44,6 @@
 
 enum
 {
-  OS_FSControl_Wipe = 27,
-  OS_FSControl_Flag_Recurse = 1,
   OS_File_CreateStampedFile = 11,
   OS_File_CreateDirectory = 8,
   OS_File_CreateDirectory_DefaultNoOfEntries = 0,
@@ -53,16 +53,7 @@ enum
 static void wipe(const char *path_name)
 {
   assert(path_name != NULL);
-
-  _kernel_swi_regs regs = {
-    .r = {
-      OS_FSControl_Wipe,
-      (intptr_t)path_name,
-      0,
-      OS_FSControl_Flag_Recurse,
-    }
-  };
-  _kernel_swi(OS_FSControl, &regs, &regs);
+  (void)os_fscontrol_wipe(path_name, OS_FSControl_Recurse);
 }
 
 static int osfile(int op, const char *name, _kernel_osfile_block *inout)
