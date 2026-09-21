@@ -17,9 +17,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-/* Macros.h declares macros for bitwise operations, detection & reporting of
-   errors (veneers to Err.h or MsgTrans.h functions, or combinations thereof),
-   common RISC OS file types and other miscellany.
+/* Macros.h declares macros for detection and reporting of errors (veneers to
+   Err.h or MsgTrans.h functions, or combinations thereof) and provides a
+   compatibility include path for the generic definitions in MacroUtils.h.
 
 Dependencies: ANSI C library, Acorn library kernel, Acorn's WIMP library
               (varies according to which macros are used).
@@ -128,16 +128,14 @@ History:
                   debug builds. In C23, require exact member pointer type,
                   including qualifiers; retain the portable compatibility
                   check for older ISO C versions.
+  CJB: 21-Sep-26: Move the generic macro definitions to CBUtilLib's
+                  MacroUtils.h, which is included here for compatibility.
 */
 
 #ifndef Macros_h
 #define Macros_h
 
-#include <stddef.h>
-
-#ifndef NDEBUG
-#include <assert.h>
-#endif
+#include "MacroUtils.h"
 
 #if !defined(USE_OPTIONAL) && !defined(_Optional)
 #define _Optional
@@ -256,159 +254,6 @@ enum
   return (value); \
 } while (0)
 
-
-/* --- String copying --- */
-
-/* Copy a string into a character array of known size, truncating it to fit if
- * necessary. Unlike strncpy(), this macro ensures that the copied string is NUL
- * terminated if it has to be truncated.
- */
-#define STRCPY_SAFE(string_1, string_2) do { \
-  strncpy((string_1), (string_2), sizeof(string_1) - 1); \
-  (string_1)[sizeof(string_1) - 1]='\0'; \
-} while (0)
-
-
-/* --- Miscellaneous useful macros --- */
-
-/* Write a VDU bell character to the standard output stream. */
-#define SYSTEM_BEEP() putchar('\a')
-
-/* Free a malloc block and set the pointer to NULL so that subsequent attempts
- * to free it fail harmlessly.
- */
-#define FREE_SAFE(memptr) do { \
-  free(memptr); \
-  (memptr) = NULL; \
-} while (0)
-
-/* Return the nearest word aligned value greater than or equal to a given
- * expression (useful for sprite widths, which must include right hand wastage).
- */
-#define WORD_ALIGN(value) (((value) + 3) & ~3)
-
-/* Return the nearest word aligned value greater than or equal to a given
- * expression (useful for Wimp message sizes, which must be a whole number of
- * words).
- */
-#define WORD_ALIGN_SZ(value) (((value) + 3u) & ~(size_t)3)
-
-/* Suppress compiler warnings about an unused function argument. */
-#define NOT_USED(x) ((void)(x))
-
-/* Return a value scaled by a given percentage. */
-#define SCALE(value, perc) (((value) * (perc)) / 100)
-
-#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
-
-/* Swap the contents of two l-values. */
-#define SWAP(a, b) do { \
-  int temp; \
-  temp = (a); \
-  (a) = (b); \
-  (b) = temp; \
-} while (0)
-
-#define LOWEST(a, b) ((a) < (b) ? (a) : (b))
-#define HIGHEST(a, b) ((a) > (b) ? (a) : (b))
-#define CLAMP(x, lo, hi) LOWEST(HIGHEST(x, lo), hi)
-
-/* Assign to an l-value the unsigned difference between two expressions.
-   This compiles to very efficient in-line ARM code, unlike abs(x - y). */
-#define ABSDIFF(lvalue, x, y) \
-  lvalue = (((x) > (y)) ? (x) - (y) : (y) - (x))
-
-#define PI (3.1415926535897896)
-
-/* Convert a null pointer into an empty string. */
-#define STRING_OR_NULL(s) ((s) == NULL ? "" : &*(s))
-
-/* --- Bitwise manipulation (e.g. flags) --- */
-
-/* Return true if one or more of the specified bits are set. */
-#define TEST_BITS(value, bits) (((value) & (bits)) != 0)
-
-/* Clear certain bits of an l-value. */
-#define CLEAR_BITS(lvalue, bits) lvalue &= ~(bits)
-
-/* Set certain bits of an l-value. */
-#define SET_BITS(lvalue, bits) lvalue |= (bits)
-
-/* Return a value shifted right by a given no. of binary places,
- * or left-shifted if the second argument is negative.
- */
-#define SIGNED_R_SHIFT(value, shift) \
-  ((shift) >= 0 ? (value) >> (shift) : (value) << -(shift))
-
-/* Return a value shifted left by a given no. of binary places,
- * or right-shifted if the second argument is negative.
- */
-#define SIGNED_L_SHIFT(value, shift) \
-  ((shift) >= 0 ? (value) << (shift) : (value) >> -(shift))
-
-/* Convert a built-in  (e.g. __LINE__) to a string literal.
- */
-#ifndef STRINGIFY
-#define STRINGIFY2(n) #n
-#define STRINGIFY(n) STRINGIFY2(n)
-#endif /* STRINGIFY */
-
-/* Check the arguments passed to a printf-like function.
- * string_index is the index of the format string argument (starting from 1).
- * arg_index is the index of the substitution arguments to be checked.
- * Set arg_index to 0 if the substitution arguments cannot be checked at
- * compile-time (e.g. because they are supplied as a va_list).
- */
-#ifndef CHECK_PRINTF
-#ifdef __GNUC__
-#define CHECK_PRINTF(string_index, arg_index) \
-  __attribute__((format(printf, (string_index), (arg_index))))
-#else
-#define CHECK_PRINTF(string_index, arg_index)
-#endif
-#endif /* CHECK_PRINTF */
-
-#ifndef CONTAINER_OF_CHECK
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
-/* Require the pointer type implied by addr to exactly match that of member,
- * including the const and volatile qualification of the pointed-to type.
- */
-#define CONTAINER_OF_CHECK(addr, type, member) \
-  _Generic((&*(addr)), typeof(&((type *)0)->member): (void)0)
-#else
-/* Before C23, the conditional operator checks that the pointed-to types are
- * compatible, but its result type merges rather than compares qualifiers.
- */
-#define CONTAINER_OF_CHECK(addr, type, member) \
-  ((void)sizeof(0 ? &((type *)0)->member : (addr)))
-#endif
-#endif /* CONTAINER_OF_CHECK */
-
-#ifndef CONTAINER_OF_ADDR
-#ifndef NDEBUG
-static inline const volatile char *cb_non_null(
-  const volatile void *const addr)
-{
-  assert(addr != NULL);
-  return addr;
-}
-#define CONTAINER_OF_ADDR(addr) cb_non_null(&*(addr))
-#else
-#define CONTAINER_OF_ADDR(addr) ((char *)&*(addr))
-#endif
-#endif /* CONTAINER_OF_ADDR */
-
-#ifndef CONTAINER_OF
-#define CONTAINER_OF(addr, type, member) \
-  (CONTAINER_OF_CHECK(addr, type, member), \
-   (type *)(CONTAINER_OF_ADDR(addr) - offsetof(type, member)))
-#endif /* CONTAINER_OF */
-
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
-#define C23_CONST const
-#else
-#define C23_CONST
-#endif
 
 /* --- RISC OS object types --- */
 #include "OSFile.h"

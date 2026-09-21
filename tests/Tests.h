@@ -57,7 +57,6 @@
 void DecodeLExe_tests(void);
 void DirIter_tests(void);
 void IntVector_tests(void);
-void Macros_tests(void);
 void MakePath_tests(void);
 void PathTail_tests(void);
 void Timer_tests(void);

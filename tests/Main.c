@@ -58,7 +58,6 @@ int main(int argc, char *argv[])
     { "UserData", UserData_tests },
     { "MakePath", MakePath_tests },
     { "PathTail", PathTail_tests },
-    { "Macros",  Macros_tests },
     { "DecodeLExe", DecodeLExe_tests },
     { "DirIter", DirIter_tests },
     { "Timer", Timer_tests },
