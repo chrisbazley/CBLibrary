@@ -43,6 +43,7 @@
   CJB: 06-Jul-26: Assign a compound literal to ensure complete initialisation.
   CJB: 02-Aug-26: Explicitly allow null as the output argument for
                   diriterator_get_object_* functions.
+  CJB: 21-Sep-26: Declare variables when they are first assigned.
 */
 
 /* ISO library headers */
@@ -162,15 +163,11 @@ static void free_levels(LinkedList *dir_list, _Optional LinkedListItem *stop)
 static _Optional CONST _kernel_oserror *extend_buffer(DirIterator       *iterator,
                                                       DirIteratorLevel **levelp)
 {
-  size_t new_size;
   ptrdiff_t entry_offset;
-  DirIteratorLevel *level;
-  _Optional DirIteratorLevel *new_level;
-  _Optional LinkedListItem *prev;
   _Optional CONST _kernel_oserror *e = NULL;
 
   assert(levelp != NULL);
-  level = *levelp;
+  DirIteratorLevel *level = *levelp;
   assert(level != NULL);
 
   /* Calculate a byte offset from the base of the buffer to the current
@@ -182,16 +179,16 @@ static _Optional CONST _kernel_oserror *extend_buffer(DirIterator       *iterato
     entry_offset = PTRDIFF_MAX;
 
   /* Try to allocate a larger buffer */
-  new_size = level->buffer_size * GrowthFactor;
+  size_t new_size = level->buffer_size * GrowthFactor;
   DEBUG_VERBOSEF("DirIterator: trying to expand buffer from %zu to %zu bytes\n",
     level->buffer_size, new_size);
 
   /* If reallocation succeeds then the list item will move in memory, so
      we must unlink it from the list first. */
-  prev = linkedlist_get_prev(&level->list_item);
+  _Optional LinkedListItem *prev = linkedlist_get_prev(&level->list_item);
   linkedlist_remove(&iterator->dir_list, &level->list_item);
 
-  new_level = realloc(level, offsetof(DirIteratorLevel, buffer) + new_size);
+  _Optional DirIteratorLevel *new_level = realloc(level, offsetof(DirIteratorLevel, buffer) + new_size);
   if (new_level == NULL)
   {
     DEBUGF("DirIterator: realloc failed!\n");
@@ -225,16 +222,14 @@ static _Optional CONST _kernel_oserror *refill_buffer(DirIterator       *iterato
 {
   _Optional CONST _kernel_oserror *e = NULL;
   size_t keep_size = 0;
-  DirIteratorLevel *level;
-  const char *path_name;
   bool retry;
 
   assert(iterator != NULL);
-  path_name = stringbuffer_get_pointer(&iterator->path_name);
+  const char *path_name = stringbuffer_get_pointer(&iterator->path_name);
   assert(path_name != NULL);
 
   assert(levelp != NULL);
-  level = *levelp;
+  DirIteratorLevel *level = *levelp;
   assert(level != NULL);
 
   /* I don't trust _kernel_osgbpb to leave the buffer untouched on error, so
@@ -325,14 +320,13 @@ static _Optional CONST _kernel_oserror *refill_buffer(DirIterator       *iterato
 static _Optional CONST _kernel_oserror *enter_dir(DirIterator *iterator)
 {
   _Optional CONST _kernel_oserror *e = NULL;
-  _Optional DirIteratorLevel *level;
 
   assert(iterator != NULL);
 
   DEBUGF("DirIterator: Entering '%s'\n",
          stringbuffer_get_pointer(&iterator->path_name));
 
-  level = malloc(offsetof(DirIteratorLevel, buffer) + DEFAULT_BUFFER_SIZE);
+  _Optional DirIteratorLevel *level = malloc(offsetof(DirIteratorLevel, buffer) + DEFAULT_BUFFER_SIZE);
   if (level != NULL)
   {
     /* Record the length of the path name leading up to this directory. */
@@ -438,17 +432,16 @@ static void advance(DirIteratorLevel *level)
 
 static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
 {
-  DirIteratorLevel *ancestor, *deepest_dir;
   _Optional CONST _kernel_oserror *e = NULL;
 
   assert(iterator != NULL);
-  deepest_dir = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
+  DirIteratorLevel *deepest_dir = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
 
   DEBUGF("DirIterator: Leaving level %p ('%s')\n", (void *)deepest_dir,
          stringbuffer_get_pointer(&iterator->path_name));
 
   assert(deepest_dir != NULL);
-  ancestor = (DirIteratorLevel *)linkedlist_get_next(&deepest_dir->list_item);
+  DirIteratorLevel *ancestor = (DirIteratorLevel *)linkedlist_get_next(&deepest_dir->list_item);
 
   while (e == NULL && ancestor != NULL && ancestor->nentries == 0)
   {
@@ -501,7 +494,6 @@ static size_t get_name(const DirIterator *iterator,
                        size_t             buff_size,
                        size_t             skip_size)
 {
-  DirIteratorLevel *level;
   size_t nchars;
 
   DEBUG_VERBOSEF("DirIterator: skip %zu characters of path\n",
@@ -513,7 +505,7 @@ static size_t get_name(const DirIterator *iterator,
   }
 
   assert(iterator != NULL);
-  level = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
+  DirIteratorLevel *level = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
   if (level == NULL || level->entry == NULL)
   {
     /* Output an empty string because the iterator is empty */
@@ -664,13 +656,12 @@ _Optional CONST _kernel_oserror *diriterator_make(_Optional DirIterator  **itera
 _Optional CONST _kernel_oserror *diriterator_reset(DirIterator *iterator)
 {
   _Optional CONST _kernel_oserror *e = NULL;
-  LinkedList old_dir_list;
 
   DEBUGF("DirIterator: Resetting iterator %p\n", (void *)iterator);
   assert(iterator != NULL);
 
   /* Try to recreate the top level data structure again. */
-  old_dir_list = iterator->dir_list;
+  LinkedList old_dir_list = iterator->dir_list;
   linkedlist_init(&iterator->dir_list);
   stringbuffer_truncate(&iterator->path_name, iterator->path_name_len);
 
@@ -692,10 +683,9 @@ _Optional CONST _kernel_oserror *diriterator_reset(DirIterator *iterator)
 
 bool diriterator_is_empty(const DirIterator *iterator)
 {
-  bool is_empty;
 
   assert(iterator != NULL);
-  is_empty = (linkedlist_get_head(&iterator->dir_list) == NULL);
+  bool is_empty = (linkedlist_get_head(&iterator->dir_list) == NULL);
   DEBUGF("DirIterator: Iterator %p is%s empty\n",
          (void *)iterator, is_empty ? "" : " not");
 
@@ -705,14 +695,13 @@ bool diriterator_is_empty(const DirIterator *iterator)
 int diriterator_get_object_info(const DirIterator               *iterator,
                                 _Optional DirIteratorObjectInfo *info)
 {
-  DirIteratorLevel *level;
   int object_type;
 
   DEBUGF("DirIterator: Getting object info from iterator %p to buffer %p\n",
          (void *)iterator, (void *)info);
 
   assert(iterator != NULL);
-  level = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
+  DirIteratorLevel *level = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
   if (level == NULL || level->entry == NULL)
   {
     /* No current object because the iterator is empty */
@@ -791,11 +780,10 @@ size_t diriterator_get_object_leaf_name(const DirIterator *iterator,
 _Optional CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
 {
   _Optional CONST _kernel_oserror *e = NULL;
-  DirIteratorLevel *level;
   DEBUG_VERBOSEF("DirIterator: Advancing iterator %p\n", (void *)iterator);
 
   assert(iterator != NULL);
-  level = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
+  DirIteratorLevel *level = (DirIteratorLevel *)linkedlist_get_head(&iterator->dir_list);
   if (level == NULL || level->entry == NULL)
   {
     DEBUGF("DirIterator: Empty\n");

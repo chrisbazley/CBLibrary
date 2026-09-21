@@ -162,6 +162,7 @@
   CJB: 29-Aug-20: Deleted a redundant static function pre-declaration.
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 21-Sep-26: Declare variables when they are first assigned.
 */
 
 #ifdef CBLIB_OBSOLETE /* Use c.Loader2 instead */
@@ -373,7 +374,6 @@ _Optional CONST _kernel_oserror *loader_register_listener(unsigned int flags,
   _Optional LoaderFileHandler *loader_method,
   _Optional LoaderFinishedHandler *finished_method, void *client_handle)
 {
-  _Optional LoaderListenerBlk *newlistener;
   LoaderListenerCriteria criteria;
 
   assert(initialised);
@@ -391,7 +391,7 @@ _Optional CONST _kernel_oserror *loader_register_listener(unsigned int flags,
   }
 
   /* Initialise new listener */
-  newlistener = malloc(sizeof(*newlistener));
+  _Optional LoaderListenerBlk *newlistener = malloc(sizeof(*newlistener));
   if (newlistener == NULL)
     return msgs_error(DUMMY_ERRNO, "NoMem");
 
@@ -406,7 +406,6 @@ _Optional CONST _kernel_oserror *loader_register_listener(unsigned int flags,
   */
   if (drop_gadgets != NULL) {
     /* count number of gadgets in array */
-    _Optional ComponentId *gadgets_copy;
     size_t array_len = 0;
     do {
       assert(array_len < 16); /* not certain but suggests a bug */
@@ -416,7 +415,7 @@ _Optional CONST _kernel_oserror *loader_register_listener(unsigned int flags,
 
     /* Duplicate the array of gadgets */
     DEBUGF("Loader: About to clone array of %zu elements\n", array_len);
-    gadgets_copy = malloc(array_len * sizeof(*gadgets_copy));
+    _Optional ComponentId *gadgets_copy = malloc(array_len * sizeof(*gadgets_copy));
     if (gadgets_copy == NULL) {
       free(newlistener);
       return msgs_error(DUMMY_ERRNO, "NoMem");
@@ -461,7 +460,6 @@ _Optional CONST _kernel_oserror *loader_deregister_listener(int file_type,
   ObjectId drop_object, _Optional const ComponentId *drop_gadgets)
 {
   /* Kill a specified listener */
-  _Optional LoaderListenerBlk *find_it;
   LoaderListenerCriteria criteria;
 
   assert(initialised);
@@ -470,7 +468,7 @@ _Optional CONST _kernel_oserror *loader_deregister_listener(int file_type,
   criteria.pre_filter.file_type = file_type;
   criteria.gadgets = drop_gadgets;
 
-  find_it = _ldr_find_listener(&criteria);
+  _Optional LoaderListenerBlk *find_it = _ldr_find_listener(&criteria);
   assert(find_it != NULL);
   if (find_it != NULL)
     _ldr_kill_listener(&*find_it); /* remove the stinking thing */
@@ -520,15 +518,12 @@ static int _ldr_datasave_msg_handler(WimpMessage *message, void *handle)
   /* This is a handler for DataSave messages. It must be registered early or
      else it will intercept messages intended for the Loader2 or Entity library
      components). */
-  _Optional CONST _kernel_oserror *e;
-  _Optional LoaderListenerBlk *listener;
-  _Optional ExtraOpData *extra_op_data;
   NOT_USED(handle);
 
   /* Are any listeners interested?
      According to the RISC OS 3 PRM a file type value of &ffffffff in a
      DataSave message (and by extension DataLoad) means file is untyped */
-  listener = _ldr_find_suitable_listener(
+  _Optional LoaderListenerBlk *listener = _ldr_find_suitable_listener(
                        NULL,
                        message->data.data_save.destination_window,
                        message->data.data_save.destination_icon,
@@ -539,7 +534,7 @@ static int _ldr_datasave_msg_handler(WimpMessage *message, void *handle)
 
   /* Allocate data block for new save operation and link it into the list */
   DEBUGF("Loader: Creating a record for a load operation\n");
-  extra_op_data = malloc(sizeof(*extra_op_data));
+  _Optional ExtraOpData *extra_op_data = malloc(sizeof(*extra_op_data));
   if (extra_op_data == NULL) {
     WARN_GLOB("NoMem");
     return 1; /* claim message */
@@ -570,7 +565,7 @@ static int _ldr_datasave_msg_handler(WimpMessage *message, void *handle)
   linkedlist_insert(&extra_op_data_list, NULL, &extra_op_data->list_item);
   DEBUGF("Loader: New record is at %p\n", (void *)extra_op_data);
 
-  e = loader2_receive_data(message,
+  _Optional CONST _kernel_oserror *e = loader2_receive_data(message,
                            listener->loader_method,
                            _ldr_finished,
                            &*extra_op_data);
@@ -883,8 +878,7 @@ static bool _ldr_check_dropzone(ObjectId object,
   {
     ObjectClass objclass;
     {
-      _Optional _kernel_oserror *errptr;
-      errptr=toolbox_get_object_class(0, object, &objclass);
+      _Optional _kernel_oserror *errptr=toolbox_get_object_class(0, object, &objclass);
       if (errptr != NULL) {
         if (errptr->errnum != ERR_BAD_OBJECT_ID)
           err_complain(errptr->errnum, &*errptr->errmess);

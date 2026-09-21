@@ -78,6 +78,7 @@
                   system.
   CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
                   use of WORD_ALIGN on values of type size_t.
+  CJB: 21-Sep-26: Declare variables when they are first assigned.
 */
 
 /* ISO library headers */
@@ -284,7 +285,6 @@ _Optional CONST _kernel_oserror *saver_finalise(void)
 
 _Optional CONST _kernel_oserror *saver_send_data(int task_handle, WimpMessage *message, flex_ptr data, int start_offset, int end_offset, _Optional SaverFileHandler *save_method, _Optional SaverFinishedHandler *finished_method, void *client_handle)
 {
-  _Optional SaveOpData *save_op_data;
 
   DEBUGF("Saver: Request to send bytes %d-%d of block anchored at %p (%p) "
         "to task %d\n", start_offset, end_offset, (void *)data, *data, task_handle);
@@ -305,7 +305,7 @@ _Optional CONST _kernel_oserror *saver_send_data(int task_handle, WimpMessage *m
 
   /* Allocate data block for new save operation and link it into the list */
   DEBUGF("Saver: Creating a record for a new save operation\n");
-  save_op_data = malloc(sizeof(*save_op_data));
+  _Optional SaveOpData *save_op_data = malloc(sizeof(*save_op_data));
   if (save_op_data == NULL)
     return lookup_error("NoMem", ""); /* Memory couldn't be claimed */
 
@@ -323,7 +323,6 @@ _Optional CONST _kernel_oserror *saver_send_data(int task_handle, WimpMessage *m
   DEBUGF("Saver: New record is at %p\n", (void *)save_op_data);
 
   {
-    _Optional _kernel_oserror *e;
 
     /* Populate a few fields of the DataSave message automatically */
     message->hdr.size =
@@ -334,7 +333,7 @@ _Optional CONST _kernel_oserror *saver_send_data(int task_handle, WimpMessage *m
 
     /* Send DataSave message to task handle, or if none specified then send
        it to the window handle instead (recorded delivery) */
-    e = wimp_send_message(Wimp_EUserMessageRecorded,
+    _Optional _kernel_oserror *e = wimp_send_message(Wimp_EUserMessageRecorded,
                           message,
                           task_handle ? task_handle :
                           message->data.data_save.destination_window,
@@ -558,7 +557,6 @@ static int _svr_ramfetch_msg_handler(WimpMessage *message, void *handle)
 
 static int _svr_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBlock *id_block, void *handle)
 {
-  _Optional SaveOpData *save_op_data;
 
   assert(event_code == Wimp_EUserMessageAcknowledge);
   NOT_USED(event_code);
@@ -569,7 +567,7 @@ static int _svr_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBlock
   DEBUGF("Saver: Received a bounced message (ref. %d)\n",
         event->user_message_acknowledge.hdr.my_ref);
 
-  save_op_data = _svr_find_record(event->user_message_acknowledge.hdr.my_ref);
+  _Optional SaveOpData *save_op_data = _svr_find_record(event->user_message_acknowledge.hdr.my_ref);
   if (save_op_data == NULL)
   {
     DEBUGF("Saver: Unknown message ID\n");
@@ -643,10 +641,9 @@ static void _svr_finished(SaveOpData *save_op_data, bool success, _Optional CONS
 
 static _Optional SaveOpData *_svr_find_record(int msg_ref)
 {
-  _Optional SaveOpData *save_op_data;
 
   DEBUGF("Saver: Searching for operation awaiting reply to %d\n", msg_ref);
-  save_op_data = (SaveOpData *)linkedlist_for_each(
+  _Optional SaveOpData *save_op_data = (SaveOpData *)linkedlist_for_each(
                  &save_op_data_list, _svr_op_has_ref, &msg_ref);
 
   if (save_op_data == NULL)

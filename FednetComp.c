@@ -48,7 +48,8 @@
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-May-26: Use uintptr_t instead of assuming addresses can safely be
                   converted to type int.
- */
+   CJB: 21-Sep-26: Declare variables when they are first assigned.
+*/
 
 #ifdef CBLIB_OBSOLETE /* Use c.FedCompMT instead */
 
@@ -91,15 +92,13 @@ _Optional CONST _kernel_oserror *load_compressed(const char *file_path, flex_ptr
   assert(buffer_anchor != NULL);
 
   {
-    int buffer_size, err, nout;
-    _Optional FILE *read_file;
+    int buffer_size;
     const size_t command_size = CLoadCmdSize + strlen(file_path);
-    _Optional char *command;
 
     _kernel_last_oserror(); /* reset SCL's error recording */
 
     /* Get (decompressed) memory requirements */
-    read_file = fopen(file_path, "r");
+    _Optional FILE *read_file = fopen(file_path, "r");
     if (read_file == NULL)
     {
       ON_ERR_RTN_E(_kernel_last_oserror()); /* return any OS error */
@@ -119,7 +118,7 @@ _Optional CONST _kernel_oserror *load_compressed(const char *file_path, flex_ptr
       return msgs_error(DUMMY_ERRNO, "NoMem");
 
     /* Construct CLI command */
-    command = malloc(command_size);
+    _Optional char *command = malloc(command_size);
     if (command == NULL)
     {
       flex_free(buffer_anchor); /* bugfix 13/01/05 */
@@ -128,7 +127,7 @@ _Optional CONST _kernel_oserror *load_compressed(const char *file_path, flex_ptr
 
     nobudge_register(PreExpandHeap); /* prevent budge */
 
-    nout = sprintf(&*command,
+    int nout = sprintf(&*command,
             "Cload %s &%" PRIXPTR, file_path, (uintptr_t)*buffer_anchor);
     assert(nout >= 0); /* no formatting error */
     assert((unsigned)nout < command_size); /* no buffer overflow/truncation */
@@ -136,7 +135,7 @@ _Optional CONST _kernel_oserror *load_compressed(const char *file_path, flex_ptr
 
     /* Decompress file */
     hourglass_on();
-    err = _kernel_oscli(&*command);
+    int err = _kernel_oscli(&*command);
     hourglass_off();
 
     free(command);
@@ -161,18 +160,16 @@ _Optional CONST _kernel_oserror *save_compressed(const char *file_path, int file
   assert(*buffer_anchor != NULL);
 
   {
-    int err, nout;
     const size_t command_size = CSaveCmdSize + strlen(file_path);
-    _Optional char *command;
 
-    command = malloc(command_size);
+    _Optional char *command = malloc(command_size);
     if (command == NULL)
       return msgs_error(DUMMY_ERRNO, "NoMem");
 
     nobudge_register(PreExpandHeap); /* prevent budge */
 
     /* Construct CLI command */
-    nout = sprintf(&*command,
+    int nout = sprintf(&*command,
             "CSave %s &%" PRIXPTR " &%" PRIXPTR, file_path, (uintptr_t)*buffer_anchor,
             ((uintptr_t)*buffer_anchor + (unsigned)flex_size(buffer_anchor)));
 
@@ -182,7 +179,7 @@ _Optional CONST _kernel_oserror *save_compressed(const char *file_path, int file
 
     /* Compress file */
     hourglass_on();
-    err = _kernel_oscli(&*command);
+    int err = _kernel_oscli(&*command);
     hourglass_off();
 
     free(command);

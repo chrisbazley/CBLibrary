@@ -53,7 +53,8 @@
                   Use int instead of unsigned int for percentages.
                   Cast file_type explicitly to unsigned for bit operations.
                   Cast the result of flex_size to unsigned to stop a warning.
- */
+   CJB: 21-Sep-26: Declare variables when they are first assigned.
+*/
 
 /* ISO library headers */
 #include <stdlib.h>
@@ -110,13 +111,12 @@ static CONST _kernel_oserror *lookup_error(const char *token);
 
 _Optional CONST _kernel_oserror *file_perc_initialise(_Optional MessagesFD *mfd)
 {
-  _Optional CONST _kernel_oserror *e;
 
   /* Store pointer to messages file descriptor */
   desc = mfd;
 
   /* Ensure that subsidiary modules have also been initialised */
-  e = compress_initialise(mfd);
+  _Optional CONST _kernel_oserror *e = compress_initialise(mfd);
 #ifndef COMP_OPS_ONLY
   if (e == NULL)
     e = loadsave_initialise(mfd);

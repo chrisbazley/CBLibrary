@@ -27,6 +27,7 @@
   CJB: 02-Aug-26: Every instance of pointer-to-pointer-to-optional-pointer-to-FILE
                   should be pointer-to-pointer-to-optional-pointer-to-optional-FILE
                   (i.e. there can be no FILE, as well as no pointer to FILE.)
+  CJB: 21-Sep-26: Declare variables when they are first assigned.
 */
 
 /* ISO library headers */
@@ -41,10 +42,9 @@
 
 void abort_file_op(_Optional FILE *_Optional **handle)
 {
-  _Optional fileop_common *fop;
 
   assert(handle != NULL);
-  fop = (fileop_common *)*handle;
+  _Optional fileop_common *fop = (fileop_common *)*handle;
   if (fop != NULL)
   {
     if (fop->destructor)

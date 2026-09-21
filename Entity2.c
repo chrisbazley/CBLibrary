@@ -41,6 +41,7 @@
                   analyser.
   CJB: 27-Aug-26: Make local copies of lost_method and client_handle in
                   release_own to help the analyser.
+  CJB: 21-Sep-26: Declare variables when they are first assigned.
 */
 
 /* ISO library headers */
@@ -1198,14 +1199,13 @@ _Optional CONST _kernel_oserror *entity2_finalise(void)
 
 _Optional CONST _kernel_oserror *entity2_dispose_all(Entity2ExitMethod *const exit_method)
 {
-  bool data_found;
 
   DEBUGF("Entity2: Releasing all entities (%s post-function)\n",
         exit_method ? "with" : "without");
   assert(initialised);
 
   /* Search for entities owned by us, that may have data associated with them */
-  data_found = false;
+  bool data_found = false;
   if (owned_entities)
   {
     for (size_t entity = 0; entity < ARRAY_SIZE(entities_info); entity++)

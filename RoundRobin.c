@@ -48,7 +48,8 @@
   CJB: 03-May-25: Fix #include filename case.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-May-26: Changed parameter type of RoundRobin_initialise to int.
- */
+   CJB: 21-Sep-26: Declare variables when they are first assigned.
+*/
 
 #ifdef CBLIB_OBSOLETE /* Use c.Scheduler instead */
 
@@ -113,9 +114,8 @@ _Optional CONST _kernel_oserror *RoundRobin_initialise(int time)
 #ifdef INCLUDE_FINALISATION_CODE
 _Optional CONST _kernel_oserror *RoundRobin_finalise(void)
 {
-  _Optional CONST _kernel_oserror *return_error;
 
-  return_error = event_deregister_wimp_handler(-1,
+  _Optional CONST _kernel_oserror *return_error = event_deregister_wimp_handler(-1,
                                                Wimp_ENull,
                                                null_event_handler,
                                                (void *)NULL);
@@ -145,9 +145,8 @@ _Optional CONST _kernel_oserror *RoundRobin_register(RoundRobinHandler *handler,
 
   if (write_data == NULL) {
     /* Create/Extend array of RoundRobinRecord blocks */
-    _Optional RoundRobinRecord *new_data;
 
-    new_data = realloc(threads_array,
+    _Optional RoundRobinRecord *new_data = realloc(threads_array,
                        sizeof(*new_data) * (threads_array_len + 1));
     if (new_data == NULL)
       return msgs_error(DUMMY_ERRNO, "NoMem");
@@ -228,7 +227,6 @@ _Optional CONST _kernel_oserror *RoundRobin_resume(void)
 
 static int null_event_handler(int event_code, WimpPollBlock *event, IdBlock *id_block, void *handle)
 {
-  unsigned int num_this_poll;
 
   assert(event_code == Wimp_ENull);
   NOT_USED(event_code);
@@ -240,9 +238,8 @@ static int null_event_handler(int event_code, WimpPollBlock *event, IdBlock *id_
     return 0; /* nothing to do - pass event on */
 
   {
-    _Optional CONST _kernel_oserror *err;
     time_up = false;
-    err = timer_register(&time_up, maxtime);
+    _Optional CONST _kernel_oserror *err = timer_register(&time_up, maxtime);
     if (err != NULL) {
       time_up = true; /* could not set up timer event */
       err_check_rep(&*err);
@@ -250,9 +247,8 @@ static int null_event_handler(int event_code, WimpPollBlock *event, IdBlock *id_
   }
 
   DEBUGF("Entering RoundRobin null event dispatcher\n");
-  num_this_poll = 0;
+  unsigned int num_this_poll = 0;
   do {
-    RoundRobinRecord *block;
 
     if (thread_to_call >= threads_array_len)
       thread_to_call = 0;
@@ -261,7 +257,7 @@ static int null_event_handler(int event_code, WimpPollBlock *event, IdBlock *id_
       break;
     }
 
-    block = &threads_array[thread_to_call];
+    RoundRobinRecord *block = &threads_array[thread_to_call];
     DEBUGF("Thread record %zu at %p\n", thread_to_call, (void *)block);
 
     if (block->handler) {

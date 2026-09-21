@@ -64,12 +64,11 @@ static void wipe(const char *path_name)
 
 static int osfile(int op, const char *name, _kernel_osfile_block *inout)
 {
-  int err;
 
   assert(name != NULL);
   assert(inout != NULL);
 
-  err = _kernel_osfile(op, name, inout);
+  int err = _kernel_osfile(op, name, inout);
   if (err == _kernel_ERROR)
   {
     _Optional const _kernel_oserror * const e = _kernel_last_oserror();
@@ -103,10 +102,9 @@ static void create_file(const char *path_name, int type, int size)
 static int read_obj_type(const char *path_name)
 {
   _kernel_osfile_block inout;
-  int obj_type;
 
   assert(path_name != NULL);
-  obj_type = osfile(OS_File_ReadCatalogueInfo, path_name, &inout);
+  int obj_type = osfile(OS_File_ReadCatalogueInfo, path_name, &inout);
 
   return obj_type;
 }
@@ -134,12 +132,11 @@ static void check_path(void)
 static void test1(void)
 {
   /* Make whole path */
-  _Optional CONST _kernel_oserror *e;
 
   /* Start with a cleanish state (don't delete Scrap directory) */
   wipe(paths[1]);
 
-  e = make_path(paths[4], 0);
+  _Optional CONST _kernel_oserror *e = make_path(paths[4], 0);
   assert(e == NULL);
   check_path();
 }
@@ -147,7 +144,6 @@ static void test1(void)
 static void test2(void)
 {
   /* Make partial path */
-  _Optional CONST _kernel_oserror *e;
 
   /* Start with a cleanish state (don't delete Scrap directory) */
   wipe(paths[1]);
@@ -156,7 +152,7 @@ static void test2(void)
   create_dir(paths[1]);
 
   /* Create the remaining directories */
-  e = make_path(paths[4], strlen(paths[1])+1);
+  _Optional CONST _kernel_oserror *e = make_path(paths[4], strlen(paths[1])+1);
   assert(e == NULL);
   check_path();
 }
@@ -164,7 +160,6 @@ static void test2(void)
 static void test3(void)
 {
   /* Make degenerate partial path */
-  _Optional CONST _kernel_oserror *e;
 
   /* Start with a cleanish state (don't delete Scrap directory) */
   wipe(paths[1]);
@@ -173,7 +168,7 @@ static void test3(void)
   create_dir(paths[1]);
 
   /* Create the remaining directories */
-  e = make_path(paths[4], strlen(paths[1])+2);
+  _Optional CONST _kernel_oserror *e = make_path(paths[4], strlen(paths[1])+2);
   assert(e == NULL);
   check_path();
 }
@@ -182,7 +177,6 @@ static void test4(void)
 {
   /* Make existing path */
   size_t i;
-  _Optional CONST _kernel_oserror *e;
 
   /* Start with a cleanish state (don't delete Scrap directory) */
   wipe(paths[1]);
@@ -194,7 +188,7 @@ static void test4(void)
   create_file(paths[i], FileType_Text, 1);
 
   /* Make the whole path (already exists) */
-  e = make_path(paths[4], 0);
+  _Optional CONST _kernel_oserror *e = make_path(paths[4], 0);
   assert(e == NULL);
   check_path();
 }

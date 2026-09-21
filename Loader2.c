@@ -76,6 +76,7 @@
   CJB: 22-May-26: Stop allocating heap memory for WimpMessage objects.
   CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
                   use of WORD_ALIGN on values of type size_t.
+  CJB: 21-Sep-26: Declare variables when they are first assigned.
 */
 
 /* ISO library headers */
@@ -275,7 +276,6 @@ _Optional CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message
   _Optional Loader2FileHandler *load_method,
   _Optional Loader2FinishedHandler *finished_method, void *client_handle)
 {
-  _Optional LoadOpData *load_op_data;
   _Optional CONST _kernel_oserror *e = NULL;
 
   assert(initialised);
@@ -297,7 +297,7 @@ _Optional CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message
 
   /* Allocate memory for a new load operation */
   DEBUGF("Loader2: Creating a record for a new load operation\n");
-  load_op_data = malloc(sizeof(*load_op_data));
+  _Optional LoadOpData *load_op_data = malloc(sizeof(*load_op_data));
   if (load_op_data == NULL)
     return lookup_error("NoMem", "");
 
@@ -694,7 +694,6 @@ static int _ldr2_ramtransmit_msg_handler(WimpMessage *message, void *handle)
 
 static int _ldr2_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBlock *id_block, void *handle)
 {
-  _Optional LoadOpData *load_op_data;
   _Optional CONST _kernel_oserror *e = NULL;
 
   assert(event_code == Wimp_EUserMessageAcknowledge);
@@ -706,7 +705,7 @@ static int _ldr2_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBloc
   DEBUGF("Loader2: Received a bounced message (ref. %d)\n",
         event->user_message_acknowledge.hdr.my_ref);
 
-  load_op_data = _ldr2_find_record(event->user_message_acknowledge.hdr.my_ref);
+  _Optional LoadOpData *load_op_data = _ldr2_find_record(event->user_message_acknowledge.hdr.my_ref);
   if (load_op_data == NULL)
   {
     DEBUGF("Loader2: Unknown message ID\n");
@@ -800,10 +799,9 @@ static void _ldr2_finished(LoadOpData *load_op_data, bool success, _Optional CON
 
 static _Optional LoadOpData *_ldr2_find_record(int msg_ref)
 {
-  _Optional LoadOpData *load_op_data;
 
   DEBUGF("Loader2: Searching for operation awaiting reply to %d\n", msg_ref);
-  load_op_data = (LoadOpData *)linkedlist_for_each(
+  _Optional LoadOpData *load_op_data = (LoadOpData *)linkedlist_for_each(
                  &load_op_data_list, _ldr2_op_has_ref, &msg_ref);
 
   if (load_op_data == NULL)
@@ -821,7 +819,6 @@ static _Optional LoadOpData *_ldr2_find_record(int msg_ref)
 
 static _Optional CONST _kernel_oserror *_ldr2_replyto_datasave(const WimpMessage *reply_to, LoadOpData *load_op_data)
 {
-  _Optional CONST _kernel_oserror *e;
 
   assert(reply_to != NULL);
   assert(load_op_data != NULL);
@@ -852,7 +849,7 @@ static _Optional CONST _kernel_oserror *_ldr2_replyto_datasave(const WimpMessage
   };
 
   /* Send our reply to the sender of the DataSave message */
-  e = wimp_send_message(Wimp_EUserMessage,
+  _Optional CONST _kernel_oserror *e = wimp_send_message(Wimp_EUserMessage,
                         &reply,
                         reply_to->hdr.sender,
                         0,

@@ -81,6 +81,7 @@
   CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
                   use of WORD_ALIGN on values of type size_t.
   CJB: 02-Aug-26: Make definition of 'desc' conditional because it may be unused.
+  CJB: 21-Sep-26: Declare variables when they are first assigned.
 */
 
 /* ISO library headers */
@@ -391,12 +392,11 @@ _Optional CONST _kernel_oserror *drag_start(const int *const file_types,
 static int _drag_dragclaim_msg_handler(WimpMessage *message, void *handle)
 {
   /* This is a handler for DragClaim messages */
-  const WimpDragClaimMessage *dragclaim;
 
   assert(message != NULL);
   NOT_USED(handle);
 
-  dragclaim = (WimpDragClaimMessage *)&message->data;
+  const WimpDragClaimMessage *dragclaim = (WimpDragClaimMessage *)&message->data;
   DEBUGF("Drag: Received a DragClaim message (ref. %d in reply to %d)\n",
         message->hdr.my_ref, message->hdr.your_ref);
 

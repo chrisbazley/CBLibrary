@@ -291,7 +291,7 @@ static void test7(void)
 {
   /* Count unsafe with defaults */
   UserData data[NumberOfItems];
-  unsigned int i, unsafe_count;
+  unsigned int i;
 
   memset(data, CHAR_MAX, sizeof(data));
 
@@ -308,7 +308,7 @@ static void test7(void)
   }
 
   callback_count = 0;
-  unsafe_count = userdata_count_unsafe();
+  unsigned int unsafe_count = userdata_count_unsafe();
   assert(unsafe_count == ARRAY_SIZE(data)/4);
   assert(callback_count == ARRAY_SIZE(data)/2);
 
@@ -323,7 +323,7 @@ static void test8(void)
 {
   /* Count unsafe */
   UserData data[NumberOfItems];
-  unsigned int i, unsafe_count;
+  unsigned int i;
 
   memset(data, CHAR_MAX, sizeof(data));
 
@@ -337,7 +337,7 @@ static void test8(void)
   }
 
   callback_count = 0;
-  unsafe_count = userdata_count_unsafe();
+  unsigned int unsafe_count = userdata_count_unsafe();
   assert(unsafe_count == ARRAY_SIZE(data)/2);
   assert(callback_count == ARRAY_SIZE(data));
 
@@ -401,21 +401,18 @@ static void test10(void)
   };
   UserData data;
   unsigned int i;
-  bool success;
-  const char *got_name;
-  size_t got_len;
 
   memset(&data, CHAR_MAX, sizeof(data));
 
   userdata_init();
 
-  success = userdata_add_to_list(&data, (UserDataIsSafeFn *)NULL, (UserDataDestroyFn *)NULL, "");
+  bool success = userdata_add_to_list(&data, (UserDataIsSafeFn *)NULL, (UserDataDestroyFn *)NULL, "");
   assert(success);
 
-  got_name = userdata_get_file_name(&data);
+  const char *got_name = userdata_get_file_name(&data);
   assert(*got_name == '\0');
 
-  got_len = userdata_get_file_name_length(&data);
+  size_t got_len = userdata_get_file_name_length(&data);
   assert(got_len == 0);
 
   for (i = 0; i < ARRAY_SIZE(names); ++i)
@@ -489,8 +486,7 @@ static void test12(void)
   /* Set name fail recovery */
   unsigned long limit;
   UserData data;
-  bool success;
-  const char *got_name, *expected;
+  const char *got_name;
   size_t got_len;
   static const char * const names[2] =
   {
@@ -502,8 +498,8 @@ static void test12(void)
 
   userdata_init();
 
-  expected = names[0];
-  success = userdata_add_to_list(&data,
+  const char *expected = names[0];
+  bool success = userdata_add_to_list(&data,
                                  (UserDataIsSafeFn *)NULL,
                                  (UserDataDestroyFn *)NULL,
                                  expected);

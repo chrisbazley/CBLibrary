@@ -94,6 +94,7 @@
   CJB: 27-Aug-26: Make local copies of lost_method and client_handle in
                   entity_claim and entity_release to help the analyser; likewise,
                   data_method and client_handle in _ent_probe_or_request.
+  CJB: 21-Sep-26: Declare variables when they are first assigned.
 */
 
 /* ISO library headers */
@@ -497,14 +498,13 @@ _Optional CONST _kernel_oserror *entity_finalise(void)
 
 _Optional CONST _kernel_oserror *entity_dispose_all(EntityExitMethod * exit_method)
 {
-  bool data_found;
 
   DEBUGF("Entity: Releasing all entities (%s post-function)\n",
         exit_method ? "with" : "without");
   assert(initialised);
 
   /* Search for entities owned by us, that may have data associated with them */
-  data_found = false;
+  bool data_found = false;
   if (owned_entities)
   {
     for (size_t entity = 0; entity < ARRAY_SIZE(entities_info); entity++)
@@ -556,13 +556,12 @@ _Optional CONST _kernel_oserror *entity_dispose_all(EntityExitMethod * exit_meth
 static int _ent_claimentity_msg_handler(WimpMessage *message, void *handle)
 {
   /* This is a handler for ClaimEntity messages */
-  const WimpClaimEntityMessage *claim_entity;
   unsigned int not_owned = ~owned_entities;
 
   assert(message != NULL);
   NOT_USED(handle);
 
-  claim_entity = (WimpClaimEntityMessage *)&message->data;
+  const WimpClaimEntityMessage *claim_entity = (WimpClaimEntityMessage *)&message->data;
 
   DEBUGF("Entity: Received a ClaimEntity message (ref. %d in reply to %d)\n",
         message->hdr.my_ref, message->hdr.your_ref);
@@ -640,12 +639,11 @@ static int _ent_datasave_msg_handler(WimpMessage *message, void *handle)
 static int _ent_datarequest_msg_handler(WimpMessage *message, void *handle)
 {
   /* This is a handler for DataRequest messages */
-  const WimpDataRequestMessage *data_request;
 
   assert(message != NULL);
   NOT_USED(handle);
 
-  data_request = (WimpDataRequestMessage *)&message->data;
+  const WimpDataRequestMessage *data_request = (WimpDataRequestMessage *)&message->data;
 
   DEBUGF("Entity: Received a DataRequest message with flags %d "
         "(ref. %d in reply to %d)\n", data_request->flags, message->hdr.my_ref,
@@ -666,18 +664,15 @@ static int _ent_datarequest_msg_handler(WimpMessage *message, void *handle)
 
   for (size_t entity = 0; entity < ARRAY_SIZE(entities_info); entity++)
   {
-    _Optional EntityDataMethod *get_data_func;
 
     if (!TEST_BITS(data_request->flags, 1u<<entity) ||
         !TEST_BITS(owned_entities, 1u<<entity))
       continue; /* we don't own this entity, or data not requested */
 
     /* Request data from the owner of this entity */
-    get_data_func = entities_info[entity].data_method;
+    _Optional EntityDataMethod *get_data_func = entities_info[entity].data_method;
     if (get_data_func)
     {
-      bool data_persists;
-      void *_Optional *entity_data;
       int data_type;
       WimpMessage msg;
       _Optional CONST _kernel_oserror *e;
@@ -685,8 +680,8 @@ static int _ent_datarequest_msg_handler(WimpMessage *message, void *handle)
       DEBUGF("Entity: Calling data function with %p for entity %zu\n",
             entities_info[entity].client_handle, entity);
 
-      data_persists = true; /* default for safety */
-      entity_data = get_data_func(data_request->file_types,
+      bool data_persists = true; /* default for safety */
+      void *_Optional *entity_data = get_data_func(data_request->file_types,
                                   false,
                                   entities_info[entity].client_handle,
                                   &data_persists,
@@ -870,9 +865,8 @@ static bool check_error(_Optional CONST _kernel_oserror *e)
 static CONST _kernel_oserror *_ent_no_data(size_t entity)
 {
   char token[MaxTokenLen + 1];
-  int nout;
 
-  nout = sprintf(token,
+  int nout = sprintf(token,
           "Entity%zuNoData",
           entity);
   assert(nout >= 0); /* no formatting error */
@@ -1027,10 +1021,9 @@ static void _ent_load_finished(_Optional CONST _kernel_oserror *load_error, int 
 
 static _Optional RequestOpData *_ent_find_data_req(int msg_ref)
 {
-  _Optional RequestOpData *request_op_data;
 
   DEBUGF("Entity: Searching for data request awaiting reply to %d\n", msg_ref);
-  request_op_data = (RequestOpData *)linkedlist_for_each(
+  _Optional RequestOpData *request_op_data = (RequestOpData *)linkedlist_for_each(
                     &request_op_data_list, _ent_request_has_ref, &msg_ref);
   if (request_op_data == NULL)
   {
@@ -1080,7 +1073,6 @@ static _Optional CONST _kernel_oserror *_ent_probe_or_request(
 
       if (entities_info[entity].data_method)
       {
-        bool data_persists;
         EntityDataMethod *const data_method =
           &*entities_info[entity].data_method;
         void *const client_handle = entities_info[entity].client_handle;
@@ -1088,7 +1080,7 @@ static _Optional CONST _kernel_oserror *_ent_probe_or_request(
         DEBUGF("Entity: Calling data function with handle %p for entity %zu\n",
                client_handle, entity);
 
-        data_persists = true; /* default for safety */
+        bool data_persists = true; /* default for safety */
         data = data_method(
                                             file_types,
                                             probe,
@@ -1164,13 +1156,11 @@ static _Optional CONST _kernel_oserror *_ent_probe_or_request(
     {
       /* We don't own this entity, so we must request the associated data from
          its owner. */
-      _Optional CONST _kernel_oserror *e;
-      _Optional RequestOpData *request_op_data;
 
       DEBUGF("Entity: Creating a record for a data %s\n",
             probe ? "probe" : "import");
 
-      request_op_data = malloc(sizeof(*request_op_data));
+      _Optional RequestOpData *request_op_data = malloc(sizeof(*request_op_data));
       if (request_op_data == NULL)
         return lookup_error("NoMem");
 
@@ -1183,7 +1173,7 @@ static _Optional CONST _kernel_oserror *_ent_probe_or_request(
       linkedlist_insert(&request_op_data_list, NULL, &request_op_data->list_item);
       DEBUGF("Entity: New record is at %p\n", (void *)request_op_data);
 
-      e = _ent_request_data(window,
+      _Optional CONST _kernel_oserror *e = _ent_request_data(window,
                             icon,
                             x,
                             y,

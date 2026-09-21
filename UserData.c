@@ -28,6 +28,7 @@
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-Aug-26: Make a local copy of the is_safe function pointer in
                   count_unsafe_user_data to help the analyser.
+  CJB: 21-Sep-26: Declare variables when they are first assigned.
 */
 
 /* ISO library headers */
@@ -124,7 +125,6 @@ unsigned int userdata_count_unsafe(void)
 
 bool userdata_set_file_name(UserData *data, const char *file_name)
 {
-  bool success;
 
   assert(data != NULL);
   assert(file_name != NULL);
@@ -132,7 +132,7 @@ bool userdata_set_file_name(UserData *data, const char *file_name)
          (void *)data, file_name);
 
   stringbuffer_truncate(&data->file_name, 0);
-  success = stringbuffer_append_all(&data->file_name, file_name);
+  bool success = stringbuffer_append_all(&data->file_name, file_name);
   if (!success)
     stringbuffer_undo(&data->file_name);
   return success;
@@ -158,12 +158,11 @@ size_t userdata_get_file_name_length(const UserData *data)
 
 _Optional UserData *userdata_find_by_file_name(const char *file_name)
 {
-  _Optional UserData *user_data;
 
   assert(file_name != NULL);
   DEBUGF("UserData: Searching for user data with file name '%s'\n",
          file_name);
-  user_data = userdata_for_each(user_data_name_matches, (void *)file_name);
+  _Optional UserData *user_data = userdata_for_each(user_data_name_matches, (void *)file_name);
   if (user_data == NULL)
   {
     DEBUGF("UserData: No matching user data\n");

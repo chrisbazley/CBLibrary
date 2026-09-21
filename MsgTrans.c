@@ -54,6 +54,7 @@
                   early if no descriptor has been set instead of relying on
                   the analyser to understand that DEBUGF cannot change the
                   value of 'desc'.
+  CJB: 21-Sep-26: Declare variables when they are first assigned.
 */
 
 /* ISO library headers */
@@ -123,13 +124,12 @@ char *msgs_lookup_subn(const char *token, size_t nparam, ...)
   /* look in application messages file, with substitution of a variable
      number of parameters */
   va_list ap;
-  char *m;
 
   assert(token != NULL);
   assert(nparam <= MaxParameters);
 
   va_start(ap, nparam); /* make ap point to first unnamed argument */
-  m = generic_vlookup(desc, token, nparam, ap);
+  char *m = generic_vlookup(desc, token, nparam, ap);
   va_end(ap);
 
   return m;
@@ -150,13 +150,12 @@ CONST _kernel_oserror *msgs_error_subn(int errnum, const char *token, size_t npa
   /* look up error message and create error block, with substitution of a
      variable number of parameters */
   va_list ap;
-  CONST _kernel_oserror *e;
 
   assert(token != NULL);
   assert(nparam <= MaxParameters);
 
   va_start(ap, nparam); /* make ap point to 1st unnamed arg */
-  e = messagetrans_error_vlookup(desc, errnum, token, nparam, ap);
+  CONST _kernel_oserror *e = messagetrans_error_vlookup(desc, errnum, token, nparam, ap);
   va_end(ap);
 
   assert(e != NULL);
@@ -199,10 +198,9 @@ char *msgs_lookupsubn(const char *token, size_t nparam, ...)
   /* look in application messages file, with substitution of a variable
      number of parameters */
   va_list ap;
-  char *m;
 
   va_start(ap, nparam); /* make ap point to first unnamed argument */
-  m = generic_vlookup(desc, token, nparam, ap);
+  char *m = generic_vlookup(desc, token, nparam, ap);
   va_end(ap);
 
   return m;
@@ -233,10 +231,9 @@ _Optional CONST _kernel_oserror *msgs_errorsubn(int errnum, const char *token, s
   /* look up error message and create error block, with substitution of a
      variable number of parameters */
   va_list ap;
-  _Optional CONST _kernel_oserror *e;
 
   va_start(ap, nparam); /* make ap point to 1st unnamed arg */
-  e = messagetrans_error_vlookup(desc, errnum, token, nparam, ap);
+  _Optional CONST _kernel_oserror *e = messagetrans_error_vlookup(desc, errnum, token, nparam, ap);
   va_end(ap);
 
   return e;
@@ -252,10 +249,9 @@ static char *generic_lookup(_Optional MessagesFD *mfd, const char *token,
                             size_t  nparam, ...)
 {
   va_list ap;
-  char *m;
 
   va_start(ap, nparam); /* make ap point to first unnamed argument */
-  m = generic_vlookup(mfd, token, nparam, ap);
+  char *m = generic_vlookup(mfd, token, nparam, ap);
   va_end(ap);
 
   return m;
@@ -269,7 +265,6 @@ static char *generic_vlookup(_Optional MessagesFD *mfd, const char *token,
 {
   /* look in application messages file, with substitution of a variable
      number of parameters */
-  _Optional CONST _kernel_oserror *e;
   static char message_buffer[MessageBufferSize] = "";
 
   assert(token != NULL);
@@ -278,7 +273,7 @@ static char *generic_vlookup(_Optional MessagesFD *mfd, const char *token,
   DEBUGF("MsgTrans: Looking up token '%s' in file %p with %zu parameters\n",
          token, (void *)mfd, nparam);
 
-  e = messagetrans_vlookup(mfd, /* message file descriptor (or NULL) */
+  _Optional CONST _kernel_oserror *e = messagetrans_vlookup(mfd, /* message file descriptor (or NULL) */
                            token,
                            message_buffer,
                            sizeof(message_buffer),
