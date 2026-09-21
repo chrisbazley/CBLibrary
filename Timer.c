@@ -24,6 +24,7 @@
                   with ticker event deregistration.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 21-Sep-26: Declare SWI registers with initialisers.
+                  Ensure only void * is converted to intptr_t.
  */
 
 /* ISO library headers */
@@ -46,8 +47,8 @@ _Optional CONST _kernel_oserror *timer_register(volatile bool *timeup_flag, int 
   _kernel_swi_regs regs = {
     .r = {
       wait_time,
-      (intptr_t)&timer_set_flag,
-      (intptr_t)timeup_flag,
+      (intptr_t)(void *)&timer_set_flag,
+      (intptr_t)(void *)timeup_flag,
     }
   };
   return _kernel_swi(OS_CallAfter, &regs, &regs);
@@ -60,8 +61,8 @@ _Optional CONST _kernel_oserror *timer_deregister(volatile bool *timeup_flag)
 {
   _kernel_swi_regs regs = {
     .r = {
-      (intptr_t)&timer_set_flag,
-      (intptr_t)timeup_flag,
+      (intptr_t)(void *)&timer_set_flag,
+      (intptr_t)(void *)timeup_flag,
     }
   };
   return _kernel_swi(OS_RemoveTickerEvent, &regs, &regs);
