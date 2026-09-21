@@ -91,7 +91,8 @@
                   Use union instead of cast for mouse click event data.
   CJB: 27-May-26: Update the integer types of Pal256_colour_brightness to
                   match the function to which it redirects.
- */
+   CJB: 21-Sep-26: Declare variables when they are first assigned.
+*/
 
 /* ISO library headers */
 #include <stdlib.h>
@@ -465,7 +466,6 @@ static _Optional CONST _kernel_oserror *display_colour(Pal256Data *pal_data, int
 static int key_handler(int event_code, ToolboxEvent *event, IdBlock *id_block, void *handle)
 {
   Pal256Data *pal_data = handle;
-  int col, row;
   NOT_USED(id_block);
   NOT_USED(event);
 
@@ -473,8 +473,8 @@ static int key_handler(int event_code, ToolboxEvent *event, IdBlock *id_block, v
   assert(id_block != NULL);
   assert(pal_data != NULL);
 
-  col = pal_data->current_col;
-  row = pal_data->current_row;
+  int col = pal_data->current_col;
+  int row = pal_data->current_row;
 
   switch (event_code)
   {
@@ -539,7 +539,6 @@ static int numberrange_value_changed(int event_code, ToolboxEvent *event, IdBloc
 {
   Pal256Data *pal_data = handle;
   NumberRangeValueChangedEvent *nrvce = (NumberRangeValueChangedEvent *)event;
-  int row, col;
   assert(event_code == NumberRange_ValueChanged);
   NOT_USED(event_code);
 
@@ -550,8 +549,8 @@ static int numberrange_value_changed(int event_code, ToolboxEvent *event, IdBloc
   if (id_block->self_component != ComponentId_Colour_NumRange)
     return 0; /* unknown gadget */
 
-  row = NumRows - 1 - (nrvce->new_value / NumColumns);
-  col = nrvce->new_value % NumColumns;
+  int row = NumRows - 1 - (nrvce->new_value / NumColumns);
+  int col = nrvce->new_value % NumColumns;
   check_error(display_colour(pal_data, col, row, false));
 
   return 1; /* claim event */

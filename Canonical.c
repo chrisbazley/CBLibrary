@@ -34,7 +34,8 @@
   CJB: 25-Aug-20: Fixed null pointers instead of strings passed to DEBUGF.
   CJB: 11-Dec-20: Prefer to declare variable with initializer.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
- */
+   CJB: 21-Sep-26: Declare variables when they are first assigned.
+*/
 
 /* ISO library headers */
 #include <stdlib.h>
@@ -69,10 +70,9 @@ _Optional CONST _kernel_oserror *canonicalise(_Optional char **b, _Optional cons
                                  NULL, 0, pv, ps, f, &nbytes);
   if (e == NULL)
   {
-    _Optional char *result;
 
     DEBUGF("Canonical: Allocating string buffer of %zu bytes\n", nbytes);
-    result = malloc(nbytes);
+    _Optional char *result = malloc(nbytes);
     if (result == NULL)
     {
       e = messagetrans_error_lookup(NULL, DUMMY_ERRNO, "NoMem", 0);

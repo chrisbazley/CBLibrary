@@ -247,7 +247,6 @@ static int date_and_time_to_string(OSDateAndTime *utc,
                                    size_t buff_size)
 {
   _kernel_swi_regs regs;
-  _Optional _kernel_oserror *e;
   /* This SWI doesn't tell you the required buffer size on
      buffer overflow, but luckily it is entirely predictable. */
   int nchars = sizeof("00:00:00 01 Jan 1900")-1;
@@ -257,7 +256,7 @@ static int date_and_time_to_string(OSDateAndTime *utc,
   regs.r[2] = (intptr_t)buffer;
   regs.r[3] = (intptr_t)buff_size;
   regs.r[4] = (intptr_t)"%24:%MI:%SE %DY %M3 %CE%YR";
-  e = _kernel_swi(Territory_ConvertDateAndTime, &regs, &regs);
+  _Optional _kernel_oserror *e = _kernel_swi(Territory_ConvertDateAndTime, &regs, &regs);
   if (e != NULL && e->errnum != ErrorNum_BufferOverflow)
   {
     nchars = -1;

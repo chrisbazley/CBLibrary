@@ -23,7 +23,8 @@
   CJB: 03-Apr-16: Added brackets to avoid GNU C compiler warnings.
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
- */
+   CJB: 21-Sep-26: Declare variables when they are first assigned.
+*/
 
 /* ISO library headers */
 #include <stdbool.h>
@@ -47,7 +48,6 @@ _Optional CONST _kernel_oserror *set_gadget_hidden(ObjectId    window,
                                                    bool        hide)
 {
   BBox pos, extent;
-  int bottom_of_gadget, top_of_work_area;
 
   /* Rather than assuming that the work area coordinate origin (0,0) is at
      the top left corner, it is safer to read the window's extent */
@@ -59,16 +59,15 @@ _Optional CONST _kernel_oserror *set_gadget_hidden(ObjectId    window,
 
   /* Can't hide a gadget that is already hidden or show a gadget that is
      already showing */
-  bottom_of_gadget = pos.ymin;
-  top_of_work_area = extent.ymax;
+  int bottom_of_gadget = pos.ymin;
+  int top_of_work_area = extent.ymax;
   if ((hide && bottom_of_gadget < top_of_work_area) ||
       (!hide && bottom_of_gadget > top_of_work_area))
   {
     /* Move the gadget above the window's work area extent */
-    int new_ymin, new_ymax;
 
-    new_ymin = top_of_work_area + (top_of_work_area - bottom_of_gadget);
-    new_ymax = new_ymin + (pos.ymax - bottom_of_gadget);
+    int new_ymin = top_of_work_area + (top_of_work_area - bottom_of_gadget);
+    int new_ymax = new_ymin + (pos.ymax - bottom_of_gadget);
 
     DEBUGF("GadgetHide: Moving component 0x%x of window 0x%x vertically "
           "from %d...%d to %d...%d\n",

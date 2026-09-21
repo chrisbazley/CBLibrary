@@ -46,7 +46,8 @@
   CJB: 18-Apr-15: Assertions are now provided by debug.h.
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
- */
+   CJB: 21-Sep-26: Declare variables when they are first assigned.
+*/
 
 /* ISO library headers */
 #include <stddef.h>
@@ -71,14 +72,13 @@
 
 _Optional CONST _kernel_oserror *get_date_stamp(const char *f, OS_DateAndTime *utc)
 {
-  _Optional CONST _kernel_oserror *e;
   OS_File_CatalogueInfo cat;
 
   assert(f != NULL);
   assert(utc != NULL);
   DEBUGF("DateStamp: Reading catalogue info for object '%s'\n", f);
 
-  e = os_file_read_cat_no_path(f, &cat);
+  _Optional CONST _kernel_oserror *e = os_file_read_cat_no_path(f, &cat);
   if (e != NULL)
   {
     DEBUGF("DateStamp: SWI returned error 0x%x '%s'\n",

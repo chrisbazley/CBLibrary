@@ -72,7 +72,8 @@
                   Don't dereference a potentially-null pointer when assigning to
                   *handle (although we're getting the address of the first member).
                   Use CONTAINER_OF to get fileop_state pointers.
- */
+   CJB: 21-Sep-26: Declare variables when they are first assigned.
+*/
 
 /* ISO library headers */
 #include <stdlib.h>
@@ -153,7 +154,6 @@ _Optional CONST _kernel_oserror *loadsave_initialise(_Optional MessagesFD *mfd)
 
 int get_loadsave_perc(_Optional FILE *_Optional **handle)
 {
-  size_t bytes_done, total_size, perc_done;
 
   DEBUGF("LoadSaveMT: Request for %% done\n");
 
@@ -166,7 +166,7 @@ int get_loadsave_perc(_Optional FILE *_Optional **handle)
   const fileop_state *const state = CONTAINER_OF(common, fileop_state, common);
 
   assert(state->limit >= state->start);
-  total_size = state->limit - state->start;
+  size_t total_size = state->limit - state->start;
   if (!total_size) {
     DEBUGF("LoadSaveMT: 0 bytes to transfer!\n");
     return 100; /* Guard against divide-by-zero */
@@ -174,12 +174,12 @@ int get_loadsave_perc(_Optional FILE *_Optional **handle)
 
   /* And overflow on multiply... */
   assert(state->mem_pos >= state->start);
-  bytes_done = state->mem_pos - state->start;
+  size_t bytes_done = state->mem_pos - state->start;
   if (bytes_done >= UINT_MAX / 100u) {
     DEBUGF("LoadSaveMT: %% calculation would overflow\n");
     return state->mem_pos < state->limit ? 0u : 100u;
   }
-  perc_done = (bytes_done * 100u) / total_size;
+  size_t perc_done = (bytes_done * 100u) / total_size;
 
   DEBUGF("LoadSaveMT: %zu%% complete\n", perc_done);
   assert(perc_done <= 100u);

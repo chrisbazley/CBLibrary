@@ -78,7 +78,8 @@
   CJB: 22-May-26: Ensure only pointers of type void * are converted to uintptr_t.
   CJB: 02-Aug-26: Delete unused variable 'VM_parent'. Don't pass a pointer to
                   _Optional char into strdup.
- */
+   CJB: 21-Sep-26: Declare variables when they are first assigned.
+*/
 
 /* ISO library headers */
 #include <stdlib.h>
@@ -194,10 +195,9 @@ _Optional CONST _kernel_oserror *ViewsMenu_parentcreated(ObjectId parent_menu, C
 
 _Optional CONST _kernel_oserror *ViewsMenu_setname(ObjectId showobject, const char *view_name, _Optional const char *file_path)
 {
-  _Optional ViewInfo *view_info;
   _Optional char *new_ptr;
 
-  view_info = (ViewInfo *)linkedlist_for_each(
+  _Optional ViewInfo *view_info = (ViewInfo *)linkedlist_for_each(
               &view_list, view_has_matching_object, &showobject);
 
   assert(view_info != NULL);
@@ -234,9 +234,8 @@ _Optional CONST _kernel_oserror *ViewsMenu_setname(ObjectId showobject, const ch
 
 ObjectId ViewsMenu_getfirst(void)
 {
-  _Optional ViewInfo *view_info;
 
-  view_info = (ViewInfo *)linkedlist_for_each(
+  _Optional ViewInfo *view_info = (ViewInfo *)linkedlist_for_each(
               &view_list, view_has_matching_object, (void *)NULL);
 
   return view_info == NULL ? NULL_ObjectId : view_info->object;
@@ -246,9 +245,8 @@ ObjectId ViewsMenu_getfirst(void)
 
 ObjectId ViewsMenu_getnext(ObjectId current)
 {
-  _Optional ViewInfo *view_info;
 
-  view_info = (ViewInfo *)linkedlist_for_each(
+  _Optional ViewInfo *view_info = (ViewInfo *)linkedlist_for_each(
               &view_list, view_has_matching_object, &current);
   if (view_info != NULL)
   {
@@ -268,13 +266,12 @@ ObjectId ViewsMenu_getnext(ObjectId current)
 
 _Optional CONST _kernel_oserror *ViewsMenu_add(ObjectId showobject, const char *view_name, const char *file_path)
 {
-  _Optional ViewInfo *new_view, *view_info;
 
   DEBUGF("ViewsMenu: Add viewsmenu entry for object 0x%x with name %s and path %s\n",
          showobject, view_name, file_path);
 
   /* Check not already on list */
-  view_info = (ViewInfo *)linkedlist_for_each(
+  _Optional ViewInfo *view_info = (ViewInfo *)linkedlist_for_each(
               &view_list, view_has_matching_object, &showobject);
 
   assert(view_info == NULL);
@@ -282,7 +279,7 @@ _Optional CONST _kernel_oserror *ViewsMenu_add(ObjectId showobject, const char *
     return NULL; /* duplicate object id */
 
   /* Create new menu entry */
-  new_view = malloc(sizeof(*new_view));
+  _Optional ViewInfo *new_view = malloc(sizeof(*new_view));
   if (new_view == NULL)
     return lookup_error("NoMem");
 
@@ -301,7 +298,6 @@ _Optional CONST _kernel_oserror *ViewsMenu_add(ObjectId showobject, const char *
 
   /* Add entry to menu */
   {
-    _Optional _kernel_oserror *errptr;
     MenuTemplateEntry Entry =
     {
       0,
@@ -316,7 +312,7 @@ _Optional CONST _kernel_oserror *ViewsMenu_add(ObjectId showobject, const char *
       0
     };
 
-    errptr = menu_add_entry(0,
+    _Optional _kernel_oserror *errptr = menu_add_entry(0,
                             VM,
                             Menu_AddEntryAtEnd,
                             (char *)&Entry,
@@ -350,11 +346,10 @@ _Optional CONST _kernel_oserror *ViewsMenu_showall(void)
 _Optional CONST _kernel_oserror *ViewsMenu_remove(ObjectId showobject)
 {
   /* Remove a window from the list */
-  _Optional ViewInfo *view_info;
 
   DEBUGF("ViewsMenu: Remove viewsmenu entry for object 0x%x\n", showobject);
 
-  view_info = (ViewInfo *)linkedlist_for_each(
+  _Optional ViewInfo *view_info = (ViewInfo *)linkedlist_for_each(
               &view_list, view_has_matching_object, &showobject);
 
   assert(view_info != NULL);
@@ -385,11 +380,10 @@ _Optional CONST _kernel_oserror *ViewsMenu_remove(ObjectId showobject)
 ObjectId ViewsMenu_findview(const char *file_path_to_match)
 {
   /* Find a view matching the specified name */
-  _Optional const ViewInfo *view_info;
 
   assert(file_path_to_match != NULL);
 
-  view_info = (ViewInfo *)linkedlist_for_each(
+  _Optional const ViewInfo *view_info = (ViewInfo *)linkedlist_for_each(
               &view_list, view_has_matching_path, (char *)file_path_to_match);
 
   return view_info == NULL ? NULL_ObjectId : view_info->object;
@@ -507,7 +501,6 @@ static int menu_selection(int           event_code,
 {
   ObjectId parent;
   ComponentId parent_component;
-  ViewInfo *view_info;
   _Optional CONST _kernel_oserror *e = NULL;
 
   assert(event_code == Menu_Selection);
@@ -515,7 +508,7 @@ static int menu_selection(int           event_code,
   NOT_USED(event);
   NOT_USED(handle);
 
-  view_info = (void *)(uintptr_t)id_block->self_component;
+  ViewInfo *view_info = (void *)(uintptr_t)id_block->self_component;
   if (view_info->remove_me)
   {
     putchar('\a'); /* beep */

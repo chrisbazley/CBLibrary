@@ -34,7 +34,6 @@
 static void test1(void)
 {
   /* Typed file */
-  int file_type;
   OSDateAndTime utc;
   static const unsigned char expected[sizeof(utc.bytes)] =
   {
@@ -44,7 +43,7 @@ static void test1(void)
   const int exec = 0x6789ABCD;
 
   memset(utc.bytes, CHAR_MAX, sizeof(utc.bytes));
-  file_type = decode_load_exec(load, exec, &utc);
+  int file_type = decode_load_exec(load, exec, &utc);
   assert(file_type == 0x123);
   assert(memcmp(utc.bytes, expected, sizeof(utc.bytes)) == 0);
 
@@ -55,7 +54,6 @@ static void test1(void)
 static void test2(void)
 {
   /* Untyped file */
-  int file_type;
   OSDateAndTime utc;
   static const unsigned char expected[sizeof(utc.bytes)] =
   {
@@ -65,7 +63,7 @@ static void test2(void)
   const int exec = 0x76543210;
 
   memset(utc.bytes, CHAR_MAX, sizeof(utc.bytes));
-  file_type = decode_load_exec(load, exec, &utc);
+  int file_type = decode_load_exec(load, exec, &utc);
   assert(file_type == FileType_None);
   assert(memcmp(utc.bytes, expected, sizeof(utc.bytes)) == 0);
 
