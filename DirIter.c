@@ -440,6 +440,9 @@ static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
   _Optional LinkedListItem *const deepest_item =
     linkedlist_get_head(&iterator->dir_list);
   assert(deepest_item != NULL);
+  if (deepest_item == NULL)
+    return NULL;
+
   DirIteratorLevel *const deepest_dir =
     CONTAINER_OF(&*deepest_item, DirIteratorLevel, list_item);
 
@@ -811,13 +814,20 @@ _Optional CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
   assert(iterator != NULL);
   _Optional LinkedListItem *const item =
     linkedlist_get_head(&iterator->dir_list);
-  _Optional DirIteratorLevel *level =
-    item ? CONTAINER_OF(&*item, DirIteratorLevel, list_item) : NULL;
-  if (level == NULL || level->entry == NULL)
+  if (item == NULL)
   {
     DEBUGF("DirIterator: Empty\n");
+    return e;
   }
-  else
+
+  DirIteratorLevel *level =
+    CONTAINER_OF(&*item, DirIteratorLevel, list_item);
+  if (level->entry == NULL)
+  {
+    DEBUGF("DirIterator: Empty\n");
+    return e;
+  }
+
   {
     bool entered = false;
 
@@ -870,8 +880,7 @@ _Optional CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
         {
           /* Did we manage to read any more catalogue entries? */
           assert(level != NULL);
-          DirIteratorLevel *const current_level = &*level;
-          if (current_level->nentries < 2)
+          if (level->nentries < 2)
           {
             /* Go up a level until reaching the top or finding a directory in
                which we haven't already advanced past all of the entries. */
@@ -880,7 +889,7 @@ _Optional CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
           else
           {
             /* Advance to the next catalogue entry on the current level. */
-            advance(current_level);
+            advance(level);
           }
         }
       }
