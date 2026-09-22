@@ -33,7 +33,8 @@
   CJB: 02-Jan-15: Got rid of goto statements.
   CJB: 01-Nov-18: Replaced DEBUG macro usage with DEBUGF.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
- */
+  CJB: 22-Sep-26: Assert the expected Wimp message type in message handlers.
+*/
 
 /* ISO library headers */
 #include <stddef.h>
@@ -177,6 +178,8 @@ _Optional CONST _kernel_oserror *InputFocus_restorecaret(void)
 
 int menus_deleted_handler(WimpMessage *message, void *handle)
 {
+  assert(message != NULL);
+  assert(message->hdr.action_code == Wimp_MMenusDeleted);
   NOT_USED(handle);
 
   DEBUGF("InputFocus: Message_MenusDeleted received for %d (our handle %d)\n",

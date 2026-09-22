@@ -82,6 +82,7 @@
                   use of WORD_ALIGN on values of type size_t.
   CJB: 02-Aug-26: Make definition of 'desc' conditional because it may be unused.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
+  CJB: 22-Sep-26: Assert the expected Wimp message type in message handlers.
 */
 
 /* ISO library headers */
@@ -391,9 +392,8 @@ _Optional CONST _kernel_oserror *drag_start(const int *const file_types,
 
 static int _drag_dragclaim_msg_handler(WimpMessage *message, void *handle)
 {
-  /* This is a handler for DragClaim messages */
-
   assert(message != NULL);
+  assert(message->hdr.action_code == Wimp_MDragClaim);
   NOT_USED(handle);
 
   const WimpDragClaimMessage *dragclaim = (WimpDragClaimMessage *)&message->data;

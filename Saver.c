@@ -80,6 +80,7 @@
                   use of WORD_ALIGN on values of type size_t.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
   CJB: 21-Sep-26: Use CONTAINER_OF to recover save records from list items.
+  CJB: 22-Sep-26: Assert the expected Wimp message type in message handlers.
 */
 
 /* ISO library headers */
@@ -374,10 +375,10 @@ void saver_cancel_sends(flex_ptr data)
 
 static int _svr_datasaveack_msg_handler(WimpMessage *message, void *handle)
 {
-  /* This is a handler for DataSaveAck messages */
   _Optional SaveOpData *save_op_data;
 
   assert(message != NULL);
+  assert(message->hdr.action_code == Wimp_MDataSaveAck);
   NOT_USED(handle);
 
   DEBUGF("Saver: Received a DataSaveAck message (ref. %d in reply to %d)\n",
@@ -417,10 +418,10 @@ static int _svr_datasaveack_msg_handler(WimpMessage *message, void *handle)
 
 static int _svr_dataloadack_msg_handler(WimpMessage *message, void *handle)
 {
-  /* This is a handler for DataLoadAck messages */
   _Optional SaveOpData *save_op_data;
 
   assert(message != NULL);
+  assert(message->hdr.action_code == Wimp_MDataLoadAck);
   NOT_USED(handle);
 
   DEBUGF("Saver: Received a DataLoadAck message (ref. %d in reply to %d)\n",
@@ -450,12 +451,12 @@ static int _svr_dataloadack_msg_handler(WimpMessage *message, void *handle)
 
 static int _svr_ramfetch_msg_handler(WimpMessage *message, void *handle)
 {
-  /* This is a handler for RAMFetch messages */
   int transfer_size, bytes_remaining, event_code;
   _Optional SaveOpData *save_op_data;
   _Optional _kernel_oserror *err;
 
   assert(message != NULL);
+  assert(message->hdr.action_code == Wimp_MRAMFetch);
   NOT_USED(handle);
 
   DEBUGF("Saver: Received a RAMFetch message (ref. %d in reply to %d)\n",

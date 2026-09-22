@@ -43,6 +43,7 @@
                   release_own to help the analyser.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
   CJB: 21-Sep-26: Use CONTAINER_OF to recover request records from list items.
+  CJB: 22-Sep-26: Assert the expected Wimp message type in message handlers.
 */
 
 /* ISO library headers */
@@ -738,6 +739,8 @@ static int datasave_handler(WimpMessage *const message, void *const handle)
 {
   /* This handler must receive DataSave messages before the Loader
      component. We need to intercept replies to our DataRequest message. */
+  assert(message != NULL);
+  assert(message->hdr.action_code == Wimp_MDataSave);
   NOT_USED(handle);
 
   DEBUGF("Entity2: Received a DataSave message (ref. %d in reply to %d)\n",

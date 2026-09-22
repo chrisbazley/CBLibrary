@@ -164,6 +164,7 @@
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
   CJB: 21-Sep-26: Use CONTAINER_OF to recover loader records from list items.
+  CJB: 22-Sep-26: Assert the expected Wimp message type in message handlers.
 */
 
 #ifdef CBLIB_OBSOLETE /* Use c.Loader2 instead */
@@ -516,9 +517,10 @@ _Optional CONST _kernel_oserror *loader_buffer_file(const char *file_path, flex_
 
 static int _ldr_datasave_msg_handler(WimpMessage *message, void *handle)
 {
-  /* This is a handler for DataSave messages. It must be registered early or
-     else it will intercept messages intended for the Loader2 or Entity library
-     components). */
+  /* This handler must be registered early or it will intercept messages
+     intended for the Loader2 or Entity library components. */
+  assert(message != NULL);
+  assert(message->hdr.action_code == Wimp_MDataSave);
   NOT_USED(handle);
 
   /* Are any listeners interested?
@@ -589,6 +591,9 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
   _Optional char *full_path = NULL;
   _Optional LoaderListenerBlk *found_listener;
   int file_type, drop_x, drop_y;
+  assert(message != NULL);
+  assert(message->hdr.action_code == Wimp_MDataLoad ||
+         message->hdr.action_code == Wimp_MDataOpen);
   NOT_USED(handle);
 
   DEBUGF("Loader: Received a Data%s message (ref. %d in reply to %d)\n",
@@ -610,8 +615,6 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
   }
   else {
     /* It's a DataLoad message (sent to request us to load a file) */
-    assert(message->hdr.action_code == Wimp_MDataLoad);
-
     ON_ERR_RPT_RTN_V(canonicalise(&full_path, NULL, NULL,
                                   message->data.data_load.leaf_name), 0);
     if (!full_path) {
