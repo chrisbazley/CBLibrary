@@ -78,6 +78,7 @@
                   use of WORD_ALIGN on values of type size_t.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
   CJB: 21-Sep-26: Use CONTAINER_OF to recover load records from list items.
+  CJB: 22-Sep-26: Assert the expected Wimp message type in message handlers.
 */
 
 /* ISO library headers */
@@ -484,6 +485,7 @@ static int _ldr2_dataload_msg_handler(WimpMessage *message, void *handle)
   _Optional CONST _kernel_oserror *e;
 
   assert(message != NULL);
+  assert(message->hdr.action_code == Wimp_MDataLoad);
   NOT_USED(handle);
 
   DEBUGF("Loader2: Received a DataLoad message (ref. %d in reply to %d)\n",
@@ -581,11 +583,11 @@ static int _ldr2_dataload_msg_handler(WimpMessage *message, void *handle)
 
 static int _ldr2_ramtransmit_msg_handler(WimpMessage *message, void *handle)
 {
-  /* This is a handler for RAMTransmit messages */
   _Optional LoadOpData *load_op_data;
   _Optional CONST _kernel_oserror *e;
 
   assert(message != NULL);
+  assert(message->hdr.action_code == Wimp_MRAMTransmit);
   NOT_USED(handle);
 
   DEBUGF("Loader2: Received a RAMTransmit message (ref. %d in reply to %d)\n",

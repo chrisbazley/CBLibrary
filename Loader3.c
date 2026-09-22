@@ -45,6 +45,7 @@
   CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
                   use of WORD_ALIGN on values of type size_t.
   CJB: 21-Sep-26: Use CONTAINER_OF to recover load records from list items.
+  CJB: 22-Sep-26: Assert the expected Wimp message type in message handlers.
 */
 
 /* ISO library headers */
@@ -533,6 +534,7 @@ static int dataload_handler(WimpMessage *const message,
   /* This handler must receive DataLoad messages before the Loader
      component. We need to intercept replies to our DataSave message. */
   assert(message != NULL);
+  assert(message->hdr.action_code == Wimp_MDataLoad);
   NOT_USED(handle);
 
   DEBUGF("Loader3: Received a DataLoad message (ref. %d in reply to %d)\n",

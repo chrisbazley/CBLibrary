@@ -96,6 +96,7 @@
                   data_method and client_handle in _ent_probe_or_request.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
   CJB: 21-Sep-26: Use CONTAINER_OF to recover request records from list items.
+  CJB: 22-Sep-26: Assert the expected Wimp message type in message handlers.
 */
 
 /* ISO library headers */
@@ -556,10 +557,10 @@ _Optional CONST _kernel_oserror *entity_dispose_all(EntityExitMethod * exit_meth
 
 static int _ent_claimentity_msg_handler(WimpMessage *message, void *handle)
 {
-  /* This is a handler for ClaimEntity messages */
   unsigned int not_owned = ~owned_entities;
 
   assert(message != NULL);
+  assert(message->hdr.action_code == Wimp_MClaimEntity);
   NOT_USED(handle);
 
   const WimpClaimEntityMessage *claim_entity = (WimpClaimEntityMessage *)&message->data;
@@ -597,6 +598,8 @@ static int _ent_datasave_msg_handler(WimpMessage *message, void *handle)
      component. We need to intercept replies to our DataRequest message. */
   _Optional CONST _kernel_oserror *e;
   _Optional RequestOpData *request_op_data;
+  assert(message != NULL);
+  assert(message->hdr.action_code == Wimp_MDataSave);
   NOT_USED(handle);
 
   DEBUGF("Entity: Received a DataSave message (ref. %d in reply to %d)\n",
@@ -639,9 +642,8 @@ static int _ent_datasave_msg_handler(WimpMessage *message, void *handle)
 
 static int _ent_datarequest_msg_handler(WimpMessage *message, void *handle)
 {
-  /* This is a handler for DataRequest messages */
-
   assert(message != NULL);
+  assert(message->hdr.action_code == Wimp_MDataRequest);
   NOT_USED(handle);
 
   const WimpDataRequestMessage *data_request = (WimpDataRequestMessage *)&message->data;
