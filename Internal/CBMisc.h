@@ -22,6 +22,8 @@
 History:
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 15-Jun-26: Send the debug log to stderr not stdout.
+  CJB: 22-Sep-26: Remove a redundant include of PseudoIO.h because fortify.h
+                  already enables standard I/O interception.
  */
 
 #ifndef CBMisc_h
@@ -39,7 +41,6 @@ History:
 #include "PseudoTbox.h"
 #include "PseudoEvnt.h"
 #include "PseudoFlex.h"
-#include "PseudoIO.h"
 
 #else /* USE_CBDEBUG */
 
