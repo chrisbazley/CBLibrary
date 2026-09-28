@@ -657,7 +657,7 @@ static int msg_bounce_handler(int const event_code,
 _Optional CONST _kernel_oserror *loader3_initialise(_Optional MessagesFD *const mfd)
 {
   assert(!initialised);
-  (void)initialised;
+  NOT_USED(initialised);
 
   /* Store pointer to messages file descriptor and error-reporting function */
   DEBUGF("Loader3: initialising with messages file descriptor %p\n",
