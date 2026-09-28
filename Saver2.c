@@ -705,7 +705,7 @@ _Optional CONST _kernel_oserror *saver2_initialise(int const task_handle,
   DEBUGF("Saver2: initialising with task handle 0x%x and messages file "
          "descriptor %p\n", task_handle, (void *)mfd);
   assert(!initialised);
-  (void)initialised;
+  NOT_USED(initialised);
 
   /* Store client's task handle and a pointer to its messages file descriptor */
   client_task = task_handle;

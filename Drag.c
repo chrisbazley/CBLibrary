@@ -191,7 +191,7 @@ _Optional CONST _kernel_oserror *drag_initialise(
   unsigned int mask;
 
   assert(!initialised);
-  (void)initialised;
+  NOT_USED(initialised);
 
 #ifdef CBLIB_OBSOLETE
 #ifdef COPY_ARRAY_ARGS

@@ -246,7 +246,7 @@ _Optional CONST _kernel_oserror *entity_initialise(
 )
 {
   assert(!initialised);
-  (void)initialised;
+  NOT_USED(initialised);
 
   /* Store pointers to messages file descriptor and error-reporting function */
 #ifdef CBLIB_OBSOLETE
