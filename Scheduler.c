@@ -161,7 +161,7 @@ _Optional CONST _kernel_oserror *scheduler_initialise(
 {
   DEBUGF("Scheduler: initialising with maximum time %d\n", nice);
   assert(!initialised);
-  (void)initialised;
+  NOT_USED(initialised);
 
   /* Store pointers to messages file descriptor and error-reporting function */
 #ifdef CBLIB_OBSOLETE
