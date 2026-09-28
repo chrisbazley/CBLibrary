@@ -916,6 +916,7 @@ _Optional CONST _kernel_oserror *entity2_initialise(
   void (*const error_method)(CONST _kernel_oserror *))
 {
   assert(!initialised);
+  (void)initialised;
 
   /* Store pointers to messages file descriptor and error-reporting function */
   desc = mfd;

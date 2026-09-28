@@ -190,6 +190,7 @@ _Optional CONST _kernel_oserror *loader2_initialise(_Optional MessagesFD *mfd)
   unsigned int mask;
 
   assert(!initialised);
+  (void)initialised;
 
   /* Store pointer to messages file descriptor */
 #ifdef CBLIB_OBSOLETE

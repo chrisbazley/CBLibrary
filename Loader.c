@@ -309,6 +309,7 @@ _Optional CONST _kernel_oserror *loader_initialise(unsigned int flags)
   unsigned int mask;
 
   assert(!initialised);
+  (void)initialised;
 
   /* Initialise linked lists */
   linkedlist_init(&listener_list);

@@ -246,6 +246,7 @@ _Optional CONST _kernel_oserror *entity_initialise(
 )
 {
   assert(!initialised);
+  (void)initialised;
 
   /* Store pointers to messages file descriptor and error-reporting function */
 #ifdef CBLIB_OBSOLETE
@@ -338,14 +339,14 @@ _Optional CONST _kernel_oserror *entity_claim(unsigned int flags,
 
     /* Tell the previous claimant that it has been usurped */
     if (entities_info[entity].lost_method) {
-      EntityLostMethod *const lost_method =
+      EntityLostMethod *const previous_lost_method =
         &*entities_info[entity].lost_method;
-      void *const client_handle = entities_info[entity].client_handle;
+      void *const previous_client_handle = entities_info[entity].client_handle;
 
       DEBUGF("Entity: Calling EntityLostMethod with handle %p for entity %zu\n",
-            client_handle, entity);
+            previous_client_handle, entity);
       assert(TEST_BITS(owned_entities, 1u<<entity));
-      lost_method(client_handle);
+      previous_lost_method(previous_client_handle);
     }
 
     /* Record the new client handle and function pointers */

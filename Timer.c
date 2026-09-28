@@ -47,7 +47,7 @@ _Optional CONST _kernel_oserror *timer_register(volatile bool *timeup_flag, int 
   _kernel_swi_regs regs = {
     .r = {
       wait_time,
-      (intptr_t)(void *)&timer_set_flag,
+      (intptr_t)timer_set_flag,
       (intptr_t)(void *)timeup_flag,
     }
   };
@@ -61,7 +61,7 @@ _Optional CONST _kernel_oserror *timer_deregister(volatile bool *timeup_flag)
 {
   _kernel_swi_regs regs = {
     .r = {
-      (intptr_t)(void *)&timer_set_flag,
+      (intptr_t)timer_set_flag,
       (intptr_t)(void *)timeup_flag,
     }
   };
