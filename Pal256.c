@@ -91,7 +91,8 @@
                   Use union instead of cast for mouse click event data.
   CJB: 27-May-26: Update the integer types of Pal256_colour_brightness to
                   match the function to which it redirects.
-   CJB: 21-Sep-26: Declare variables when they are first assigned.
+  CJB: 21-Sep-26: Declare variables when they are first assigned.
+  CJB: 29-Sep-26: Use VDUVar constants to read mode variables.
 */
 
 /* ISO library headers */
@@ -197,8 +198,8 @@ enum
 /* Keep this array synchronised with the enumeration above */
 static const VDUVar mode_vars[VarIndex_LAST + 1] =
 {
-  (VDUVar)ModeVar_XEigFactor,
-  (VDUVar)ModeVar_YEigFactor,
+  VDUVar_XEigFactor,
+  VDUVar_YEigFactor,
   VDUVar_EndOfList
 };
 static _Optional MessagesFD *desc;

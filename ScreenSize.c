@@ -28,7 +28,8 @@
   CJB: 14-May-26: Use intptr_t for VDU variable values.
   CJB: 17-May-26: Assert VDU variable values are within the valid range
                   before use. Explicitly convert the final values to type int.
- */
+  CJB: 29-Sep-26: Use VDUVar constants to read mode variables.
+*/
 
 /* ISO library headers */
 #include <stddef.h>
@@ -63,10 +64,10 @@ _Optional CONST _kernel_oserror *get_screen_size(int *width, int *height)
   /* Keep this array synchronised with the enumeration above */
   static const VDUVar mode_vars[VarIndex_LAST + 1] =
   {
-    (VDUVar)ModeVar_XWindLimit,
-    (VDUVar)ModeVar_YWindLimit,
-    (VDUVar)ModeVar_XEigFactor,
-    (VDUVar)ModeVar_YEigFactor,
+    VDUVar_XWindLimit,
+    VDUVar_YWindLimit,
+    VDUVar_XEigFactor,
+    VDUVar_YEigFactor,
     VDUVar_EndOfList
   };
   intptr_t var_vals[VarIndex_LAST];
