@@ -93,6 +93,8 @@
                   match the function to which it redirects.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
   CJB: 29-Sep-26: Use VDUVar constants to read mode variables.
+  CJB: 30-Sep-26: Designate mode variable indices and derive the result array
+                  size from the input list.
 */
 
 /* ISO library headers */
@@ -116,6 +118,9 @@
 #include "PalEntry.h"
 #include "ClrTrans.h"
 #include "OSVDU.h"
+
+/* CBUtilLib headers */
+#include "MacroUtils.h"
 
 /* Local headers */
 #include "Pal256.h"
@@ -187,19 +192,16 @@ typedef struct
 }
 Pal256Data;
 
-/* Keep this enumeration synchronised with mode_vars[] */
 enum
 {
   VarIndex_XEigFactor,
-  VarIndex_YEigFactor,
-  VarIndex_LAST
+  VarIndex_YEigFactor
 };
 
-/* Keep this array synchronised with the enumeration above */
-static const VDUVar mode_vars[VarIndex_LAST + 1] =
+static const VDUVar mode_vars[] =
 {
-  VDUVar_XEigFactor,
-  VDUVar_YEigFactor,
+  [VarIndex_XEigFactor] = VDUVar_XEigFactor,
+  [VarIndex_YEigFactor] = VDUVar_YEigFactor,
   VDUVar_EndOfList
 };
 static _Optional MessagesFD *desc;
@@ -661,7 +663,7 @@ static int mouse_click(int event_code, WimpPollBlock *event, IdBlock *id_block, 
 
         case Wimp_MouseButtonSelect * ButtonModifierDrag:
           {
-            intptr_t eigen_factors[VarIndex_LAST];
+            intptr_t eigen_factors[ARRAY_SIZE(mode_vars) - 1];
 
             e = os_read_vdu_variables(mode_vars, eigen_factors);
             if (e != NULL)

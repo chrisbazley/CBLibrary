@@ -29,6 +29,8 @@
   CJB: 17-May-26: Assert VDU variable values are within the valid range
                   before use. Explicitly convert the final values to type int.
   CJB: 29-Sep-26: Use VDUVar constants to read mode variables.
+  CJB: 30-Sep-26: Designate mode variable indices and derive the result array
+                  size from the input list.
 */
 
 /* ISO library headers */
@@ -43,6 +45,9 @@
 /* CBOSLib headers */
 #include "OSVDU.h"
 
+/* CBUtilLib headers */
+#include "MacroUtils.h"
+
 /* Local headers */
 #include "ScreenSize.h"
 #include "Internal/CBMisc.h"
@@ -52,25 +57,22 @@
 
 _Optional CONST _kernel_oserror *get_screen_size(int *width, int *height)
 {
-  /* Keep this enumeration synchronised with mode_vars[] */
   enum
   {
     VarIndex_XWindLimit,
     VarIndex_YWindLimit,
     VarIndex_XEigFactor,
-    VarIndex_YEigFactor,
-    VarIndex_LAST
+    VarIndex_YEigFactor
   };
-  /* Keep this array synchronised with the enumeration above */
-  static const VDUVar mode_vars[VarIndex_LAST + 1] =
+  static const VDUVar mode_vars[] =
   {
-    VDUVar_XWindLimit,
-    VDUVar_YWindLimit,
-    VDUVar_XEigFactor,
-    VDUVar_YEigFactor,
+    [VarIndex_XWindLimit] = VDUVar_XWindLimit,
+    [VarIndex_YWindLimit] = VDUVar_YWindLimit,
+    [VarIndex_XEigFactor] = VDUVar_XEigFactor,
+    [VarIndex_YEigFactor] = VDUVar_YEigFactor,
     VDUVar_EndOfList
   };
-  intptr_t var_vals[VarIndex_LAST];
+  intptr_t var_vals[ARRAY_SIZE(mode_vars) - 1];
 
   _Optional CONST _kernel_oserror *e = os_read_vdu_variables(mode_vars, var_vals);
   if (e == NULL)
