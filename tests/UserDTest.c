@@ -39,8 +39,8 @@ enum
 
 static struct
 {
-  _Optional UserData *data;
-  _Optional void *arg;
+  UserData *data;
+  void *arg;
 }
 callbacks[NumberOfItems];
 
