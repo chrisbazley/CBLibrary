@@ -34,10 +34,6 @@ History:
 /* ISO library headers */
 #include <stdio.h>
 
-/* StreamLib headers */
-#include "Writer.h"
-#include "Reader.h"
-
 #if !defined(USE_OPTIONAL) && !defined(_Optional)
 #define _Optional
 #endif
@@ -48,9 +44,6 @@ typedef struct fileop_common
 {
   _Optional FILE              *f; /* Must be the first member */
   _Optional fileop_destructor *destructor;
-  Reader                       reader;
-  Writer                       writer;
-  long int                     len;
 }
 fileop_common;
 

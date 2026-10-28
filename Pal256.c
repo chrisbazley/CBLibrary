@@ -206,7 +206,8 @@ static const VDUVar mode_vars[] =
 };
 static _Optional MessagesFD *desc;
 #ifndef CBLIB_OBSOLETE
-static void (*report)(CONST _kernel_oserror *);
+typedef void ReportErrorFn(CONST _kernel_oserror *);
+static _Optional ReportErrorFn *report;
 #endif
 
 /* ----------------------------------------------------------------------- */

@@ -107,7 +107,7 @@ typedef struct
   _Optional Saver2WriteMethod     *write_method; /* call this to get the associated data */
   _Optional Entity2EstimateMethod *estimate_method; /* call this to get the file type */
   _Optional Entity2LostMethod     *lost_method; /* call this when the claimant is usurped */
-  void *client_handle; /* this is passed to the above functions */
+  _Optional void *client_handle; /* absent until the entity is claimed */
 }
 Entity2Info;
 
@@ -133,13 +133,14 @@ static int claimentity_msg_ref[NEntities];
 
 static unsigned int owned_entities; /* Entity owned by our task (flag bits) */
 static bool initialised, finalisation_pending;
-static Entity2ExitMethod *client_exit_method;
+static _Optional Entity2ExitMethod *client_exit_method;
 static int releaseentity_msg_ref;
 static unsigned int data_sent_count, claimentity_count;
 
 static LinkedList request_op_data_list;
 static _Optional MessagesFD *desc;
-static void (*report_fn)(CONST _kernel_oserror *);
+typedef void ReportErrorFn(CONST _kernel_oserror *);
+static _Optional ReportErrorFn *report_fn;
 
 /* -----------------------------------------------------------------------
                          Miscellaneous internal functions
@@ -200,10 +201,11 @@ static void exit_if_pending(void)
 
     entity2_release(owned_entities);
 
-    if (client_exit_method)
+    _Optional Entity2ExitMethod *const exit_method = client_exit_method;
+    if (exit_method)
     {
       DEBUGF("Entity2: Calling exit function\n");
-      client_exit_method();
+      exit_method();
     }
   }
 }
@@ -444,10 +446,12 @@ static int get_estimated_size(size_t const entity, int const file_type)
   int estimated_size = DefaultBufferSize;
 
   assert(entity < ARRAY_SIZE(entities_info));
-  if (entities_info[entity].estimate_method)
+  _Optional Entity2EstimateMethod *const estimate_method =
+    entities_info[entity].estimate_method;
+  _Optional void *const client_handle = entities_info[entity].client_handle;
+  if (estimate_method)
   {
-    estimated_size = entities_info[entity].estimate_method(file_type,
-      entities_info[entity].client_handle);
+    estimated_size = estimate_method(file_type, (void *)client_handle);
 
     if (estimated_size <= 0)
     {
@@ -470,7 +474,10 @@ static _Optional CONST _kernel_oserror *request_own(size_t const entity,
   assert(entity < ARRAY_SIZE(entities_info));
   assert(data_request != NULL);
 
-  _Optional Saver2WriteMethod *write_method = entities_info[entity].write_method;
+  _Optional Saver2WriteMethod *const write_method =
+
+    entities_info[entity].write_method;
+  _Optional void *const owner_handle = entities_info[entity].client_handle;
   if (!write_method || !entities_info[entity].file_types)
   {
     DEBUGF("Entity2: No data function for entity %zu\n", entity);
@@ -496,7 +503,7 @@ static _Optional CONST _kernel_oserror *request_own(size_t const entity,
          entities_info[entity].client_handle, entity);
 
   bool success = write_method(&writer, file_type,
-    "EntityData", entities_info[entity].client_handle);
+    "EntityData", (void *)owner_handle);
 
   /* Destroying a writer can fail because it flushes buffered output. */
   long int const nbytes = writer_destroy(&writer);
@@ -678,15 +685,13 @@ static void release_own(size_t const entity)
   free(entities_info[entity].file_types);
 #endif
 
-  if (entities_info[entity].lost_method) {
-    Entity2LostMethod *const lost_method =
-      &*entities_info[entity].lost_method;
-    void *const client_handle = entities_info[entity].client_handle;
-
+  _Optional Entity2LostMethod *const lost_method = entities_info[entity].lost_method;
+  _Optional void *const client_handle = entities_info[entity].client_handle;
+  if (lost_method) {
     DEBUGF("Entity2: Calling release function with arg %p for entity %zu\n",
           client_handle, entity);
 
-    lost_method(client_handle);
+    lost_method((void *)client_handle);
   } else {
     DEBUGF("Entity2: No release function for entity %zu\n", entity);
   }
@@ -812,7 +817,11 @@ static int datarequest_handler(WimpMessage *const message, void *const handle)
         !TEST_BITS(owned_entities, 1u<<entity))
       continue; /* we don't own this entity, or data not requested */
 
-    if (entities_info[entity].write_method && entities_info[entity].file_types)
+    _Optional Saver2WriteMethod *const write_method =
+
+      entities_info[entity].write_method;
+    _Optional void *const client_handle = entities_info[entity].client_handle;
+    if (write_method && entities_info[entity].file_types)
     {
       int const file_type = pick_file_type(data_request->file_types,
         &*entities_info[entity].file_types);
@@ -834,8 +843,8 @@ static int datarequest_handler(WimpMessage *const message, void *const handle)
       };
 
       _Optional CONST _kernel_oserror *const e = saver2_send_data(message->hdr.sender,
-        &ds, entities_info[entity].write_method, send_complete, send_failed,
-        entities_info[entity].client_handle);
+        &ds, write_method, send_complete, send_failed,
+        (void *)client_handle);
 
       if (e != NULL)
       {

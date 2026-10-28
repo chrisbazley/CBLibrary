@@ -765,6 +765,7 @@ _Optional CONST _kernel_oserror *loader3_receive_data(const WimpMessage *const m
 
   /* Initialise record for a new load operation */
   *load_op_data = (LoadOpData){
+    .RAM_buffer = (void *)NULL,
     .RAM_capable = false,
     .idle_function = false,
     .no_flex_budge = false,
@@ -843,6 +844,7 @@ bool loader3_load_file(const char *const file_name, int const file_type,
   bool success = false;
 
   LoadOpData load_op_data = {
+    .RAM_buffer = (void *)NULL,
     .RAM_capable = false,
     .idle_function = false,
     .no_flex_budge = false,

@@ -30,7 +30,8 @@
 
 #ifdef FORTIFY
 static int fortify_detected;
-static Fortify_OutputFuncPtr fortify_previous_output;
+typedef void FortifyOutputFn(const char *);
+static _Optional FortifyOutputFn *fortify_previous_output;
 
 static void fortify_check(void)
 {
@@ -40,7 +41,9 @@ static void fortify_check(void)
 
 static void fortify_output(const char *text)
 {
-  fortify_previous_output(text);
+  _Optional FortifyOutputFn *const previous_output = fortify_previous_output;
+  if (previous_output)
+    previous_output(text);
   if (strstr(text, "detected"))
     fortify_detected = 1;
 }

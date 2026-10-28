@@ -184,7 +184,7 @@ static struct
 {
   _Optional EntityDataMethod *data_method; /* call this to get the associated data */
   _Optional EntityLostMethod *lost_method; /* call this when the claimant is usurped */
-  void                       *client_handle; /* this is passed to the above functions */
+  _Optional void             *client_handle; /* absent until the entity is claimed */
 }
 entities_info[NEntities];
 
@@ -192,7 +192,7 @@ static int claimentity_msg_ref[NEntities];
 
 static unsigned int owned_entities; /* Entity owned by our task (flag bits) */
 static bool initialised, finalisation_pending;
-static EntityExitMethod *client_exit_method;
+static _Optional EntityExitMethod *client_exit_method;
 static int releaseentity_msg_ref;
 static unsigned int data_sent_count, claimentity_count;
 static const int empty_list[] =
@@ -224,7 +224,8 @@ msg_handlers[] =
 static LinkedList request_op_data_list;
 static _Optional MessagesFD *desc;
 #ifndef CBLIB_OBSOLETE
-static void (*report)(CONST _kernel_oserror *);
+typedef void ReportErrorFn(CONST _kernel_oserror *);
+static _Optional ReportErrorFn *report;
 #endif
 
 typedef struct {
@@ -338,15 +339,16 @@ _Optional CONST _kernel_oserror *entity_claim(unsigned int flags,
       continue; /* not replacing owner of this entity */
 
     /* Tell the previous claimant that it has been usurped */
-    if (entities_info[entity].lost_method) {
-      EntityLostMethod *const previous_lost_method =
-        &*entities_info[entity].lost_method;
-      void *const previous_client_handle = entities_info[entity].client_handle;
+    _Optional EntityLostMethod *const previous_lost_method =
+      entities_info[entity].lost_method;
+    _Optional void *const previous_client_handle =
+      entities_info[entity].client_handle;
+    if (previous_lost_method) {
 
       DEBUGF("Entity: Calling EntityLostMethod with handle %p for entity %zu\n",
             previous_client_handle, entity);
       assert(TEST_BITS(owned_entities, 1u<<entity));
-      previous_lost_method(previous_client_handle);
+      previous_lost_method((void *)previous_client_handle);
     }
 
     /* Record the new client handle and function pointers */
@@ -442,14 +444,13 @@ void entity_release(unsigned int flags)
       continue; /* we don't own this entity, or not released */
 
     /* Tell the owner of this entity that it has been usurped */
-    if (entities_info[entity].lost_method) {
-      EntityLostMethod *const lost_method =
-        &*entities_info[entity].lost_method;
-      void *const client_handle = entities_info[entity].client_handle;
-
+    _Optional EntityLostMethod *const lost_method =
+      entities_info[entity].lost_method;
+    _Optional void *const client_handle = entities_info[entity].client_handle;
+    if (lost_method) {
       DEBUGF("Entity: Calling release function with handle %p for entity %zu\n",
             client_handle, entity);
-      lost_method(client_handle);
+      lost_method((void *)client_handle);
     } else {
       DEBUGF("Entity: No release function for entity %zu\n", entity);
     }
@@ -674,7 +675,9 @@ static int _ent_datarequest_msg_handler(WimpMessage *message, void *handle)
       continue; /* we don't own this entity, or data not requested */
 
     /* Request data from the owner of this entity */
-    _Optional EntityDataMethod *get_data_func = entities_info[entity].data_method;
+    _Optional EntityDataMethod *const get_data_func =
+      entities_info[entity].data_method;
+    _Optional void *const client_handle = entities_info[entity].client_handle;
     if (get_data_func)
     {
       int data_type;
@@ -687,7 +690,7 @@ static int _ent_datarequest_msg_handler(WimpMessage *message, void *handle)
       bool data_persists = true; /* default for safety */
       void *_Optional *entity_data = get_data_func(data_request->file_types,
                                   false,
-                                  entities_info[entity].client_handle,
+                                  (void *)client_handle,
                                   &data_persists,
                                   &data_type);
       if (entity_data == NULL)
@@ -816,8 +819,9 @@ static int _ent_msg_bounce_handler(int event_code, WimpPollBlock *event, IdBlock
       if (finalisation_pending)
       {
         finalisation_pending = false;
-        if (client_exit_method)
-          client_exit_method();
+        _Optional EntityExitMethod *const exit_method = client_exit_method;
+        if (exit_method)
+          exit_method();
       }
       claim = 1; /* claim event */
       break;
@@ -925,8 +929,9 @@ static void _ent_data_sent(bool success, _Optional CONST _kernel_oserror *err, _
   {
     finalisation_pending = false;
     DEBUGF("Entity: Calling exit function\n");
-    if (client_exit_method)
-      client_exit_method();
+    _Optional EntityExitMethod *const exit_method = client_exit_method;
+    if (exit_method)
+      exit_method();
   }
 }
 
@@ -1077,11 +1082,12 @@ static _Optional CONST _kernel_oserror *_ent_probe_or_request(
       _Optional CONST _kernel_oserror *e = NULL;
       void *copy_of_data;
 
-      if (entities_info[entity].data_method)
+      _Optional EntityDataMethod *const data_method =
+
+        entities_info[entity].data_method;
+      _Optional void *const client_handle = entities_info[entity].client_handle;
+      if (data_method)
       {
-        EntityDataMethod *const data_method =
-          &*entities_info[entity].data_method;
-        void *const client_handle = entities_info[entity].client_handle;
 
         DEBUGF("Entity: Calling data function with handle %p for entity %zu\n",
                client_handle, entity);
@@ -1090,7 +1096,7 @@ static _Optional CONST _kernel_oserror *_ent_probe_or_request(
         data = data_method(
                                             file_types,
                                             probe,
-                                            client_handle,
+                                            (void *)client_handle,
                                             &data_persists,
                                             &data_type);
 

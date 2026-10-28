@@ -135,7 +135,8 @@ static bool defer_removals, removal_deferred, initialised = false;
 static unsigned int suspended, clients_count;
 static _Optional MessagesFD *desc;
 #ifndef CBLIB_OBSOLETE
-static void (*report)(CONST _kernel_oserror *);
+typedef void ReportErrorFn(CONST _kernel_oserror *);
+static _Optional ReportErrorFn *report;
 #endif
 
 /* ----------------------------------------------------------------------- */

@@ -314,6 +314,7 @@ _Optional CONST _kernel_oserror *loader2_receive_data(const WimpMessage *message
     .file_type = (message->data.data_save.file_type == FileType_Null ?
                  FileType_None : message->data.data_save.file_type),
     .have_RAM_buffer = false, /* no flex block here */
+    .ram_fetch.buffer = (void *)NULL,
     .ram_fetch.buffer_size = 0,
     .datasave_msg = *message,
     .callback.funct = finished_method, /* may be NULL */
