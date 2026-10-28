@@ -119,15 +119,20 @@ enum
 
 typedef struct
 {
-  fileop_common   common;
+  fileop_common common;
+  Reader        reader;
+  Writer        writer;
+  long int      len;
 }
 decomp_state;
 
 typedef struct
 {
   fileop_common  common;
-  unsigned int   start_offset;
-  unsigned int   end_offset;
+  Reader        reader;
+  Writer        writer;
+  long int      len;
+  unsigned int  start_offset, end_offset;
 }
 comp_state;
 
@@ -175,12 +180,13 @@ typedef enum
   DESTROY_FCLOSE_FAIL
 } DestroyResult;
 
-static DestroyResult destroy_common(fileop_common *const common)
+static DestroyResult destroy_streams(fileop_common *const common,
+  Reader *const reader, Writer *const writer)
 {
   DestroyResult result = DESTROY_OK;
   assert(common != NULL);
-  reader_destroy(&common->reader);
-  if (writer_destroy(&common->writer) < 0)
+  reader_destroy(reader);
+  if (writer_destroy(writer) < 0)
   {
     result = DESTROY_WRITE_FAIL;
   }
@@ -197,7 +203,9 @@ static DestroyResult destroy_common(fileop_common *const common)
 static _Optional const char *destroy_decomp(decomp_state *const decomp)
 {
   assert(decomp != NULL);
-  return destroy_common(&decomp->common) == DESTROY_WRITE_FAIL ? "NoMem" : NULL;
+  DestroyResult const result =
+    destroy_streams(&decomp->common, &decomp->reader, &decomp->writer);
+  return result == DESTROY_WRITE_FAIL ? "NoMem" : NULL;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -205,14 +213,21 @@ static _Optional const char *destroy_decomp(decomp_state *const decomp)
 static _Optional const char *destroy_comp(comp_state *const comp)
 {
   assert(comp != NULL);
-  return destroy_common(&comp->common) != DESTROY_OK ? "WriteFail" : NULL;
+  DestroyResult const result =
+    destroy_streams(&comp->common, &comp->reader, &comp->writer);
+  return result != DESTROY_OK ? "WriteFail" : NULL;
 }
 
 /* ----------------------------------------------------------------------- */
 
-static void destroy_cb(void *const fop)
+static void destroy_decomp_cb(void *const fop)
 {
-  (void)destroy_common(fop);
+  (void)destroy_decomp(fop);
+}
+
+static void destroy_comp_cb(void *const fop)
+{
+  (void)destroy_comp(fop);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -228,7 +243,7 @@ static _Optional decomp_state *make_decomp(const char *const file_path,
   }
   else
   {
-    state->common.destructor = destroy_cb;
+    state->common.destructor = destroy_decomp_cb;
     state->common.f = fopen_inc(file_path, "rb"); /* open for reading */
 
     if (state->common.f == NULL)
@@ -254,8 +269,8 @@ static _Optional decomp_state *make_decomp(const char *const file_path,
       }
       else
       {
-        state->common.len = len;
-        if (!reader_gkey_init(&state->common.reader, FednetHistoryLog2,
+        state->len = len;
+        if (!reader_gkey_init(&state->reader, FednetHistoryLog2,
           &*state->common.f))
         {
           DEBUGF("reader_gkey_init failed\n");
@@ -264,7 +279,7 @@ static _Optional decomp_state *make_decomp(const char *const file_path,
         }
         else
         {
-          writer_flex_init(&state->common.writer, buffer_anchor);
+          writer_flex_init(&state->writer, buffer_anchor);
         }
       }
       if (token && state->common.f)
@@ -298,11 +313,11 @@ static _Optional comp_state *make_comp(const char *const file_path,
   {
     unsigned int const len = end_offset - start_offset;
     assert(end_offset >= start_offset);
-    state->common.len = len;
+    state->len = len;
     state->start_offset = start_offset;
     state->end_offset = end_offset;
 
-    state->common.destructor = destroy_cb;
+    state->common.destructor = destroy_comp_cb;
     state->common.f = fopen_inc(file_path, "wb"); /* open for writing */
 
     if (state->common.f == NULL)
@@ -312,7 +327,7 @@ static _Optional comp_state *make_comp(const char *const file_path,
     }
     else
     {
-      if (!writer_gkey_init(&state->common.writer,
+      if (!writer_gkey_init(&state->writer,
         FednetHistoryLog2, len, &*state->common.f))
       {
         DEBUGF("writer_gkey_init failed\n");
@@ -320,7 +335,7 @@ static _Optional comp_state *make_comp(const char *const file_path,
       }
       else
       {
-        reader_flex_init(&state->common.reader, buffer_anchor);
+        reader_flex_init(&state->reader, buffer_anchor);
       }
       if (token && state->common.f)
       {
@@ -359,10 +374,10 @@ int get_decomp_perc(_Optional FILE *_Optional **const handle)
   const fileop_common *const common = CONTAINER_OF(f, fileop_common, f);
   const decomp_state *const state = CONTAINER_OF(common, decomp_state, common);
 
-  long int const wpos = writer_ftell(&state->common.writer);
+  long int const wpos = writer_ftell(&state->writer);
   assert(wpos >= 0);
   DEBUGF("get_decomp_perc wpos: %ld\n", wpos);
-  return get_perc(wpos, state->common.len);
+  return get_perc(wpos, state->len);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -377,14 +392,14 @@ int get_comp_perc(_Optional FILE *_Optional **const handle)
   const fileop_common *const common = CONTAINER_OF(f, fileop_common, f);
   const comp_state *const state = CONTAINER_OF(common, comp_state, common);
 
-  long int const rpos = reader_ftell(&state->common.reader);
+  long int const rpos = reader_ftell(&state->reader);
   assert(rpos >= 0);
   assert(state->start_offset <= (unsigned long)rpos);
   assert(state->end_offset >= (unsigned long)rpos);
   DEBUGF("get_comp_perc start_offset: %u rpos: %ld\n",
         state->start_offset, rpos);
 
-  return get_perc(rpos - state->start_offset, state->common.len);
+  return get_perc(rpos - state->start_offset, state->len);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -416,11 +431,11 @@ _Optional CONST _kernel_oserror *load_compressedM(const char *const file_path,
     do
     {
       size_t const nread = reader_fread(buffer, 1, sizeof(buffer),
-        &state->common.reader);
+        &state->reader);
 
       DEBUG_VERBOSEF("Read %zu of %zu bytes\n", nread, sizeof(buffer));
       assert(nread <= sizeof(buffer));
-      if (reader_ferror(&state->common.reader))
+      if (reader_ferror(&state->reader))
       {
         DEBUGF("reader_fread failed\n");
         e_token = "ReadFail";
@@ -428,7 +443,7 @@ _Optional CONST _kernel_oserror *load_compressedM(const char *const file_path,
       }
 
       size_t const nwrote = writer_fwrite(buffer, 1, nread,
-        &state->common.writer);
+        &state->writer);
 
       assert(nwrote <= nread);
       if (nwrote != nread)
@@ -438,9 +453,9 @@ _Optional CONST _kernel_oserror *load_compressedM(const char *const file_path,
         break;
       }
     }
-    while (!reader_feof(&state->common.reader) && !*time_up);
+    while (!reader_feof(&state->reader) && !*time_up);
 
-    if (e_token != NULL || reader_feof(&state->common.reader))
+    if (e_token != NULL || reader_feof(&state->reader))
     {
       DEBUGF("Decompression complete or error\n");
       if (state)
@@ -490,7 +505,7 @@ _Optional CONST _kernel_oserror *save_compressedM2(const char *const file_path,
 
     if (state)
     {
-      int const err = reader_fseek(&state->common.reader,
+      int const err = reader_fseek(&state->reader,
         start_offset, SEEK_SET);
       assert(!err);
       NOT_USED(err);
@@ -504,7 +519,7 @@ _Optional CONST _kernel_oserror *save_compressedM2(const char *const file_path,
     bool truncated = false;
     do
     {
-      long int const rpos = reader_ftell(&state->common.reader);
+      long int const rpos = reader_ftell(&state->reader);
       assert(rpos >= 0);
       assert(state->start_offset <= (unsigned long)rpos);
       assert(state->end_offset >= (unsigned long)rpos);
@@ -520,14 +535,14 @@ _Optional CONST _kernel_oserror *save_compressedM2(const char *const file_path,
       }
 
       size_t const nread = reader_fread(buffer, 1, nmemb,
-        &state->common.reader);
+        &state->reader);
 
       DEBUG_VERBOSEF("Read %zu of %zu bytes\n", nread, nmemb);
       assert(nread <= nmemb);
-      assert(!reader_ferror(&state->common.reader));
+      assert(!reader_ferror(&state->reader));
 
       size_t const nwrote = writer_fwrite(buffer, 1, nread,
-        &state->common.writer);
+        &state->writer);
 
       assert(nwrote <= nread);
       if (nwrote != nread)
@@ -537,9 +552,9 @@ _Optional CONST _kernel_oserror *save_compressedM2(const char *const file_path,
         break;
       }
     }
-    while (!truncated && !reader_feof(&state->common.reader) && !*time_up);
+    while (!truncated && !reader_feof(&state->reader) && !*time_up);
 
-    if (e_token != NULL || truncated || reader_feof(&state->common.reader))
+    if (e_token != NULL || truncated || reader_feof(&state->reader))
     {
       DEBUGF("Compression complete or error\n");
       _Optional const char *const e = destroy_comp(&*state);
