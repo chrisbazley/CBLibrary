@@ -44,6 +44,9 @@
   CJB: 21-Sep-26: Declare variables when they are first assigned.
   CJB: 21-Sep-26: Use CONTAINER_OF to recover request records from list items.
   CJB: 22-Sep-26: Assert the expected Wimp message type in message handlers.
+  CJB: 28-Oct-26: Make a local copy of the exit callback before testing it.
+                  Explicitly initialise the released entity's client handle
+                  to null, using a cast to preserve the existing pointer type.
 */
 
 /* ISO library headers */

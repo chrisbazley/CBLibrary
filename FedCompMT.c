@@ -74,6 +74,9 @@
                   Don't dereference a potentially-null pointer when assigning to
                   *handle (although we're getting the address of the first member).
                   Use CONTAINER_OF to get comp_state and decomp_state pointers.
+  CJB: 28-Oct-26: Move the reader, writer and length from fileop_common into
+                  the compression and decompression states. Give each state
+                  its own abort callback and pass its streams to shared cleanup.
 */
 
 /* ISO library headers */
