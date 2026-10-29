@@ -159,11 +159,11 @@ static unsigned int drag_flags;
 static _Optional int *client_file_types;
 static _Optional BBox *client_data_bbox; /* may be NULL */
 #else
-static _Optional const int *client_file_types;
+static const int *client_file_types;
 static _Optional const BBox *client_data_bbox; /* may be NULL */
 #endif
-static _Optional void *client_drag_data;
-static _Optional DragBoxHandler *client_fn_box;
+static void *client_drag_data;
+static DragBoxHandler *client_fn_box;
 static _Optional DragFinishedHandler *client_fn_drop;
 static int dragclaim_msg_ref, dragging_msg_ref;
 static int dragclaim_task;
@@ -172,8 +172,7 @@ static WimpGetPointerInfoBlock pointer;
 static _Optional MessagesFD *desc;
 #endif
 #ifndef CBLIB_OBSOLETE
-typedef void ReportErrorFn(CONST _kernel_oserror *);
-static _Optional ReportErrorFn *report;
+static void (*report)(CONST _kernel_oserror *);
 #endif
 
 /* -----------------------------------------------------------------------
@@ -711,11 +710,6 @@ static _Optional CONST _kernel_oserror *_drag_send_dragging_msg(void)
 
 static _Optional CONST _kernel_oserror *_drag_call_wdb_handler(DragBoxOp action)
 {
-  _Optional DragBoxHandler *const drag_box_method = client_fn_box;
-  _Optional void *const drag_data = client_drag_data;
-  if (!drag_box_method)
-    return NULL;
-
   if (action == DragBoxOp_Start)
   {
     DEBUGF("Drag: Asking client to start Wimp drag box\n");
@@ -730,25 +724,24 @@ static _Optional CONST _kernel_oserror *_drag_call_wdb_handler(DragBoxOp action)
     DEBUGF("Drag: Asking client to cancel Wimp drag box\n");
   }
 
-  return drag_box_method(action,
+  assert(client_fn_box);
+  return client_fn_box(action,
                        solid_drags,
                        pointer.x,
                        pointer.y,
-                       (void *)drag_data);
+                       client_drag_data);
 }
 
 /* ----------------------------------------------------------------------- */
 
 static bool _drag_call_drop_handler(int file_type)
 {
-  _Optional DragFinishedHandler *const drop_method = client_fn_drop;
-  _Optional void *const drag_data = client_drag_data;
-  if (!drop_method)
+  if (!client_fn_drop)
     return false;
 
-  return drop_method(shift_held, pointer.window_handle, pointer.icon_handle,
+  return client_fn_drop(shift_held, pointer.window_handle, pointer.icon_handle,
     pointer.x, pointer.y, file_type, dragclaim_task,
-    dragclaim_task ? dragclaim_msg_ref : 0, (void *)drag_data);
+    dragclaim_task ? dragclaim_msg_ref : 0, client_drag_data);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -827,8 +820,7 @@ static _Optional CONST _kernel_oserror *_drag_finished(void)
 
   MERGE_ERR(return_error, _drag_call_wdb_handler(DragBoxOp_Cancel));
 
-  _Optional void *const drag_data = client_drag_data;
-  scheduler_deregister(_drag_null_event_handler, (void *)drag_data);
+  scheduler_deregister(_drag_null_event_handler, client_drag_data);
 
   /* Ensure that the drag claimant's representation of our data is
      consistent with the final mouse position */
