@@ -79,6 +79,8 @@
   CJB: 21-Sep-26: Declare variables when they are first assigned.
   CJB: 21-Sep-26: Use CONTAINER_OF to recover load records from list items.
   CJB: 22-Sep-26: Assert the expected Wimp message type in message handlers.
+  CJB: 28-Oct-26: Explicitly initialise the RAM fetch buffer pointer to null,
+                  using a cast to preserve its existing type.
 */
 
 /* ISO library headers */

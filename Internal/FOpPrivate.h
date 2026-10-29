@@ -26,6 +26,8 @@ History:
   CJB: 18-Dec-10: Created this header file.
   CJB: 03-Nov-19: Modified to use my streams library.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 28-Oct-26: Remove the reader, writer and length from fileop_common;
+                  they belong to the compression and decompression states.
 */
 
 #ifndef FOpPrivate_h

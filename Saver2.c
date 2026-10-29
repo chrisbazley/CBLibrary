@@ -31,6 +31,8 @@
   CJB: 21-Jun-26: Use the new WORD_ALIGN_SZ macro to avoid warnings about
                   use of WORD_ALIGN on values of type size_t.
   CJB: 21-Sep-26: Use CONTAINER_OF to recover save records from list items.
+  CJB: 28-Oct-26: Explicitly initialise the RAM buffer anchor to null, using
+                  a cast to preserve its existing type.
 */
 
 /* ISO library headers */
