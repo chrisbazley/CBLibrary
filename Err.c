@@ -89,7 +89,6 @@
 /* Acorn C/C++ library headers */
 #include "wimplib.h"
 #include "kernel.h"
-#include "swis.h"
 #include "toolbox.h"
 
 /* CBOSLib headers */

@@ -63,7 +63,6 @@
 
 /* Acorn C/C++ library headers */
 #include "kernel.h"
-#include "swis.h"
 
 /* CBOSLib headers */
 #include "MessTrans.h"

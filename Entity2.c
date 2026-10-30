@@ -55,7 +55,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include <limits.h>
 
 /* Acorn C/C++ library headers */
 #include "kernel.h"
@@ -82,7 +81,6 @@
 #include "Loader3.h"
 #include "Entity2.h"
 #include "WriterNull.h"
-#include "NoBudge.h"
 #include "Internal/CBMisc.h"
 
 /* The following structure holds all the state for a data request */
