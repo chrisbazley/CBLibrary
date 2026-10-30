@@ -80,7 +80,7 @@ jobs:
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
-    - name: Test dependencies
+    - name: Test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
@@ -189,7 +189,7 @@ jobs:
             --build "$GITHUB_WORKSPACE/build-optional-${{ matrix.build_type }}" \
             --parallel 2
 
-      - name: Test dependencies
+      - name: Test
         shell: bash
         run: |
           ctest \
