@@ -81,7 +81,6 @@
 /* Acorn C/C++ library headers */
 #include "kernel.h"
 #include "event.h"
-#include "swis.h"
 #include "toolbox.h"
 
 /* CBUtilLib headers */

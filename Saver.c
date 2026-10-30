@@ -98,13 +98,11 @@
 #include "toolbox.h"
 
 /* CBUtilLib headers */
-#include "StrExtra.h"
 #include "LinkedList.h"
 
 /* CBOSLib headers */
 #include "MessTrans.h"
 #include "Hourglass.h"
-#include "WimpExtra.h"
 
 /* Local headers */
 #include "Saver.h"

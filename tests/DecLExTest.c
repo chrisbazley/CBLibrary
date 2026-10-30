@@ -18,8 +18,6 @@
  */
 
 /* ISO library headers */
-#include <stdint.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <limits.h>
 #include <string.h>

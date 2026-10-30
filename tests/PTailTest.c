@@ -18,9 +18,7 @@
  */
 
 /* ISO library headers */
-#include <stdbool.h>
 #include <stdio.h>
-#include <limits.h>
 #include <string.h>
 
 /* CBLibrary headers */

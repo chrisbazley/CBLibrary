@@ -28,7 +28,6 @@
  */
 
 /* ISO library headers */
-#include <stddef.h>
 
 /* Acorn C/C++ library headers */
 #include "kernel.h"
