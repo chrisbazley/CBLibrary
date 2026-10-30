@@ -13,3 +13,7 @@ else()
 endif()
 
 target_link_libraries(CBTests PRIVATE CB OptionalAcornC CBOS)
+if(CBLIB_USE_CBDEBUG)
+  target_compile_definitions(CBTests PRIVATE USE_CBDEBUG)
+  target_link_libraries(CBTests PRIVATE CBDebug CBPseudo)
+endif()
