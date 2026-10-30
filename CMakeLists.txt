@@ -3,6 +3,10 @@ project(CBLibrary C)
 
 option(USE_OPTIONAL "Enable the _Optional qualifier" OFF)
 option(USE_FORTIFY "Enable Fortify memory-allocation checking" OFF)
+option(CBLIB_COPY_ARRAY_ARGS "Copy client array arguments instead of borrowing them" ON)
+option(CBLIB_USE_FILEPERC "Show file-operation progress" ON)
+option(CBLIB_INCLUDE_FINALISATION_CODE "Include module finalisation functions" OFF)
+option(CBLIB_USE_CBDEBUG "Use CBDebugLib and the pseudo interfaces" OFF)
 option(ENABLE_CLANG_TIDY "Run clang-tidy during compilation" OFF)
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
@@ -14,6 +18,16 @@ FetchContent_Declare(CBOS GIT_REPOSITORY https://github.com/chrisbazley/CBOSLib.
 FetchContent_Declare(CBUtil GIT_REPOSITORY https://github.com/chrisbazley/CBUtilLib.git GIT_TAG main)
 
 FetchContent_MakeAvailable(OptionalAcornC Stream CBOS CBUtil)
+
+if(CBLIB_USE_CBDEBUG)
+    FetchContent_Declare(CBDebug
+        GIT_REPOSITORY https://github.com/chrisbazley/CBDebugLib.git
+        GIT_TAG main)
+    FetchContent_Declare(CBPseudo
+        GIT_REPOSITORY https://github.com/chrisbazley/CBPseudoLib.git
+        GIT_TAG main)
+    FetchContent_MakeAvailable(CBDebug CBPseudo)
+endif()
 
 if(USE_OPTIONAL)
     if(NOT CMAKE_C_COMPILER_ID MATCHES "Clang|AppleClang")
@@ -198,6 +212,21 @@ install(TARGETS CBExtra
 )
 
 include(CTest)
+
+# These presence-tested macros configure CBLibrary, not its dependencies.
+foreach(target CB CBObsolete CBExtra)
+    target_compile_definitions(${target} PRIVATE
+        $<$<BOOL:${CBLIB_COPY_ARRAY_ARGS}>:COPY_ARRAY_ARGS>
+        $<$<BOOL:${CBLIB_USE_FILEPERC}>:USE_FILEPERC>
+        $<$<BOOL:${CBLIB_INCLUDE_FINALISATION_CODE}>:INCLUDE_FINALISATION_CODE>
+        $<$<BOOL:${CBLIB_USE_CBDEBUG}>:USE_CBDEBUG>
+    )
+    if(CBLIB_USE_CBDEBUG)
+        target_link_libraries(${target} PRIVATE CBDebug CBPseudo)
+    endif()
+endforeach()
+
+message(STATUS "CBLibrary: copy arrays=${CBLIB_COPY_ARRAY_ARGS}, progress=${CBLIB_USE_FILEPERC}, finalisation=${CBLIB_INCLUDE_FINALISATION_CODE}, CB debug=${CBLIB_USE_CBDEBUG}")
 
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests")
   add_subdirectory(tests)

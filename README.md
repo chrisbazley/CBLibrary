@@ -28,6 +28,30 @@ provides methods to enumerate unsaved data or find data by file name.
 section on 'Error propagation' if you are concerned about how this affects
 usage.
 
+CMake configuration coverage
+----------------------------
+The following options select the branches used by the native makefiles:
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `CBLIB_COPY_ARRAY_ARGS` | `ON` | Copy client arrays rather than retaining pointers to them. |
+| `CBLIB_USE_FILEPERC` | `ON` | Enable file-operation progress reporting. |
+| `CBLIB_INCLUDE_FINALISATION_CODE` | `OFF` | Include cleanup functions used by module builds. |
+| `CBLIB_USE_CBDEBUG` | `OFF` | Use CBDebugLib logging and the pseudo-interface headers. |
+
+The first two defaults match the native makefiles. Enable both finalisation
+and the CB debug backend to compile those additional branches, for example:
+```
+cmake -S . -B build-debug -DCMAKE_BUILD_TYPE=Debug -DUSE_FORTIFY=ON \
+  -DCBLIB_INCLUDE_FINALISATION_CODE=ON -DCBLIB_USE_CBDEBUG=ON
+```
+These options affect the CBLibrary targets; they do not select the debug
+backend in dependencies. Fortify controls interception separately. CI covers
+the defaults, the additional cleanup/debug branches, and the older borrowed
+array/no-progress configuration, including with the _Optional checker.
+Host CBLibrary tests remain compile-only; dependency tests execute normally.
+This does not produce or test a native RISC OS module binary.
+
 Removed functions
 -----------------
   Originally CBLibrary provided an esoteric set of functions and macros that

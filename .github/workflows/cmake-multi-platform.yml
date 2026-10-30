@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: ${{ matrix.os }} ${{ matrix.c_compiler }} ${{ matrix.build_type }}
+    name: ${{ matrix.os }} ${{ matrix.c_compiler }} ${{ matrix.build_type }} ${{ matrix.profile }}
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -26,6 +26,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         build_type: [Release, Debug]
         c_compiler: [gcc, clang, cl]
+        profile: [standard]
         include:
           - os: windows-latest
             c_compiler: cl
@@ -33,6 +34,14 @@ jobs:
             c_compiler: gcc
           - os: ubuntu-latest
             c_compiler: clang
+          - os: ubuntu-latest
+            c_compiler: gcc
+            build_type: Debug
+            profile: extended
+          - os: ubuntu-latest
+            c_compiler: gcc
+            build_type: Release
+            profile: legacy
         exclude:
           - os: windows-latest
             c_compiler: gcc
@@ -60,6 +69,10 @@ jobs:
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DWARNINGS_AS_ERRORS=ON
         -DUSE_OPTIONAL=OFF
+        -DCBLIB_COPY_ARRAY_ARGS=${{ matrix.profile != 'legacy' }}
+        -DCBLIB_USE_FILEPERC=${{ matrix.profile != 'legacy' }}
+        -DCBLIB_INCLUDE_FINALISATION_CODE=${{ matrix.profile == 'extended' }}
+        -DCBLIB_USE_CBDEBUG=${{ matrix.profile == 'extended' }}
         -DUSE_FORTIFY=${{ matrix.build_type == 'Debug' && matrix.c_compiler != 'clang' }}
         -S ${{ github.workspace }}
 
@@ -67,14 +80,14 @@ jobs:
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
-    - name: Test
+    - name: Test dependencies
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest --build-config ${{ matrix.build_type }} --output-on-failure
 
   optional-clang:
-    name: _Optional Clang ${{ matrix.build_type }} Fortify ${{ matrix.use_fortify }}
+    name: _Optional Clang ${{ matrix.build_type }} Fortify ${{ matrix.use_fortify }} ${{ matrix.profile }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
 
@@ -84,8 +97,16 @@ jobs:
         include:
           - build_type: Release
             use_fortify: "OFF"
+            profile: standard
           - build_type: Debug
             use_fortify: "ON"
+            profile: standard
+          - build_type: Debug
+            use_fortify: "ON"
+            profile: extended
+          - build_type: Release
+            use_fortify: "OFF"
+            profile: legacy
 
     env:
       OPTIONAL_CLANG_TAG: v1.0.12-optional
@@ -154,6 +175,10 @@ jobs:
             -DCLANG_TIDY_EXE="$OPTIONAL_CLANG_ROOT/bin/clang-tidy" \
             -DWARNINGS_AS_ERRORS=ON \
             -DUSE_OPTIONAL=ON \
+            -DCBLIB_COPY_ARRAY_ARGS=${{ matrix.profile != 'legacy' }} \
+            -DCBLIB_USE_FILEPERC=${{ matrix.profile != 'legacy' }} \
+            -DCBLIB_INCLUDE_FINALISATION_CODE=${{ matrix.profile == 'extended' }} \
+            -DCBLIB_USE_CBDEBUG=${{ matrix.profile == 'extended' }} \
             -DUSE_FORTIFY=${{ matrix.use_fortify }} \
             -DENABLE_CLANG_TIDY=ON
 
@@ -164,7 +189,7 @@ jobs:
             --build "$GITHUB_WORKSPACE/build-optional-${{ matrix.build_type }}" \
             --parallel 2
 
-      - name: Test
+      - name: Test dependencies
         shell: bash
         run: |
           ctest \
