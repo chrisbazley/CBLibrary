@@ -29,11 +29,11 @@ History:
 #ifndef CBMisc_h
 #define CBMisc_h
 
-#ifdef USE_CBDEBUG
-
 #ifdef FORTIFY
 #include "fortify.h"
 #endif
+
+#ifdef USE_CBDEBUG
 
 #include "Debug.h"
 #include "PseudoKern.h"
