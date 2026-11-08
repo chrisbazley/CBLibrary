@@ -291,6 +291,31 @@ static void validate_object_info(_Optional DirIteratorObjectInfo *info, int obje
   }
 }
 
+static void validate_output(const DirIterator *const it, const char *const expected,
+  _Optional CONST _kernel_oserror *(*put_name)(const DirIterator *, strb_t *))
+{
+  /* Insertion into an existing string preserves its suffix. */
+  STRB_DECL_FIXED(sb, StringBufferSize - 1);
+  int result = strb_puts(sb, "<>tail");
+  assert(result != EOF);
+  strb_seek(sb, 2);
+  _Optional CONST _kernel_oserror *e = put_name(it, sb);
+  assert(e == NULL);
+  size_t const length = strlen(expected);
+  assert(!memcmp(strb_cptr(sb), "<>", 2));
+  assert(!memcmp(strb_cptr(sb) + 2, expected, length));
+  assert(!strcmp(strb_cptr(sb) + 2 + length, "tail"));
+  assert(strb_tell(sb) == 2 + length);
+
+  /* Overwrite uses the same output operation. */
+  strb_empty(sb);
+  strb_setmode(sb, strb_overwrite);
+  e = put_name(it, sb);
+  assert(e == NULL);
+  assert(!strcmp(strb_cptr(sb), expected));
+  assert(strb_getmode(sb) == strb_overwrite);
+}
+
 static void validate_object(const DirIterator *it, size_t i)
 {
   DirIteratorObjectInfo info;
@@ -306,6 +331,7 @@ static void validate_object(const DirIterator *it, size_t i)
   assert(stop != NULL);
   const char *expected = stop + 1;
 
+  validate_output(it, expected, diriterator_get_object_leaf_name_sb);
   size_t n = diriterator_get_object_leaf_name(&*it, buffer, sizeof(buffer));
   assert(n == strlen(expected));
   puts(buffer);
@@ -314,6 +340,7 @@ static void validate_object(const DirIterator *it, size_t i)
   assert(strlen(test_objects[i].name) > strlen(test_objects[0].name) + 1);
   expected = test_objects[i].name + strlen(test_objects[0].name) + 1;
 
+  validate_output(it, expected, diriterator_get_object_sub_path_name_sb);
   n = diriterator_get_object_sub_path_name(&*it, buffer, sizeof(buffer));
   assert(n == strlen(expected));
   puts(buffer);
@@ -321,6 +348,7 @@ static void validate_object(const DirIterator *it, size_t i)
 
   expected = test_objects[i].name;
 
+  validate_output(it, expected, diriterator_get_object_path_name_sb);
   n = diriterator_get_object_path_name(&*it, buffer, sizeof(buffer));
   assert(n == strlen(expected));
   puts(buffer);
