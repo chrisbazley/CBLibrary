@@ -20,8 +20,8 @@
 /* MsgTrans.h declares several functions and defines some macros that give
   access to the facilities provided by the RISC OS MessageTrans module.
 
-Dependencies: ANSI C library, Acorn library kernel, Acorn's WIMP library.
-Message tokens: None.
+Dependencies: ANSI C library, Acorn library kernel, Acorn's WIMP library, strb_t.
+Message tokens: NoMem (for string-buffer output).
 History:
   (Original version by Tony Houghton for !FormText.)
   CJB: 29-Feb-04: Added declaration of new function msgs_globalsub() and
@@ -42,6 +42,7 @@ History:
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
   CJB: 29-Aug-22: Use size_t rather than unsigned int for nparam.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 08-Nov-26: Declared string-buffer message lookup functions.
 */
 
 #ifndef MsgTrans_h
@@ -50,6 +51,8 @@ History:
 /* Acorn C/C++ library headers */
 #include "toolbox.h"
 #include "kernel.h"
+
+#include "strb.h"
 
 /* Local headers */
 #include "Macros.h"
@@ -67,6 +70,20 @@ _Optional CONST _kernel_oserror *msgs_initialise(MessagesFD */*mfd*/);
     * toolbox_initialise() or SWI MessageTrans_OpenFile.
     * Returns: a pointer to an OS error block, or else NULL for success.
     */
+
+_Optional CONST _kernel_oserror *msgs_lookup_sb(const char *token, strb_t *output);
+   /*
+    * Looks up a message using the descriptor supplied to msgs_initialise and
+    * writes it at output's editing position, using its insertion or overwrite
+    * mode. The buffer may grow. On lookup failure, no fallback text is written
+    * and no error is reported to the user. Returns NULL on success, or an OS
+    * error (including NoMem if output storage cannot be obtained).
+    * Output may have been modified if the second lookup fails.
+    */
+
+_Optional CONST _kernel_oserror *msgs_lookup_subn_sb(const char *token,
+  strb_t *output, size_t nparam, ...);
+   /* As msgs_lookup_sb, with the same substitution arguments as msgs_lookup_subn. */
 
 char *msgs_lookup(const char */*token*/);
    /*
