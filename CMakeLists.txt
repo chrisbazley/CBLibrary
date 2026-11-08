@@ -18,7 +18,7 @@ FetchContent_Declare(CBOS GIT_REPOSITORY https://github.com/chrisbazley/CBOSLib.
 FetchContent_Declare(CBUtil GIT_REPOSITORY https://github.com/chrisbazley/CBUtilLib.git GIT_TAG main)
 
 FetchContent_Declare(strb GIT_REPOSITORY https://github.com/chrisbazley/strb_t.git
-    GIT_TAG 00291cd9fce181a62e99c1d4ea619681aecdb07d)
+    GIT_TAG af5e658f98240bcb64f35dfa964cb55945f1d703)
 FetchContent_MakeAvailable(OptionalAcornC Stream CBOS CBUtil strb)
 
 if(CBLIB_USE_CBDEBUG)

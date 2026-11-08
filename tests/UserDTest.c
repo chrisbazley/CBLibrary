@@ -488,11 +488,10 @@ static void test12(void)
   UserData data;
   const char *got_name;
   size_t got_len;
-  static const char * const names[2] =
-  {
-    "foo",
-    "longerthanfoo",
-  };
+  char longer[300];
+  memset(longer, 'A', sizeof(longer) - 1);
+  longer[sizeof(longer) - 1] = '\0';
+  const char *const names[2] = {"foo", longer};
 
   memset(&data, CHAR_MAX, sizeof(data));
 

@@ -20,13 +20,14 @@
 /* UserData.h declares functions and types for a list of user data
    that may need to be saved before they are destroyed.
 
-Dependencies: ANSI C library.
+Dependencies: ANSI C library, CBUtilLib, strb_t.
 Message tokens: None.
 History:
   CJB: 11-Dec-14: Created this header file.
   CJB: 27-Dec-14: Added userdata_destroy function to the public interface.
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
+  CJB: 08-Nov-26: Store string buffer state without a saved handle.
 */
 
 #ifndef userdata_h
@@ -35,8 +36,10 @@ History:
 /* ISO library headers */
 #include <stdbool.h>
 
+/* String buffer header */
+#include "strb.h"
+
 /* CBUtilLib headers */
-#include "StringBuff.h"
 #include "LinkedList.h"
 
 #if !defined(USE_OPTIONAL) && !defined(_Optional)
@@ -63,7 +66,7 @@ typedef void UserDataDestroyFn(struct UserData *item);
 typedef struct UserData
 {
   LinkedListItem list_item;
-  StringBuffer file_name;
+  strbstate_t file_name;
   _Optional UserDataIsSafeFn *is_safe;
   _Optional UserDataDestroyFn *destroy;
 }
