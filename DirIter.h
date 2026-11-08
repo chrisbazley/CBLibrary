@@ -37,7 +37,7 @@
   }
   diriterator_destroy(it);
 
-Dependencies: ANSI C library, Acorn library kernel.
+Dependencies: ANSI C library, Acorn library kernel, strb_t.
 Message tokens: NoMem.
 History:
   CJB: 25-Mar-12: Created this header file.
@@ -46,6 +46,7 @@ History:
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 02-Aug-26: Explicitly allow null as the output argument for
                   diriterator_get_object_* functions.
+  CJB: 08-Nov-26: Added _sb name getters using the existing array getters.
  */
 
 #ifndef DirIter_h
@@ -54,6 +55,9 @@ History:
 /* ISO library headers */
 #include <stddef.h> /* (for size_t) */
 #include <stdbool.h>
+
+/* String buffer library */
+#include "strb.h"
 
 /* Acorn C/C++ library headers */
 #include "kernel.h"
@@ -168,6 +172,24 @@ size_t diriterator_get_object_leaf_name(const DirIterator * /*iterator*/,
     * then "baz" is the leaf name.) This function behaves like
     * diriterator_get_object_path_name in every other respect.
     */
+
+_Optional CONST _kernel_oserror *diriterator_get_object_path_name_sb(
+  const DirIterator *iterator, strb_t *sb);
+   /*
+    * Writes the current object's full path name at sb's editing position,
+    * using its insertion or overwrite mode. Writes an empty string if the
+    * iterator is empty. On failure, the string, position and mode are unchanged
+    * and sb's error indicator is set. The iterator is never modified.
+    * Returns: NULL on success, or a NoMem error if output cannot be stored.
+    */
+
+_Optional CONST _kernel_oserror *diriterator_get_object_sub_path_name_sb(
+  const DirIterator *iterator, strb_t *sb);
+   /* As diriterator_get_object_path_name_sb, omitting the root directory stem. */
+
+_Optional CONST _kernel_oserror *diriterator_get_object_leaf_name_sb(
+  const DirIterator *iterator, strb_t *sb);
+   /* As diriterator_get_object_path_name_sb, writing only the final component. */
 
 _Optional CONST _kernel_oserror *diriterator_advance(DirIterator * /*iterator*/);
    /*

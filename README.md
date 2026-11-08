@@ -82,6 +82,7 @@ functionality that was previously part of it:
  * GKeyLib (portable game file compression/decompression)
  * CBUtilLib (miscellaneous portable functions)
  * CBOSLib (RISC OS-specific SWI veneers)
+ * strb_t (string buffer output for directory iterators)
  * CBDebugLib (RISC OS-specific debugging facilities)
 
   Software that depends on CBLibrary should be modified to link with one
@@ -275,7 +276,7 @@ Rebuilding the library
   You should ensure that the Acorn C/C++ library directories clib, tboxlibs
 and flexlib are on your C$Path, otherwise the compiler won't be able to find
 the required header files. You must also ensure that GKeyLib, CBUtilLib,
-CBOSLib and CBDebugLib (by the same author as CBLibrary) are on your C$Path.
+CBOSLib, CBDebugLib and strb_t are on your C$Path.
 The dependency on CBDebugLib isn't very strong: it can be eliminated by
 modifying the make file so that the macro USE_CBDEBUG is no longer
 predefined.

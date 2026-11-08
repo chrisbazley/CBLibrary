@@ -45,6 +45,7 @@
                   diriterator_get_object_* functions.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
   CJB: 21-Sep-26: Use CONTAINER_OF to recover directory levels from list items.
+  CJB: 08-Nov-26: Added _sb name getters using the existing array getters.
 */
 
 /* ISO library headers */
@@ -611,6 +612,22 @@ static size_t get_name(const DirIterator *iterator,
   return nchars;
 }
 
+static _Optional CONST _kernel_oserror *get_name_sb(
+  const DirIterator *const iterator, strb_t *const output,
+  size_t (*get_name)(const DirIterator *, _Optional char *, size_t))
+{
+  size_t const length = get_name(iterator, NULL, 0);
+  _Optional char *const buffer = strb_write(output, length);
+  if (!buffer)
+  {
+    return no_mem();
+  }
+  get_name(iterator, &*buffer, length + 1);
+  /* Reinstate the character overwritten by the array getter's terminator. */
+  strb_restore(output);
+  return NULL;
+}
+
 _Optional CONST _kernel_oserror *diriterator_make(_Optional DirIterator  **iterator,
                                                   unsigned int             flags,
                                                   const char              *path_name,
@@ -804,6 +821,25 @@ size_t diriterator_get_object_leaf_name(const DirIterator *iterator,
 
   /* Skip all characters of the path name of the current level. */
   return get_name(iterator, buffer, buff_size, SIZE_MAX);
+}
+
+_Optional CONST _kernel_oserror *diriterator_get_object_path_name_sb(
+  const DirIterator *const iterator, strb_t *const sb)
+{
+  return get_name_sb(iterator, sb, diriterator_get_object_path_name);
+}
+
+_Optional CONST _kernel_oserror *diriterator_get_object_sub_path_name_sb(
+  const DirIterator *const iterator, strb_t *const sb)
+{
+  assert(iterator != NULL);
+  return get_name_sb(iterator, sb, diriterator_get_object_sub_path_name);
+}
+
+_Optional CONST _kernel_oserror *diriterator_get_object_leaf_name_sb(
+  const DirIterator *const iterator, strb_t *const sb)
+{
+  return get_name_sb(iterator, sb, diriterator_get_object_leaf_name);
 }
 
 _Optional CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
