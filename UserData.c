@@ -30,6 +30,7 @@
                   count_unsafe_user_data to help the analyser.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
   CJB: 21-Sep-26: Use CONTAINER_OF to recover user data from list items.
+  CJB: 08-Nov-26: Use allocated string buffers for nonempty filenames.
 */
 
 /* ISO library headers */
@@ -37,9 +38,11 @@
 #include <string.h>
 #include <stdlib.h>
 
+/* String buffer header */
+#include "strb.h"
+
 /* CBUtilLib headers */
 #include "StrExtra.h"
-#include "StringBuff.h"
 #include "LinkedList.h"
 
 /* Local headers */
@@ -75,7 +78,8 @@ void userdata_remove_from_list(UserData *data)
 {
   assert(data != NULL);
   DEBUGF("UserData: Removing user data %p from list\n", (void *)data);
-  stringbuffer_destroy(&data->file_name);
+  strb_free(data->file_name);
+  data->file_name = NULL;
   linkedlist_remove(&user_data_list, &data->list_item);
 }
 
@@ -95,8 +99,8 @@ bool userdata_add_to_list(UserData *data,
 
   data->is_safe = is_safe;
   data->destroy = destroy;
-  stringbuffer_init(&data->file_name);
-  if (!stringbuffer_append_all(&data->file_name, file_name))
+  data->file_name = *file_name ? strb_dup(file_name) : NULL;
+  if (*file_name && !data->file_name)
   {
     DEBUGF("UserData: Failed to duplicate file name string\n");
     success = false;
@@ -131,11 +135,16 @@ bool userdata_set_file_name(UserData *data, const char *file_name)
   DEBUGF("UserData: setting file name of user data %p to '%s'\n",
          (void *)data, file_name);
 
-  stringbuffer_truncate(&data->file_name, 0);
-  bool success = stringbuffer_append_all(&data->file_name, file_name);
-  if (!success)
-    stringbuffer_undo(&data->file_name);
-  return success;
+  if (data->file_name)
+  {
+    return strb_cpy(&*data->file_name, file_name) != EOF;
+  }
+  if (!*file_name)
+  {
+    return true;
+  }
+  data->file_name = strb_dup(file_name);
+  return data->file_name != NULL;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -143,7 +152,7 @@ bool userdata_set_file_name(UserData *data, const char *file_name)
 char *userdata_get_file_name(const UserData *data)
 {
   assert(data != NULL);
-  return stringbuffer_get_pointer(&data->file_name);
+  return data->file_name ? strb_ptr(&*data->file_name) : "";
 }
 
 /* ----------------------------------------------------------------------- */
@@ -151,7 +160,7 @@ char *userdata_get_file_name(const UserData *data)
 size_t userdata_get_file_name_length(const UserData *data)
 {
   assert(data != NULL);
-  return stringbuffer_get_length(&data->file_name);
+  return data->file_name ? strb_len(&*data->file_name) : 0;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -180,7 +189,7 @@ void userdata_destroy(UserData *data)
 {
   assert(data != NULL);
   DEBUGF("UserData: Destroying user data item %p with file name '%s'\n",
-         (void *)data, stringbuffer_get_pointer(&data->file_name));
+         (void *)data, userdata_get_file_name(data));
 
   if (!data->destroy)
     userdata_remove_from_list(data);

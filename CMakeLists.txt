@@ -18,7 +18,7 @@ FetchContent_Declare(CBOS GIT_REPOSITORY https://github.com/chrisbazley/CBOSLib.
 FetchContent_Declare(CBUtil GIT_REPOSITORY https://github.com/chrisbazley/CBUtilLib.git GIT_TAG main)
 
 FetchContent_Declare(strb GIT_REPOSITORY https://github.com/chrisbazley/strb_t.git
-    GIT_TAG 00291cd9fce181a62e99c1d4ea619681aecdb07d)
+    GIT_TAG 848cb11b419c73016fe63f199b7b840ea2ba0220)
 FetchContent_MakeAvailable(OptionalAcornC Stream CBOS CBUtil strb)
 
 if(CBLIB_USE_CBDEBUG)
@@ -54,12 +54,7 @@ if(USE_FORTIFY)
 
     FetchContent_MakeAvailable(Fortify)
     link_libraries(Fortify)
-    target_link_libraries(strb PRIVATE Fortify)
-    if(MSVC)
-        target_compile_options(strb PRIVATE /FIfortify.h)
-    else()
-        target_compile_options(strb PRIVATE -include fortify.h)
-    endif()
+
 endif()
 
 set(CMAKE_C_STANDARD 99)

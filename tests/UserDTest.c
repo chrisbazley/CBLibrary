@@ -488,11 +488,10 @@ static void test12(void)
   UserData data;
   const char *got_name;
   size_t got_len;
-  static const char * const names[2] =
-  {
-    "foo",
-    "longerthanfoo",
-  };
+  char longer[300];
+  memset(longer, 'A', sizeof(longer) - 1);
+  longer[sizeof(longer) - 1] = '\0';
+  const char *const names[2] = {"foo", longer};
 
   memset(&data, CHAR_MAX, sizeof(data));
 
@@ -615,6 +614,47 @@ static void test14(void)
   }
 }
 
+static void test15(void)
+{
+  /* Empty filename without allocation */
+  UserData data;
+  userdata_init();
+  Fortify_SetNumAllocationsLimit(0);
+  bool result = userdata_add_to_list(&data, NULL, NULL, "");
+  assert(result);
+  assert(!strcmp(userdata_get_file_name(&data), ""));
+  assert(userdata_get_file_name_length(&data) == 0);
+#ifdef FORTIFY
+  result = userdata_set_file_name(&data, "NEW");
+  assert(!result);
+  assert(!strcmp(userdata_get_file_name(&data), ""));
+#endif
+  Fortify_SetNumAllocationsLimit(ULONG_MAX);
+  userdata_remove_from_list(&data);
+}
+
+static void test16(void)
+{
+  /* Temporary filename modification and capacity reuse */
+  UserData data;
+  userdata_init();
+  bool result = userdata_add_to_list(&data, NULL, NULL, "old.name");
+  assert(result);
+  char *const name = userdata_get_file_name(&data);
+  name[3] = '\0';
+  assert(!strcmp(name, "old"));
+  name[3] = '.';
+  Fortify_SetNumAllocationsLimit(0);
+  result = userdata_set_file_name(&data, "");
+  assert(result);
+  assert(userdata_get_file_name_length(&data) == 0);
+  result = userdata_set_file_name(&data, "reused");
+  Fortify_SetNumAllocationsLimit(ULONG_MAX);
+  assert(result);
+  assert(!strcmp(userdata_get_file_name(&data), "reused"));
+  userdata_remove_from_list(&data);
+}
+
 void UserData_tests(void)
 {
   static const struct
@@ -637,7 +677,9 @@ void UserData_tests(void)
     { "Add user data fail recovery", test11 },
     { "Set name fail recovery", test12 },
     { "Destroy user data with destructor", test13 },
-    { "Destroy user data without destructor", test14 }
+    { "Destroy user data without destructor", test14 },
+    { "Empty filename without allocation", test15 },
+    { "Temporary filename modification and capacity reuse", test16 }
   };
 
   for (size_t count = 0; count < ARRAY_SIZE(unit_tests); count ++)
