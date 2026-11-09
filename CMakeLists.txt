@@ -14,7 +14,7 @@ include(FetchContent)
 
 FetchContent_Declare(OptionalAcornC GIT_REPOSITORY https://github.com/chrisbazley/OptionalAcornC.git GIT_TAG main)
 FetchContent_Declare(Stream GIT_REPOSITORY https://github.com/chrisbazley/StreamLib.git GIT_TAG main)
-FetchContent_Declare(CBOS GIT_REPOSITORY https://github.com/chrisbazley/CBOSLib.git GIT_TAG main)
+FetchContent_Declare(CBOS GIT_REPOSITORY https://github.com/chrisbazley/CBOSLib.git GIT_TAG 782092644cedffd8fccdb4d816d0b0d05d5453fe)
 FetchContent_Declare(CBUtil GIT_REPOSITORY https://github.com/chrisbazley/CBUtilLib.git GIT_TAG main)
 
 FetchContent_Declare(strb GIT_REPOSITORY https://github.com/chrisbazley/strb_t.git
@@ -104,7 +104,7 @@ if(ENABLE_CLANG_TIDY AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     message(STATUS "_Optional static analysis enabled")
 endif()
 
-set(OSUtilsList MsgTrans.c Canonical.c CanonicSB.c ScreenSize.c MakePath.c DateStamp.c ReadClock.c
+set(OSUtilsList MsgTrans.c Canonical.c ScreenSize.c MakePath.c DateStamp.c ReadClock.c
     SetFType.c GetFType.c DirIter.c PathTail.c FileSize.c)
 
 # Toolbox library utilities

@@ -36,7 +36,7 @@ History:
   CJB: 11-Dec-20: Deleted redundant uses of the 'extern' keyword.
   CJB: 31-May-21: Added a declaration of the get_file_type function.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
-  CJB: 09-Nov-26: Added the canonicalise_sb string-buffer output interface.
+  CJB: 09-Nov-26: The string-buffer canonicalisation veneer is in CBOSLib.
 */
 
 #ifndef FileUtils_h
@@ -47,23 +47,10 @@ History:
 
 /* Local headers */
 #include "Macros.h"
-#include "strb.h"
 
 #if !defined(USE_OPTIONAL) && !defined(_Optional)
 #define _Optional
 #endif
-
-_Optional CONST _kernel_oserror *canonicalise_sb(strb_t * /*b*/,
-  _Optional const char * /*pv*/, _Optional const char * /*ps*/, const char * /*f*/);
-   /*
-    * Writes the canonicalised path at the current position in b, respecting
-    * its editing mode. pv, ps and f have the same meanings as for canonicalise.
-    * The input strings must not refer to b's character storage.
-    * Returns an OS error on failure, including insufficient buffer capacity.
-    * Failure to measure the path or obtain storage leaves the contents and
-    * position unchanged. A failure while writing may modify the contents.
-    * Returns: a pointer to an OS error block, or else NULL for success.
-    */
 
 _Optional CONST _kernel_oserror *canonicalise(_Optional char ** /*b*/, _Optional const char * /*pv*/, _Optional const char * /*ps*/, const char * /*f*/);
    /*

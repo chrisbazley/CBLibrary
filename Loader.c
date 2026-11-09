@@ -171,6 +171,8 @@
 #ifdef CBLIB_OBSOLETE /* Use c.Loader2 instead */
 
 /* ISO library headers */
+#include "strb.h"
+#include "OSFSCntrl.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -604,7 +606,7 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
 
   if (message->hdr.action_code == Wimp_MDataOpen) {
     /* It's a DataOpen message (broadcast when the user double-clicks a file) */
-    if (E(canonicalise_sb(full_path, NULL, NULL,
+    if (E(os_fscontrol_canonicalise_sb(full_path, NULL, NULL,
                          message->data.data_open.path_name))) {
       strb_free(full_path);
       return 0;
@@ -617,7 +619,7 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
   }
   else {
     /* It's a DataLoad message (sent to request us to load a file) */
-    if (E(canonicalise_sb(full_path, NULL, NULL,
+    if (E(os_fscontrol_canonicalise_sb(full_path, NULL, NULL,
                          message->data.data_load.leaf_name))) {
       strb_free(full_path);
       return 0;
