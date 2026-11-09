@@ -56,6 +56,7 @@
                   value of 'desc'.
   CJB: 21-Sep-26: Declare variables when they are first assigned.
   CJB: 08-Nov-26: Added string-buffer message lookup functions.
+  CJB: 09-Nov-26: Delegate string-buffer output to CBOSLib veneers.
 */
 
 /* ISO library headers */
@@ -113,35 +114,16 @@ _Optional CONST _kernel_oserror *msgs_initialise(MessagesFD *mfd)
 _Optional CONST _kernel_oserror *msgs_lookup_sb(const char *const token,
   strb_t *const output)
 {
-  return msgs_lookup_subn_sb(token, output, 0);
+  return messagetrans_lookup_sb(desc, token, output, 0);
 }
 
 _Optional CONST _kernel_oserror *msgs_lookup_subn_sb(const char *const token,
   strb_t *const output, size_t const nparam, ...)
 {
-  assert(token != NULL);
-  assert(nparam <= MaxParameters);
-  va_list params, query;
+  va_list params;
   va_start(params, nparam);
-  va_copy(query, params);
-  size_t size;
-  _Optional CONST _kernel_oserror *e = messagetrans_vlookup(desc, token,
-    NULL, 0, &size, nparam, query);
-  va_end(query);
-  if (!e)
-  {
-    assert(size > 0);
-    _Optional char *const buffer = strb_write(output, size - 1);
-    if (buffer)
-    {
-      e = messagetrans_vlookup(desc, token, &*buffer, size, NULL, nparam, params);
-      strb_restore(output);
-    }
-    else
-    {
-      e = msgs_error(DUMMY_ERRNO, "NoMem");
-    }
-  }
+  _Optional CONST _kernel_oserror *const e =
+    messagetrans_vlookup_sb(desc, token, output, nparam, params);
   va_end(params);
   return e;
 }

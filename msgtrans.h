@@ -21,7 +21,7 @@
   access to the facilities provided by the RISC OS MessageTrans module.
 
 Dependencies: ANSI C library, Acorn library kernel, Acorn's WIMP library, strb_t.
-Message tokens: NoMem (for string-buffer output).
+Message tokens: None (CBOSLib uses the global BufOFlo token).
 History:
   (Original version by Tony Houghton for !FormText.)
   CJB: 29-Feb-04: Added declaration of new function msgs_globalsub() and
@@ -43,6 +43,7 @@ History:
   CJB: 29-Aug-22: Use size_t rather than unsigned int for nparam.
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 08-Nov-26: Declared string-buffer message lookup functions.
+  CJB: 09-Nov-26: String-buffer lookup veneers now use CBOSLib.
 */
 
 #ifndef MsgTrans_h
@@ -77,7 +78,7 @@ _Optional CONST _kernel_oserror *msgs_lookup_sb(const char *token, strb_t *outpu
     * writes it at output's editing position, using its insertion or overwrite
     * mode. The buffer may grow. On lookup failure, no fallback text is written
     * and no error is reported to the user. Returns NULL on success, or an OS
-    * error (including NoMem if output storage cannot be obtained).
+    * error (including BufOFlo if output storage cannot be obtained).
     * Output may have been modified if the second lookup fails.
     */
 
