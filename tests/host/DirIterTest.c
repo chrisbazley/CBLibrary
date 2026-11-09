@@ -147,5 +147,5 @@ int main(void)
   free(long_out);
   free(level);
   puts("DirIter output tests passed");
-  strb_free(name);
+  strb_destroy(name);
 }
