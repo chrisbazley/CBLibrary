@@ -954,7 +954,7 @@ void diriterator_destroy(_Optional DirIterator *iterator)
     /* Free each member of the linked list in turn, starting at the head. */
     free_levels(&iterator->dir_list, NULL);
 
-    strb_free(&iterator->path_name);
+    strb_destroy(&iterator->path_name);
     free(iterator->pattern); /* may be null */
     free(iterator);
   }

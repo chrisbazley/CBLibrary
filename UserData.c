@@ -78,7 +78,7 @@ void userdata_remove_from_list(UserData *data)
 {
   assert(data != NULL);
   DEBUGF("UserData: Removing user data %p from list\n", (void *)data);
-  strb_free(&data->file_name);
+  strb_destroy(&data->file_name);
   linkedlist_remove(&user_data_list, &data->list_item);
 }
 
