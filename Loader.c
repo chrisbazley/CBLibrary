@@ -165,6 +165,7 @@
   CJB: 21-Sep-26: Declare variables when they are first assigned.
   CJB: 21-Sep-26: Use CONTAINER_OF to recover loader records from list items.
   CJB: 22-Sep-26: Assert the expected Wimp message type in message handlers.
+  CJB: 09-Nov-26: Produce canonical paths in caller-owned string buffers.
 */
 
 #ifdef CBLIB_OBSOLETE /* Use c.Loader2 instead */
@@ -589,7 +590,7 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
      registered early or else it will intercept messages intended for the
      Loader2 or Entity library components). */
   _Optional CONST _kernel_oserror *e;
-  _Optional char *full_path = NULL;
+  STRB_DECL_ALLOC(full_path, 0);
   _Optional LoaderListenerBlk *found_listener;
   int file_type, drop_x, drop_y;
   assert(message != NULL);
@@ -603,22 +604,22 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
 
   if (message->hdr.action_code == Wimp_MDataOpen) {
     /* It's a DataOpen message (broadcast when the user double-clicks a file) */
-    ON_ERR_RPT_RTN_V(canonicalise(&full_path, NULL, NULL,
-                                  message->data.data_open.path_name), 0);
-    if (!full_path) {
+    if (E(canonicalise_sb(full_path, NULL, NULL,
+                         message->data.data_open.path_name))) {
+      strb_free(full_path);
       return 0;
     }
 
     file_type = message->data.data_open.file_type;
     drop_x = drop_y = -1; /* file not received via drag and drop */
 
-    found_listener = _ldr_find_broadcast_listener(&*full_path, file_type);
+    found_listener = _ldr_find_broadcast_listener(strb_cptr(full_path), file_type);
   }
   else {
     /* It's a DataLoad message (sent to request us to load a file) */
-    ON_ERR_RPT_RTN_V(canonicalise(&full_path, NULL, NULL,
-                                  message->data.data_load.leaf_name), 0);
-    if (!full_path) {
+    if (E(canonicalise_sb(full_path, NULL, NULL,
+                         message->data.data_load.leaf_name))) {
+      strb_free(full_path);
       return 0;
     }
 
@@ -630,14 +631,14 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
     drop_x = message->data.data_load.destination_x;
     drop_y = message->data.data_load.destination_y;
 
-    found_listener = _ldr_find_suitable_listener(&*full_path,
+    found_listener = _ldr_find_suitable_listener(strb_cptr(full_path),
                      message->data.data_load.destination_window,
                      message->data.data_load.destination_icon, file_type);
   }
 
   if (found_listener == NULL) {
     DEBUGF("Loader: no suitable listener found\n");
-    free(full_path);
+    strb_free(full_path);
     return 0; /* message not handled */
   }
 
@@ -647,7 +648,7 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
     if (E(_ldr_abs_to_work_area(message->data.data_load.destination_window,
                                 &drop_x,
                                 &drop_y))) {
-      free(full_path);
+      strb_free(full_path);
       return 1; /* claim message */
     }
   }
@@ -660,14 +661,14 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
     message->hdr.action_code = Wimp_MDataLoadAck;
     if (E(wimp_send_message(Wimp_EUserMessage,message, message->hdr.sender, 0,
     NULL))) {
-      free(full_path);
+      strb_free(full_path);
       return 1; /* error - claim message */
     }
     DEBUGF("Loader: Have sent DataLoadAck message (ref. %d)\n",
           message->hdr.my_ref);
 
     if (found_listener == PREVENT_TRANSFER) {
-      free(full_path);
+      strb_free(full_path);
       return 1; /* nothing more to do - claim message */
     }
   }
@@ -695,7 +696,7 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
     if (e != NULL) {
       /* Loading error */
       err_report(e->errnum, msgs_lookupsubn("LoadFail", 1, e->errmess));
-      free(full_path);
+      strb_free(full_path);
       return 1; /* claim message */
     }
   }
@@ -707,7 +708,7 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
     message->hdr.action_code = Wimp_MDataLoadAck;
     if (E(wimp_send_message(Wimp_EUserMessage, message, message->hdr.sender, 0,
     NULL))) {
-      free(full_path);
+      strb_free(full_path);
       if (input_buffer != NULL)
         flex_free(&*input_buffer);
       return 1; /* claim message */
@@ -725,7 +726,7 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
     if (!flex_midextend(&*input_buffer, 0, sizeof((*area)->size))) {
       /* Failed to extend input buffer at start */
       WARN_GLOB("NoMem");
-      free(full_path);
+      strb_free(full_path);
       flex_free(&*input_buffer);
       return 1; /* claim message */
     }
@@ -737,7 +738,7 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
   if (found_listener->finished_method) {
     DEBUGF("Loader: Calling client function with handle %p\n",
           found_listener->client_handle);
-    found_listener->finished_method(drop_x, drop_y, &*full_path, true,
+    found_listener->finished_method(drop_x, drop_y, strb_cptr(full_path), true,
                                     input_buffer, file_type,
                                     found_listener->client_handle);
   } else {
@@ -745,7 +746,7 @@ static int _ldr_dataloadopen_msg_handler(WimpMessage *message, void *handle)
     if (input_buffer != NULL)
       flex_free(&*input_buffer);
   }
-  free(full_path);
+  strb_free(full_path);
   return 1; /* claim message */
 }
 

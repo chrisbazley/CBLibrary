@@ -38,3 +38,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang
   target_compile_definitions(PortableTests PRIVATE CB_TEST_PORTABLE)
   add_test(NAME PortableTests COMMAND PortableTests)
 endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT USE_OPTIONAL AND
+   CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+  add_executable(CanonicalHostTests host/CanonicalTest.c ../CanonicSB.c)
+  target_include_directories(CanonicalHostTests PRIVATE ..)
+  target_link_libraries(CanonicalHostTests PRIVATE strb CBUtil CBOS OptionalAcornC)
+  add_test(NAME CanonicalHostTests COMMAND CanonicalHostTests)
+endif()

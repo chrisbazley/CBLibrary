@@ -2,7 +2,7 @@
 LibName = CB
 
 # OS-specific utilities (to make life bearable)
-OSUtilsList = MsgTrans Canonical ScreenSize MakePath DateStamp ReadClock \
+OSUtilsList = MsgTrans Canonical CanonicSB ScreenSize MakePath DateStamp ReadClock \
               SetFType GetFType DirIter PathTail FileSize
 
 # Toolbox library utilities

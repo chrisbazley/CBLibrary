@@ -104,7 +104,7 @@ if(ENABLE_CLANG_TIDY AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     message(STATUS "_Optional static analysis enabled")
 endif()
 
-set(OSUtilsList MsgTrans.c Canonical.c ScreenSize.c MakePath.c DateStamp.c ReadClock.c
+set(OSUtilsList MsgTrans.c Canonical.c CanonicSB.c ScreenSize.c MakePath.c DateStamp.c ReadClock.c
     SetFType.c GetFType.c DirIter.c PathTail.c FileSize.c)
 
 # Toolbox library utilities
