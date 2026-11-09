@@ -78,8 +78,7 @@ void userdata_remove_from_list(UserData *data)
 {
   assert(data != NULL);
   DEBUGF("UserData: Removing user data %p from list\n", (void *)data);
-  strb_free(data->file_name);
-  data->file_name = NULL;
+  strb_free(&data->file_name);
   linkedlist_remove(&user_data_list, &data->list_item);
 }
 
@@ -97,10 +96,8 @@ bool userdata_add_to_list(UserData *data,
   DEBUGF("UserData: Adding user data %p with file name '%s'\n",
          (void *)data, file_name);
 
-  data->is_safe = is_safe;
-  data->destroy = destroy;
-  data->file_name = *file_name ? strb_dup(file_name) : NULL;
-  if (*file_name && !data->file_name)
+  *data = (UserData){.is_safe = is_safe, .destroy = destroy};
+  if (strb_cpy(&data->file_name, file_name))
   {
     DEBUGF("UserData: Failed to duplicate file name string\n");
     success = false;
@@ -135,16 +132,7 @@ bool userdata_set_file_name(UserData *data, const char *file_name)
   DEBUGF("UserData: setting file name of user data %p to '%s'\n",
          (void *)data, file_name);
 
-  if (data->file_name)
-  {
-    return strb_cpy(&*data->file_name, file_name) != EOF;
-  }
-  if (!*file_name)
-  {
-    return true;
-  }
-  data->file_name = strb_dup(file_name);
-  return data->file_name != NULL;
+  return strb_cpy(&data->file_name, file_name) != EOF;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -152,7 +140,8 @@ bool userdata_set_file_name(UserData *data, const char *file_name)
 char *userdata_get_file_name(const UserData *data)
 {
   assert(data != NULL);
-  return data->file_name ? strb_ptr(&*data->file_name) : "";
+  /* Preserve the public mutable-string interface without modifying metadata. */
+  return (char *)strb_cptr(&data->file_name);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -160,7 +149,7 @@ char *userdata_get_file_name(const UserData *data)
 size_t userdata_get_file_name_length(const UserData *data)
 {
   assert(data != NULL);
-  return data->file_name ? strb_len(&*data->file_name) : 0;
+  return strb_len(&data->file_name);
 }
 
 /* ----------------------------------------------------------------------- */

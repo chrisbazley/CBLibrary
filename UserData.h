@@ -66,7 +66,7 @@ typedef void UserDataDestroyFn(struct UserData *item);
 typedef struct UserData
 {
   LinkedListItem list_item;
-  _Optional strb_t *file_name; /* Null represents an empty filename. */
+  strb_t file_name;
   _Optional UserDataIsSafeFn *is_safe;
   _Optional UserDataDestroyFn *destroy;
 }

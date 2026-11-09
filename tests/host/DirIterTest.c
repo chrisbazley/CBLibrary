@@ -61,10 +61,10 @@ int main(void)
   level->entry_name_len = strlen(leaf);
   level->path_name_len = strlen(path);
   level->nentries = 1;
-  strb_t *const name = strb_dup(path);
-  assert(name);
-  DirIterator it = {.path_name = name, .path_name_len = strlen("ADFS::0.$.root"),
+  DirIterator it = {.path_name_len = strlen("ADFS::0.$.root"),
     .dir_list = {.head = &level->list_item, .tail = &level->list_item}};
+  strb_t *const name = &it.path_name;
+  assert(!strb_cpy(name, path));
   static const char expected[] = "ADFS::0.$.root.child.file";
   for (size_t n = 0; n < sizeof expected + 3; ++n)
   {
