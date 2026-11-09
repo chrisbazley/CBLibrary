@@ -46,6 +46,8 @@
   CJB: 21-Sep-26: Declare variables when they are first assigned.
   CJB: 21-Sep-26: Use CONTAINER_OF to recover directory levels from list items.
   CJB: 08-Nov-26: Added _sb name getters using the existing array getters.
+  CJB: 08-Nov-26: Use allocated string buffers for iterator paths.
+  CJB: 09-Nov-26: Assign the pattern pointer even when duplication fails.
 */
 
 /* ISO library headers */
@@ -58,8 +60,10 @@
 /* Acorn C/C++ library headers */
 #include "kernel.h"
 
+/* String buffer header */
+#include "strb.h"
+
 /* CBUtilLib headers */
-#include "StringBuff.h"
 #include "StrExtra.h"
 #include "LinkedList.h"
 
@@ -123,7 +127,9 @@ struct DirIterator
                          directories and/or image files). */
   _Optional char *pattern; /* Pointer to wildcarded name to match, or NULL to match
                               all (equivalent to "*"). */
-  StringBuffer path_name; /* Path name of current deepest directory. */
+  /* Overwrite mode; position is the visible path length. Split/restore keeps
+     a temporarily hidden suffix intact while an ancestor directory is read. */
+  strb_t *path_name;
   size_t path_name_len; /* Length of the root path, for convenience of
                            diriterator_get_object_sub_path_name. */
   LinkedList dir_list;
@@ -228,7 +234,7 @@ static _Optional CONST _kernel_oserror *refill_buffer(DirIterator       *iterato
   bool retry;
 
   assert(iterator != NULL);
-  const char *path_name = stringbuffer_get_pointer(&iterator->path_name);
+  const char *path_name = strb_cptr(iterator->path_name);
   assert(path_name != NULL);
 
   assert(levelp != NULL);
@@ -327,14 +333,14 @@ static _Optional CONST _kernel_oserror *enter_dir(DirIterator *iterator)
   assert(iterator != NULL);
 
   DEBUGF("DirIterator: Entering '%s'\n",
-         stringbuffer_get_pointer(&iterator->path_name));
+         strb_cptr(iterator->path_name));
 
   _Optional DirIteratorLevel *level = malloc(offsetof(DirIteratorLevel, buffer) + DEFAULT_BUFFER_SIZE);
   if (level != NULL)
   {
     /* Record the length of the path name leading up to this directory. */
     *level = (DirIteratorLevel){
-      .path_name_len = stringbuffer_get_length(&iterator->path_name),
+      .path_name_len = strb_tell(iterator->path_name),
       .entry = NULL,
       .nentries = 0,
       .gbpb_next = 0, /* start of directory */
@@ -364,7 +370,7 @@ static _Optional CONST _kernel_oserror *enter_dir(DirIterator *iterator)
         linkedlist_remove(&iterator->dir_list, &level->list_item);
         free(level);
         DEBUGF("DirIterator: Ignoring empty directory '%s'\n",
-              stringbuffer_get_pointer(&iterator->path_name));
+              strb_cptr(iterator->path_name));
       }
     }
   }
@@ -448,7 +454,7 @@ static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
     CONTAINER_OF(&*deepest_item, DirIteratorLevel, list_item);
 
   DEBUGF("DirIterator: Leaving level %p ('%s')\n", (void *)deepest_dir,
-         stringbuffer_get_pointer(&iterator->path_name));
+         strb_cptr(iterator->path_name));
 
   _Optional LinkedListItem *ancestor_item =
     linkedlist_get_next(&deepest_dir->list_item);
@@ -468,7 +474,9 @@ static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
     else
     {
       /* Remove the leaf name of the current directory from the path */
-      stringbuffer_truncate(&iterator->path_name, ancestor->path_name_len);
+      strb_t *const path = iterator->path_name;
+      size_t const old_pos = strb_seek(path, ancestor->path_name_len);
+      strb_split(path);
 
       /* Try to refill the buffer with catalogue entries for the ancestor
          directory */
@@ -482,7 +490,8 @@ static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
       }
 
       /* Reinstate the leaf name of the current directory */
-      stringbuffer_undo(&iterator->path_name);
+      strb_restore(path);
+      strb_seek(path, old_pos);
     }
   }
 
@@ -499,7 +508,8 @@ static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
     {
       DirIteratorLevel *const ancestor =
         CONTAINER_OF(&*ancestor_item, DirIteratorLevel, list_item);
-      stringbuffer_truncate(&iterator->path_name, ancestor->path_name_len);
+      strb_t *const path = iterator->path_name;
+      strb_delto(path, ancestor->path_name_len);
 
       DEBUG_VERBOSEF("DirIterator: Deepest directory is now %p\n",
         (void *)ancestor);
@@ -554,7 +564,7 @@ static size_t get_name(const DirIterator *iterator,
 
     assert(strlen(entry->name) == level->entry_name_len);
     assert(level->path_name_len ==
-           stringbuffer_get_length(&iterator->path_name));
+           strb_tell(iterator->path_name));
 
     if (buff_size > 0 && buffer)
     {
@@ -572,7 +582,7 @@ static size_t get_name(const DirIterator *iterator,
            remaining space. */
         nbytes = LOWEST(level->path_name_len - skip_size, bytes_free);
         memcpy(write,
-               stringbuffer_get_pointer(&iterator->path_name) + skip_size,
+               strb_cptr(iterator->path_name) + skip_size,
                nbytes);
         write += nbytes;
         bytes_free -= nbytes;
@@ -652,25 +662,24 @@ _Optional CONST _kernel_oserror *diriterator_make(_Optional DirIterator  **itera
     else
     {
       /* Duplicate the wildcarded object name to be matched. */
-      _Optional char *p = strdup(&*pattern);
-      if (p == NULL)
+      it->pattern = strdup(&*pattern);
+      if (it->pattern == NULL)
         e = no_mem();
-      else
-        it->pattern = &*p;
     }
 
     if (e == NULL)
     {
-      stringbuffer_init(&it->path_name);
-      if (stringbuffer_append_all(&it->path_name, path_name))
+      _Optional strb_t *const path = strb_dup(path_name);
+      if (path)
       {
+        it->path_name = &*path;
         it->flags = flags;
         linkedlist_init(&it->dir_list);
-        it->path_name_len = stringbuffer_get_length(&it->path_name);
+        it->path_name_len = strb_tell(it->path_name);
 
         e = enter_dir(&*it);
         if (e != NULL)
-          stringbuffer_destroy(&it->path_name);
+          strb_free(it->path_name);
       }
       else
       {
@@ -706,19 +715,23 @@ _Optional CONST _kernel_oserror *diriterator_reset(DirIterator *iterator)
   /* Try to recreate the top level data structure again. */
   LinkedList old_dir_list = iterator->dir_list;
   linkedlist_init(&iterator->dir_list);
-  stringbuffer_truncate(&iterator->path_name, iterator->path_name_len);
+  strb_t *const path = iterator->path_name;
+  size_t const old_pos = strb_seek(path, iterator->path_name_len);
+  strb_split(path);
 
   e = enter_dir(iterator);
   if (e == NULL)
   {
-    /* Destroy the old data structures on success. */
+    /* Discard the old path suffix and data structures on success. */
+    strb_delto(path, SIZE_MAX);
     free_levels(&old_dir_list, NULL);
   }
   else
   {
     /* Restore the previous state on error */
     iterator->dir_list = old_dir_list;
-    stringbuffer_undo(&iterator->path_name);
+    strb_restore(path);
+    strb_seek(path, old_pos);
   }
 
   return e;
@@ -872,8 +885,9 @@ _Optional CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
 
     if (can_enter_dir(iterator, entry))
     {
-      if (stringbuffer_append_separated(&iterator->path_name,
-                                        PATH_SEPARATOR, entry->name))
+      strb_t *const path = iterator->path_name;
+      size_t const old_pos = strb_tell(path);
+      if (!strb_putf(path, "%c%s", PATH_SEPARATOR, entry->name))
       {
         e = enter_dir(iterator);
         if (e == NULL &&
@@ -885,7 +899,7 @@ _Optional CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
         }
         else
         {
-          stringbuffer_undo(&iterator->path_name);
+          strb_delto(path, old_pos);
         }
       }
       else
@@ -948,7 +962,7 @@ void diriterator_destroy(_Optional DirIterator *iterator)
     /* Free each member of the linked list in turn, starting at the head. */
     free_levels(&iterator->dir_list, NULL);
 
-    stringbuffer_destroy(&iterator->path_name);
+    strb_free(iterator->path_name);
     free(iterator->pattern); /* may be null */
     free(iterator);
   }

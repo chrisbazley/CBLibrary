@@ -56,11 +56,13 @@ int main(int argc, char *argv[])
   test_groups[] =
   {
     { "UserData", UserData_tests },
-    { "MakePath", MakePath_tests },
     { "PathTail", PathTail_tests },
     { "DecodeLExe", DecodeLExe_tests },
+#ifndef CB_TEST_PORTABLE
+    { "MakePath", MakePath_tests },
     { "DirIter", DirIter_tests },
     { "Timer", Timer_tests },
+#endif
   };
 
   NOT_USED(argc);

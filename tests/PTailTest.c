@@ -83,7 +83,7 @@ static void test6(void)
   /* No component */
   const char *path = PATH_4;
   const char *tail = pathtail(path, 0);
-  assert(tail == path + sizeof(PATH_4));
+  assert(tail == path + sizeof(PATH_4) - 1);
   assert(strcmp(path, PATH_4)==0);
 }
 
