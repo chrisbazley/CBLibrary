@@ -655,6 +655,22 @@ static void test16(void)
   userdata_remove_from_list(&data);
 }
 
+static void test17(void)
+{
+  /* First long filename needs only a character allocation. */
+  char name[257];
+  memset(name, 'A', sizeof name - 1);
+  name[sizeof name - 1] = '\0';
+  UserData data;
+  userdata_init();
+  Fortify_SetNumAllocationsLimit(1);
+  bool const success = userdata_add_to_list(&data, NULL, NULL, name);
+  Fortify_SetNumAllocationsLimit(ULONG_MAX);
+  assert(success);
+  assert(!strcmp(userdata_get_file_name(&data), name));
+  userdata_remove_from_list(&data);
+}
+
 void UserData_tests(void)
 {
   static const struct
@@ -679,7 +695,8 @@ void UserData_tests(void)
     { "Destroy user data with destructor", test13 },
     { "Destroy user data without destructor", test14 },
     { "Empty filename without allocation", test15 },
-    { "Temporary filename modification and capacity reuse", test16 }
+    { "Temporary filename modification and capacity reuse", test16 },
+    { "First long filename uses one allocation", test17 }
   };
 
   for (size_t count = 0; count < ARRAY_SIZE(unit_tests); count ++)

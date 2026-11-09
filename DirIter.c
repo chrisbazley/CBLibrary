@@ -129,7 +129,7 @@ struct DirIterator
                               all (equivalent to "*"). */
   /* Overwrite mode; position is the visible path length. Split/restore keeps
      a temporarily hidden suffix intact while an ancestor directory is read. */
-  strb_t *path_name;
+  strb_t path_name;
   size_t path_name_len; /* Length of the root path, for convenience of
                            diriterator_get_object_sub_path_name. */
   LinkedList dir_list;
@@ -234,7 +234,7 @@ static _Optional CONST _kernel_oserror *refill_buffer(DirIterator       *iterato
   bool retry;
 
   assert(iterator != NULL);
-  const char *path_name = strb_cptr(iterator->path_name);
+  const char *path_name = strb_cptr(&iterator->path_name);
   assert(path_name != NULL);
 
   assert(levelp != NULL);
@@ -333,14 +333,14 @@ static _Optional CONST _kernel_oserror *enter_dir(DirIterator *iterator)
   assert(iterator != NULL);
 
   DEBUGF("DirIterator: Entering '%s'\n",
-         strb_cptr(iterator->path_name));
+         strb_cptr(&iterator->path_name));
 
   _Optional DirIteratorLevel *level = malloc(offsetof(DirIteratorLevel, buffer) + DEFAULT_BUFFER_SIZE);
   if (level != NULL)
   {
     /* Record the length of the path name leading up to this directory. */
     *level = (DirIteratorLevel){
-      .path_name_len = strb_tell(iterator->path_name),
+      .path_name_len = strb_tell(&iterator->path_name),
       .entry = NULL,
       .nentries = 0,
       .gbpb_next = 0, /* start of directory */
@@ -370,7 +370,7 @@ static _Optional CONST _kernel_oserror *enter_dir(DirIterator *iterator)
         linkedlist_remove(&iterator->dir_list, &level->list_item);
         free(level);
         DEBUGF("DirIterator: Ignoring empty directory '%s'\n",
-              strb_cptr(iterator->path_name));
+              strb_cptr(&iterator->path_name));
       }
     }
   }
@@ -454,7 +454,7 @@ static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
     CONTAINER_OF(&*deepest_item, DirIteratorLevel, list_item);
 
   DEBUGF("DirIterator: Leaving level %p ('%s')\n", (void *)deepest_dir,
-         strb_cptr(iterator->path_name));
+         strb_cptr(&iterator->path_name));
 
   _Optional LinkedListItem *ancestor_item =
     linkedlist_get_next(&deepest_dir->list_item);
@@ -474,7 +474,7 @@ static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
     else
     {
       /* Remove the leaf name of the current directory from the path */
-      strb_t *const path = iterator->path_name;
+      strb_t *const path = &iterator->path_name;
       size_t const old_pos = strb_seek(path, ancestor->path_name_len);
       strb_split(path);
 
@@ -508,7 +508,7 @@ static _Optional CONST _kernel_oserror *leave_dir(DirIterator *iterator)
     {
       DirIteratorLevel *const ancestor =
         CONTAINER_OF(&*ancestor_item, DirIteratorLevel, list_item);
-      strb_t *const path = iterator->path_name;
+      strb_t *const path = &iterator->path_name;
       strb_delto(path, ancestor->path_name_len);
 
       DEBUG_VERBOSEF("DirIterator: Deepest directory is now %p\n",
@@ -564,7 +564,7 @@ static size_t get_name(const DirIterator *iterator,
 
     assert(strlen(entry->name) == level->entry_name_len);
     assert(level->path_name_len ==
-           strb_tell(iterator->path_name));
+           strb_tell(&iterator->path_name));
 
     if (buff_size > 0 && buffer)
     {
@@ -582,7 +582,7 @@ static size_t get_name(const DirIterator *iterator,
            remaining space. */
         nbytes = LOWEST(level->path_name_len - skip_size, bytes_free);
         memcpy(write,
-               strb_cptr(iterator->path_name) + skip_size,
+               strb_cptr(&iterator->path_name) + skip_size,
                nbytes);
         write += nbytes;
         bytes_free -= nbytes;
@@ -654,6 +654,8 @@ _Optional CONST _kernel_oserror *diriterator_make(_Optional DirIterator  **itera
   it = malloc(sizeof(*it));
   if (it != NULL)
   {
+    *it = (DirIterator){.flags = flags};
+    linkedlist_init(&it->dir_list);
     if (pattern == NULL || strcmp(&*pattern, "*") == 0)
     {
       /* Match any object name. */
@@ -669,29 +671,19 @@ _Optional CONST _kernel_oserror *diriterator_make(_Optional DirIterator  **itera
 
     if (e == NULL)
     {
-      _Optional strb_t *const path = strb_dup(path_name);
-      if (path)
-      {
-        it->path_name = &*path;
-        it->flags = flags;
-        linkedlist_init(&it->dir_list);
-        it->path_name_len = strb_tell(it->path_name);
-
-        e = enter_dir(&*it);
-        if (e != NULL)
-          strb_free(it->path_name);
-      }
-      else
+      if (strb_cpy(&it->path_name, path_name))
       {
         e = no_mem();
       }
-
-      if (e != NULL)
-        free(it->pattern); /* may be null */
+      else
+      {
+        it->path_name_len = strb_tell(&it->path_name);
+        e = enter_dir(&*it);
+      }
     }
 
     if (e != NULL)
-      free(it);
+      diriterator_destroy(it);
   }
   else
   {
@@ -715,7 +707,7 @@ _Optional CONST _kernel_oserror *diriterator_reset(DirIterator *iterator)
   /* Try to recreate the top level data structure again. */
   LinkedList old_dir_list = iterator->dir_list;
   linkedlist_init(&iterator->dir_list);
-  strb_t *const path = iterator->path_name;
+  strb_t *const path = &iterator->path_name;
   size_t const old_pos = strb_seek(path, iterator->path_name_len);
   strb_split(path);
 
@@ -885,7 +877,7 @@ _Optional CONST _kernel_oserror *diriterator_advance(DirIterator *iterator)
 
     if (can_enter_dir(iterator, entry))
     {
-      strb_t *const path = iterator->path_name;
+      strb_t *const path = &iterator->path_name;
       size_t const old_pos = strb_tell(path);
       if (!strb_putf(path, "%c%s", PATH_SEPARATOR, entry->name))
       {
@@ -962,7 +954,7 @@ void diriterator_destroy(_Optional DirIterator *iterator)
     /* Free each member of the linked list in turn, starting at the head. */
     free_levels(&iterator->dir_list, NULL);
 
-    strb_free(iterator->path_name);
+    strb_free(&iterator->path_name);
     free(iterator->pattern); /* may be null */
     free(iterator);
   }
