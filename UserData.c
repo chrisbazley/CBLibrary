@@ -97,7 +97,7 @@ bool userdata_add_to_list(UserData *data,
          (void *)data, file_name);
 
   *data = (UserData){.is_safe = is_safe, .destroy = destroy};
-  if (strb_cpy(&data->file_name, file_name))
+  if (*file_name && strb_cpy(&data->file_name, file_name))
   {
     DEBUGF("UserData: Failed to duplicate file name string\n");
     success = false;
