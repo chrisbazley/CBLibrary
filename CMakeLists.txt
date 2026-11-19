@@ -14,11 +14,11 @@ include(FetchContent)
 
 FetchContent_Declare(OptionalAcornC GIT_REPOSITORY https://github.com/chrisbazley/OptionalAcornC.git GIT_TAG main)
 FetchContent_Declare(Stream GIT_REPOSITORY https://github.com/chrisbazley/StreamLib.git GIT_TAG main)
-FetchContent_Declare(CBOS GIT_REPOSITORY https://github.com/chrisbazley/CBOSLib.git GIT_TAG a93603b6ed7359e3d95ab727c749926885fd0de7)
+FetchContent_Declare(CBOS GIT_REPOSITORY https://github.com/chrisbazley/CBOSLib.git GIT_TAG 174943e76b91198f2789cd1cb9bafe5dfe3b361a)
 FetchContent_Declare(CBUtil GIT_REPOSITORY https://github.com/chrisbazley/CBUtilLib.git GIT_TAG main)
 
 FetchContent_Declare(strb GIT_REPOSITORY https://github.com/chrisbazley/strb_t.git
-    GIT_TAG 3b1c87fae18a4e22dde780def9e7e245b98d3569)
+    GIT_TAG fbc331ddc4a53b666e771787711a8e7afb24a3cf)
 FetchContent_MakeAvailable(OptionalAcornC Stream CBOS CBUtil strb)
 
 if(CBLIB_USE_CBDEBUG)
@@ -32,9 +32,11 @@ if(CBLIB_USE_CBDEBUG)
 endif()
 
 if(USE_OPTIONAL)
-    if(NOT CMAKE_C_COMPILER_ID MATCHES "Clang|AppleClang")
-        message(FATAL_ERROR
-            "USE_OPTIONAL requires Christopher Bazley's Clang fork")
+    include(CheckCSourceCompiles)
+    check_c_source_compiles("_Optional int *p; int main(void) { return p != 0; }"
+        HAVE_C_OPTIONAL_QUALIFIER)
+    if(NOT HAVE_C_OPTIONAL_QUALIFIER)
+        message(FATAL_ERROR "USE_OPTIONAL requires compiler support for _Optional")
     endif()
 
     add_compile_definitions(USE_OPTIONAL)
