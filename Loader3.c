@@ -93,7 +93,10 @@ typedef struct
   bool  idle_function:1;
   bool  no_flex_budge:1;
   bool  have_RAM_buffer:1;
-  void *RAM_buffer; // flex pointer
+  union {
+    char nil;
+    void *ptr;
+  } RAM_buffer; // flex pointer
   _Optional Loader3ReadMethod   *read_method;
   _Optional Loader3FailedMethod *failed_method;
   void                *client_handle;
@@ -157,7 +160,7 @@ static void destroy_op(LoadOpData *const load_op_data)
     scheduler_deregister(time_out, load_op_data);
 
   if (load_op_data->have_RAM_buffer)
-    flex_free(&load_op_data->RAM_buffer);
+    flex_free(&load_op_data->RAM_buffer.ptr);
 
   linkedlist_remove(&load_op_data_list, &load_op_data->list_item);
   free(load_op_data);
@@ -419,9 +422,9 @@ static _Optional CONST _kernel_oserror *send_ramfetch(
     },
     .data.ram_fetch = {
       /* tell them to write at the end of the data already received */
-      .buffer = (unsigned char *)load_op_data->RAM_buffer +
+      .buffer = (unsigned char *)load_op_data->RAM_buffer.ptr +
                 load_op_data->bytes_received,
-      .buffer_size = flex_size(&load_op_data->RAM_buffer) -
+      .buffer_size = flex_size(&load_op_data->RAM_buffer.ptr) -
                      load_op_data->bytes_received,
     },
   };
@@ -439,7 +442,7 @@ static _Optional CONST _kernel_oserror *receive_ram(LoadOpData *const load_op_da
   assert(load_op_data != NULL);
   assert(message != NULL);
   assert(message->hdr.action_code == Wimp_MRAMTransmit);
-  assert(load_op_data->bytes_received <= flex_size(&load_op_data->RAM_buffer));
+  assert(load_op_data->bytes_received <= flex_size(&load_op_data->RAM_buffer.ptr));
 
   if (load_op_data->no_flex_budge)
   {
@@ -449,7 +452,7 @@ static _Optional CONST _kernel_oserror *receive_ram(LoadOpData *const load_op_da
 
   load_op_data->RAM_capable = true;
   load_op_data->bytes_received += message->data.ram_transmit.nbytes;
-  int buf_size = flex_size(&load_op_data->RAM_buffer);
+  int buf_size = flex_size(&load_op_data->RAM_buffer.ptr);
 
   if (load_op_data->bytes_received > buf_size)
   {
@@ -464,13 +467,13 @@ static _Optional CONST _kernel_oserror *receive_ram(LoadOpData *const load_op_da
     DEBUGF("Loader3: Trimming RAM transfer buffer to %d bytes\n",
       load_op_data->bytes_received);
 
-    if (!flex_extend(&load_op_data->RAM_buffer, load_op_data->bytes_received))
+    if (!flex_extend(&load_op_data->RAM_buffer.ptr, load_op_data->bytes_received))
     {
       return no_mem();
     }
 
     Reader reader;
-    reader_flex_init(&reader, &load_op_data->RAM_buffer);
+    reader_flex_init(&reader, &load_op_data->RAM_buffer.ptr);
     read_data(load_op_data, &reader);
     reader_destroy(&reader);
     destroy_op(load_op_data);
@@ -481,7 +484,7 @@ static _Optional CONST _kernel_oserror *receive_ram(LoadOpData *const load_op_da
   buf_size = (buf_size * BufExtendMul) / BufExtendDiv;
   DEBUGF("Loader3: Extending RAM transfer buffer to %d bytes\n", buf_size);
 
-  if (!flex_extend(&load_op_data->RAM_buffer, buf_size))
+  if (!flex_extend(&load_op_data->RAM_buffer.ptr, buf_size))
   {
     return no_mem();
   }
@@ -512,7 +515,7 @@ static void ram_fetch_bounce(LoadOpData *const load_op_data)
     if (load_op_data->have_RAM_buffer)
     {
       load_op_data->have_RAM_buffer = false;
-      flex_free(&load_op_data->RAM_buffer);
+      flex_free(&load_op_data->RAM_buffer.ptr);
     }
 
     e = send_datasaveack(load_op_data);
@@ -767,7 +770,6 @@ _Optional CONST _kernel_oserror *loader3_receive_data(const WimpMessage *const m
 
   /* Initialise record for a new load operation */
   *load_op_data = (LoadOpData){
-    .RAM_buffer = (void *)NULL,
     .RAM_capable = false,
     .idle_function = false,
     .no_flex_budge = false,
@@ -803,7 +805,7 @@ _Optional CONST _kernel_oserror *loader3_receive_data(const WimpMessage *const m
       message->data.data_save.estimated_size + 1);
 
     DEBUGF("Loader3: Allocating RAM transfer buffer of %d bytes\n", buf_size);
-    if (!flex_alloc(&load_op_data->RAM_buffer, buf_size))
+    if (!flex_alloc(&load_op_data->RAM_buffer.ptr, buf_size))
     {
       e = no_mem();
     }
@@ -846,7 +848,6 @@ bool loader3_load_file(const char *const file_name, int const file_type,
   bool success = false;
 
   LoadOpData load_op_data = {
-    .RAM_buffer = (void *)NULL,
     .RAM_capable = false,
     .idle_function = false,
     .no_flex_budge = false,
