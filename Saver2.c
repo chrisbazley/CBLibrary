@@ -77,7 +77,10 @@ typedef struct
   int   bytes_sent;
   bool  destination_safe:1;
   bool  have_RAM_buffer:1;
-  void *RAM_buffer; // flex pointer
+  union {
+    char nil;
+    void *ptr;
+  } RAM_buffer; // flex pointer
   _Optional Saver2WriteMethod    *write_method;
   _Optional Saver2CompleteMethod *complete_method;
   _Optional Saver2FailedMethod   *failed_method;
@@ -179,7 +182,7 @@ static void destroy_op(SaveOpData *const save_op_data)
   linkedlist_remove(&save_op_data_list, &save_op_data->list_item);
   if (save_op_data->have_RAM_buffer)
   {
-    flex_free(&save_op_data->RAM_buffer);
+    flex_free(&save_op_data->RAM_buffer.ptr);
   }
   free(save_op_data);
 }
@@ -405,7 +408,7 @@ static bool ram_transmit(SaveOpData *const save_op_data,
         save_op_data->datasave_msg.data.data_save.estimated_size);
 
     DEBUGF("Saver2: Allocating RAM transfer buffer of %d bytes\n", buf_size);
-    if (!flex_alloc(&save_op_data->RAM_buffer, buf_size))
+    if (!flex_alloc(&save_op_data->RAM_buffer.ptr, buf_size))
     {
       failed(save_op_data, no_mem());
       return false;
@@ -414,7 +417,7 @@ static bool ram_transmit(SaveOpData *const save_op_data,
     save_op_data->have_RAM_buffer = true;
 
     Writer writer;
-    writer_flex_init(&writer, &save_op_data->RAM_buffer);
+    writer_flex_init(&writer, &save_op_data->RAM_buffer.ptr);
     if (!write_and_destroy(save_op_data, &writer,
           save_op_data->datasave_msg.data.data_save.leaf_name))
     {
@@ -424,7 +427,7 @@ static bool ram_transmit(SaveOpData *const save_op_data,
 
   int event_code = 0, nbytes = 0;
   int const rem =
-    flex_size(&save_op_data->RAM_buffer) - save_op_data->bytes_sent;
+    flex_size(&save_op_data->RAM_buffer.ptr) - save_op_data->bytes_sent;
 
   if (rem < message->data.ram_fetch.buffer_size)
   {
@@ -443,7 +446,7 @@ static bool ram_transmit(SaveOpData *const save_op_data,
 
   void *const dbuf = message->data.ram_fetch.buffer;
   nobudge_register(PreExpandHeap); /* dereference of pointer to flex */
-  void *const sbuf = (char *)save_op_data->RAM_buffer +
+  void *const sbuf = (char *)save_op_data->RAM_buffer.ptr +
                      save_op_data->bytes_sent;
 
   DEBUGF("Saver2: transfering %d bytes from address %p in task %d to addr %p"
@@ -810,7 +813,6 @@ _Optional CONST _kernel_oserror *saver2_send_data(int const task_handle,
     .datasave_msg = *message,
     .destination_safe = false,
     .have_RAM_buffer = false,
-    .RAM_buffer = (void *)NULL,
     .bytes_sent = 0,
     .write_method = write_method,
     .complete_method = complete_method,
