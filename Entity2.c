@@ -47,6 +47,7 @@
   CJB: 28-Oct-26: Make a local copy of the exit callback before testing it.
                   Explicitly initialise the released entity's client handle
                   to null, using a cast to preserve the existing pointer type.
+  CJB: 28-Nov-26: Remove redundant casts of NULL to function pointer types.
 */
 
 /* ISO library headers */
@@ -694,7 +695,7 @@ static void release_own(size_t const entity)
   }
 
   entities_info[entity] = (Entity2Info){
-    .write_method = (Saver2WriteMethod *)NULL,
+    .write_method = NULL,
     .client_handle = (void *)NULL,
   };
 }
@@ -1085,7 +1086,7 @@ _Optional CONST _kernel_oserror *entity2_request_data(
     {
       /* We don't own this entity, so we must request the associated data
          from its owner. */
-      ON_ERR_RTN_E(probe_or_request_remote(entity, data_request, (Entity2ProbeMethod *)NULL,
+      ON_ERR_RTN_E(probe_or_request_remote(entity, data_request, NULL,
         read_method, failed_method, client_handle));
     }
   }
@@ -1127,7 +1128,7 @@ _Optional CONST _kernel_oserror *entity2_probe_data(
       /* We don't own this entity, so we must request the associated data
          from its owner. */
       ON_ERR_RTN_E(probe_or_request_remote(entity, data_request, probe_method,
-        (Entity2ReadMethod *)NULL, failed_method, client_handle));
+        NULL, failed_method, client_handle));
     }
   }
 

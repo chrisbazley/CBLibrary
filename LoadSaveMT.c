@@ -73,6 +73,7 @@
                   *handle (although we're getting the address of the first member).
                   Use CONTAINER_OF to get fileop_state pointers.
    CJB: 21-Sep-26: Declare variables when they are first assigned.
+  CJB: 28-Nov-26: Remove redundant casts of NULL to function pointer types.
 */
 
 /* ISO library headers */
@@ -225,7 +226,7 @@ _Optional CONST _kernel_oserror *load_fileM2(const char *file_path,
       .start = 0,
       .common = {
         .f = NULL,
-        .destructor = (fileop_destructor *)NULL,
+        .destructor = NULL,
       },
       .read_pos = 0, /* start reading from beginning of file */
     };
@@ -371,7 +372,7 @@ _Optional CONST _kernel_oserror *save_fileM2(const char *file_path,
       .mem_pos = start_offset,
       .common = {
         .f = NULL,
-        .destructor = (fileop_destructor *)NULL,
+        .destructor = NULL,
       },
     };
     open_mode = "wb"; /* open for writing */
