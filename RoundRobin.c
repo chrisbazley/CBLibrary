@@ -49,7 +49,8 @@
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-May-26: Changed parameter type of RoundRobin_initialise to int.
    CJB: 21-Sep-26: Declare variables when they are first assigned.
-  CJB: 28-Nov-26: Remove redundant casts of NULL to function pointer types.
+  CJB: 28-Nov-26: Qualify nullable handler slots with _Optional and remove
+                  redundant casts of NULL to the handler type.
 */
 
 #ifdef CBLIB_OBSOLETE /* Use c.Scheduler instead */
@@ -75,7 +76,7 @@
 
 typedef struct
 {
-  RoundRobinHandler *handler; /* == NULL marks free blocks */
+  _Optional RoundRobinHandler *handler; /* == NULL marks free blocks */
   void              *handle;
 }
 RoundRobinRecord;
@@ -261,10 +262,11 @@ static int null_event_handler(int event_code, WimpPollBlock *event, IdBlock *id_
     RoundRobinRecord *block = &threads_array[thread_to_call];
     DEBUGF("Thread record %zu at %p\n", thread_to_call, (void *)block);
 
-    if (block->handler) {
+    _Optional RoundRobinHandler *const handler = block->handler;
+    if (handler) {
       DEBUGF("Calling handler with handle %p\n", block->handle);
       num_this_poll++;
-      block->handler(block->handle, &time_up);
+      handler(block->handle, &time_up);
     }
 
     thread_to_call++;
