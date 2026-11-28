@@ -49,6 +49,7 @@
   CJB: 09-May-25: Dogfooding the _Optional qualifier.
   CJB: 10-May-26: Changed parameter type of RoundRobin_initialise to int.
    CJB: 21-Sep-26: Declare variables when they are first assigned.
+  CJB: 28-Nov-26: Remove redundant casts of NULL to function pointer types.
 */
 
 #ifdef CBLIB_OBSOLETE /* Use c.Scheduler instead */
@@ -154,7 +155,7 @@ _Optional CONST _kernel_oserror *RoundRobin_register(RoundRobinHandler *handler,
     threads_array = new_data;
     write_data = &(threads_array[threads_array_len]);
     threads_array_len++;
-    write_data->handler = (RoundRobinHandler *)NULL; /* mark new (end) block as free */
+    write_data->handler = NULL; /* mark new (end) block as free */
   }
 
   if (num_threads == 0 && suspended == 0)
@@ -190,7 +191,7 @@ _Optional CONST _kernel_oserror *RoundRobin_deregister(RoundRobinHandler *handle
     nullpoll_deregister(); /* We have run out of clients */
   num_threads--;
 
-  write_data->handler = (RoundRobinHandler *)NULL; /* mark slot as free */
+  write_data->handler = NULL; /* mark slot as free */
 
   return NULL;
 }

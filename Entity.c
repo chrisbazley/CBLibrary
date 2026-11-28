@@ -97,6 +97,7 @@
   CJB: 21-Sep-26: Declare variables when they are first assigned.
   CJB: 21-Sep-26: Use CONTAINER_OF to recover request records from list items.
   CJB: 22-Sep-26: Assert the expected Wimp message type in message handlers.
+  CJB: 28-Nov-26: Remove redundant casts of NULL to function pointer types.
 */
 
 /* ISO library headers */
@@ -455,8 +456,8 @@ void entity_release(unsigned int flags)
     }
 
     /* Wipe the function pointers */
-    entities_info[entity].lost_method = (EntityLostMethod *)NULL;
-    entities_info[entity].data_method = (EntityDataMethod *)NULL;
+    entities_info[entity].lost_method = NULL;
+    entities_info[entity].data_method = NULL;
 
   } /* next entity */
 
@@ -629,7 +630,7 @@ static int _ent_datasave_msg_handler(WimpMessage *message, void *handle)
     DEBUGF("Entity: Will load data associated with entity\n");
     request_op_data->data_request_ref = 0; /* prevent future matches */
     e = loader2_receive_data(message,
-                             (Loader2FileHandler *)NULL,
+                             NULL,
                              _ent_load_finished,
                              &*request_op_data);
     if (e != NULL)
@@ -755,7 +756,7 @@ static int _ent_datarequest_msg_handler(WimpMessage *message, void *handle)
                           data_to_send,
                           0,
                           flex_size(data_to_send),
-                          (SaverFileHandler *)NULL,
+                          NULL,
                           _ent_data_sent,
                           &*ctx);
       if (check_error(e))
